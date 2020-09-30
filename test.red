@@ -1,2 +1,2 @@
-s32 a = 'a';
-s32 b = 'b';
+s32 bl = "blue";
+s32 yl = "yellow";

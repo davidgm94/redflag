@@ -11,8 +11,9 @@
 static char src_buffer[10000];
 char *src_it = &src_buffer[0];
 
-char* file_load(const char *name) {
-    FILE* file = fopen(name, "rb");
+char *file_load(const char *name)
+{
+    FILE *file = fopen(name, "rb");
     assert(file);
 
     fseek(file, 0, SEEK_END);
@@ -22,7 +23,7 @@ char* file_load(const char *name) {
     fseek(file, 0, SEEK_SET);
 
     size_t rc = fread(src_it, 1, length, file);
-    assert(rc == (size_t)length);
+    assert(rc == (size_t) length);
     fclose(file);
 
     return src_it;
@@ -272,7 +273,7 @@ static Token get_token(void)
             return token;
         }
         default:
-            printf("Char not dealt with: %c(%d)\n", ch, (s32)ch);
+            printf("Char not dealt with: %c(%d)\n", ch, (s32) ch);
             assert(0);
     }
 }
@@ -288,23 +289,34 @@ static bool is_delimiter(char c)
     return delimiter;
 }
 
-#define IS_CHAR_DELIMITER(x) x == '\''
-#define IS_STRING_DELIMITER(x) x == '"'
-#define IS_QUOTE(x, i) (IS_CHAR_DELIMITER(x[i]) || IS_STRING_DELIMITER(x[i]) && (i > 0 ? (x[i-1] != '\'') : true))
+static inline bool is_char(char ch, const char* str, size_t i)
+{
+    return str[i] == ch && (i > 0 ? (str[i - 1] != '\\') : true);
+}
+
 static Token get_word(char *string, u32 *char_count)
 {
     Token token = TOKEN_NAME;
     char word_buffer[WORD_MAX_CHAR_COUNT];
     char ch = *string;
 
-    size_t i;
-    for (i = 0; !is_delimiter(string[i]); i++)
+    size_t i = 0;
+    if (ch == '\'' || ch == '\"')
     {
-        word_buffer[i] = string[i];
-        if (IS_QUOTE(string, i))
+        char delimiter = ch;
+        do
         {
+            word_buffer[i] = string[i];
             i++;
-            break;
+        } while (!is_char(delimiter, string, i));
+        word_buffer[i] = string[i];
+        i++;
+    }
+    else
+    {
+        for (i = 0; !is_delimiter(string[i]); i++)
+        {
+            word_buffer[i] = string[i];
         }
     }
     word_buffer[i] = 0;
@@ -315,10 +327,12 @@ static Token get_word(char *string, u32 *char_count)
         case '\'':
         {
             token = TOKEN_CHAR_LIT;
+            break;
         }
         case '\"':
         {
             token = TOKEN_STRING_LIT;
+            break;
         }
         case 'a':
         case 'b':
@@ -469,7 +483,7 @@ static Token get_word(char *string, u32 *char_count)
         case 'Z':
             break;
         default:
-            printf("\nChar not taken into account: %c(%d)\n", ch, (s32)ch);
+            printf("\nChar not taken into account: %c(%d)\n", ch, (s32) ch);
             assert(0);
             break;
     }
@@ -493,7 +507,7 @@ static void lex(void)
 static void debug_lexing(void)
 {
     size_t word_it = 0;
-    for (int i = 0; i < token_count; i++)
+    for (s32 i = 0; i < token_count; i++)
     {
         Token token = token_arr[i];
         if (is_onechar(token))
@@ -502,7 +516,7 @@ static void debug_lexing(void)
         }
         else
         {
-            printf("[%d] Token: %s\t\tValue: %s\n", i, get_token_str(token), words[word_it]);
+            printf("[%d] Token: %s    Value: %s\n", i, get_token_str(token), words[word_it]);
             word_it++;
             assert(word_it <= word_count);
         }
