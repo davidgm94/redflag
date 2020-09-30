@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "types.h"
 
 static char src_buffer[10000];
@@ -70,6 +71,7 @@ typedef enum Token
     TOKEN_NAME = 35,
     TOKEN_CHAR_LIT = 36,
     TOKEN_STRING_LIT = 37,
+    TOKEN_NUMBER_LIT = 38,
 } Token;
 
 bool is_onechar(Token t)
@@ -140,6 +142,7 @@ const char *get_token_str(Token t)
         CASE_TO_STR(TOKEN_NAME);
         CASE_TO_STR(TOKEN_CHAR_LIT);
         CASE_TO_STR(TOKEN_STRING_LIT);
+        CASE_TO_STR(TOKEN_NUMBER_LIT);
         default:
             printf("Token not recognized: %d\n");
             assert(0);
@@ -266,6 +269,16 @@ static Token get_token(void)
         case 'X':
         case 'Y':
         case 'Z':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
         {
             u32 word_char_count = 0;
             Token token = get_word(src_it, &word_char_count);
@@ -284,12 +297,13 @@ static bool is_delimiter(char c)
                      c == '-' ||
                      c == ';' ||
                      c == ',' ||
+                     c == '.' ||
                      c == EOF ||
                      c == 0;
     return delimiter;
 }
 
-static inline bool is_char(char ch, const char* str, size_t i)
+static inline bool is_char(char ch, const char *str, size_t i)
 {
     return str[i] == ch && (i > 0 ? (str[i - 1] != '\\') : true);
 }
@@ -311,6 +325,14 @@ static Token get_word(char *string, u32 *char_count)
         } while (!is_char(delimiter, string, i));
         word_buffer[i] = string[i];
         i++;
+    }
+    else if (isdigit(ch))
+    {
+        while (isdigit(string[i]))
+        {
+            word_buffer[i] = string[i];
+            i++;
+        }
     }
     else
     {
@@ -482,6 +504,20 @@ static Token get_word(char *string, u32 *char_count)
         case 'Y':
         case 'Z':
             break;
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        {
+            token = TOKEN_NUMBER_LIT;
+            break;
+        }
         default:
             printf("\nChar not taken into account: %c(%d)\n", ch, (s32) ch);
             assert(0);
