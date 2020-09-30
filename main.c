@@ -72,6 +72,11 @@ typedef enum Token
     TOKEN_CHAR_LIT = 36,
     TOKEN_STRING_LIT = 37,
     TOKEN_NUMBER_LIT = 38,
+    TOKEN_STRUCT = 39,
+    TOKEN_UNION = 40,
+    TOKEN_ENUM = 41,
+    TOKEN_F32 = 42,
+    TOKEN_F64 = 43,
 } Token;
 
 bool is_onechar(Token t)
@@ -143,6 +148,11 @@ const char *get_token_str(Token t)
         CASE_TO_STR(TOKEN_CHAR_LIT);
         CASE_TO_STR(TOKEN_STRING_LIT);
         CASE_TO_STR(TOKEN_NUMBER_LIT);
+        CASE_TO_STR(TOKEN_STRUCT);
+        CASE_TO_STR(TOKEN_UNION);
+        CASE_TO_STR(TOKEN_ENUM);
+        CASE_TO_STR(TOKEN_F32);
+        CASE_TO_STR(TOKEN_F64);
         default:
             printf("Token not recognized: %d\n");
             assert(0);
@@ -298,6 +308,7 @@ static bool is_delimiter(char c)
                      c == ';' ||
                      c == ',' ||
                      c == '.' ||
+                     c == '\n' ||
                      c == EOF ||
                      c == 0;
     return delimiter;
@@ -366,6 +377,10 @@ static Token get_word(char *string, u32 *char_count)
             {
                 token = TOKEN_ELSE;
             }
+            else if (strequal("enum", word_buffer))
+            {
+                token = TOKEN_ENUM;
+            }
         }
             break;
         case 'f':
@@ -377,6 +392,14 @@ static Token get_word(char *string, u32 *char_count)
             else if (strequal("for", word_buffer))
             {
                 token = TOKEN_FOR;
+            }
+            else if (strequal("f32", word_buffer))
+            {
+                token = TOKEN_F32;
+            }
+            else if (strequal("f64", word_buffer))
+            {
+                token = TOKEN_F64;
             }
             break;
         }
@@ -424,6 +447,10 @@ static Token get_word(char *string, u32 *char_count)
             {
                 token = TOKEN_S64;
             }
+            else if (strequal("struct", word_buffer))
+            {
+                token = TOKEN_STRUCT;
+            }
             break;
         }
         case 't':
@@ -451,6 +478,10 @@ static Token get_word(char *string, u32 *char_count)
             else if (strequal("u64", word_buffer))
             {
                 token = TOKEN_U64;
+            }
+            else if (strequal("union", word_buffer))
+            {
+                token = TOKEN_UNION;
             }
             break;
         }
