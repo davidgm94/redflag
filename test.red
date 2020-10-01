@@ -6,3 +6,8 @@ struct a
 s32 bl = "blue";
 s32 yl = "yellow";
 s32 integer = 17283;
+
+fn void foo(s32 i)
+{
+    return i + 5;
+}

@@ -12,3 +12,4 @@ typedef int64_t s64;
 
 #define strequal(a, b) strcmp(a, b) == 0
 #define COUNT_OF(x) ((sizeof(x))/(sizeof((x[0]))))
+#define CASE_TO_STR(x) case(x): return #x

@@ -8,6 +8,34 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "types.h"
+#include <stdarg.h>
+
+typedef enum LOG_TYPE
+{
+    LOG_TYPE_INFO,
+    LOG_TYPE_WARN,
+    LOG_TYPE_ERROR,
+} LOG_TYPE;
+
+const char *log_type_to_str(LOG_TYPE log_type)
+{
+    switch (log_type)
+    {
+        CASE_TO_STR(LOG_TYPE_INFO);
+        CASE_TO_STR(LOG_TYPE_WARN);
+        CASE_TO_STR(LOG_TYPE_ERROR);
+            assert(0);
+    }
+}
+
+void logger(LOG_TYPE log_type, const char *format, ...)
+{
+    fprintf(stdout, "[%s] ", log_type_to_str(log_type));
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+}
 
 static char src_buffer[10000];
 char *src_it = &src_buffer[0];
@@ -51,6 +79,7 @@ typedef enum Token
     TOKEN_COMMA = 15,
     TOKEN_DOT = 16,
     TOKEN_ARROW = 17,
+    //
     TOKEN_VAR = 18,
     TOKEN_VOID = 19,
     TOKEN_S8 = 20,
@@ -68,15 +97,19 @@ typedef enum Token
     TOKEN_RETURN = 32,
     TOKEN_FALSE = 33,
     TOKEN_TRUE = 34,
+    //
     TOKEN_NAME = 35,
     TOKEN_CHAR_LIT = 36,
     TOKEN_STRING_LIT = 37,
     TOKEN_NUMBER_LIT = 38,
+    //
     TOKEN_STRUCT = 39,
     TOKEN_UNION = 40,
     TOKEN_ENUM = 41,
     TOKEN_F32 = 42,
     TOKEN_F64 = 43,
+    TOKEN_FN = 44,
+    //
 } Token;
 
 bool is_onechar(Token t)
@@ -102,7 +135,6 @@ bool is_onechar(Token t)
            t == TOKEN_DOT;
 }
 
-#define CASE_TO_STR(x) case(x): return #x
 
 const char *get_token_str(Token t)
 {
@@ -127,6 +159,7 @@ const char *get_token_str(Token t)
         CASE_TO_STR(TOKEN_COMMA);
         CASE_TO_STR(TOKEN_DOT);
         CASE_TO_STR(TOKEN_ARROW);
+            //
         CASE_TO_STR(TOKEN_VAR);
         CASE_TO_STR(TOKEN_VOID);
         CASE_TO_STR(TOKEN_S8);
@@ -144,15 +177,20 @@ const char *get_token_str(Token t)
         CASE_TO_STR(TOKEN_RETURN);
         CASE_TO_STR(TOKEN_FALSE);
         CASE_TO_STR(TOKEN_TRUE);
+            //
         CASE_TO_STR(TOKEN_NAME);
         CASE_TO_STR(TOKEN_CHAR_LIT);
         CASE_TO_STR(TOKEN_STRING_LIT);
         CASE_TO_STR(TOKEN_NUMBER_LIT);
+            //
         CASE_TO_STR(TOKEN_STRUCT);
         CASE_TO_STR(TOKEN_UNION);
         CASE_TO_STR(TOKEN_ENUM);
         CASE_TO_STR(TOKEN_F32);
         CASE_TO_STR(TOKEN_F64);
+        CASE_TO_STR(TOKEN_FN);
+            //
+
         default:
             printf("Token not recognized: %d\n");
             assert(0);
@@ -308,8 +346,16 @@ static bool is_delimiter(char c)
                      c == ';' ||
                      c == ',' ||
                      c == '.' ||
-                     c == '\n' ||
+                     c == '(' ||
+                     c == ')' ||
+                     c == '{' ||
+                     c == '}' ||
+                     c == '[' ||
+                     c == ']' ||
                      c == EOF ||
+                     c == '\n' ||
+                     c == '\'' ||
+                     c == '\"' ||
                      c == 0;
     return delimiter;
 }
@@ -400,6 +446,10 @@ static Token get_word(char *string, u32 *char_count)
             else if (strequal("f64", word_buffer))
             {
                 token = TOKEN_F64;
+            }
+            else if (strequal("fn", word_buffer))
+            {
+                token = TOKEN_FN;
             }
             break;
         }
@@ -564,9 +614,12 @@ static void lex(void)
     while (*src_it != 0)
     {
         Token token = get_token();
-        printf("Got token: %s\n", get_token_str(token));
-        size_t token_index = token_count++;
-        token_arr[token_index] = token;
+        if (token != TOKEN_WHITESPACE)
+        {
+            printf("Got token: %s\n", get_token_str(token));
+            size_t token_index = token_count++;
+            token_arr[token_index] = token;
+        }
         *src_it++;
     }
 }
@@ -590,6 +643,188 @@ static void debug_lexing(void)
     }
 }
 
+// PARSER / AST
+typedef struct LiteralAST
+{
+
+};
+typedef struct Type
+{
+    u64 type;
+} Type;
+
+typedef struct VariableAST
+{
+    Type type;
+    char *name;
+    GenericType64 value;
+} VariableAST;
+
+typedef struct ConstantAST
+{
+    Type type;
+    char *name;
+    GenericType64 value;
+} ConstantAST;
+
+typedef struct StructAST
+{
+    Type type;
+    VariableAST *fields;
+} StructAST;
+
+typedef struct FunctionCallAST
+{
+    VariableAST *arguments;
+    Type return_type;
+    char *name;
+} FunctionCallAST;
+typedef FunctionCallAST FunctionPrototypeAST;
+
+typedef struct LiteralAST
+{
+    Type type;
+    GenericType64 value;
+} LiteralAST;
+
+typedef struct OperatorAST
+{
+    char op;
+} OperatorAST;
+
+typedef union ElementAST
+{
+    VariableAST variable;
+    ConstantAST constant;
+    LiteralAST literal;
+    StructAST struct_;
+    union ElementAST *element;
+} ElementAST;
+
+typedef struct BinaryExpressionAST
+{
+    ElementAST left;
+    ElementAST right;
+    OperatorAST operator;
+} ExpressionAST;
+
+typedef struct FunctionAST
+{
+    FunctionPrototypeAST *prototype;
+    ExpressionAST expression;
+} FunctionAST;
+
+static ElementAST parse_token(Token token)
+{
+    ElementAST element;
+    switch (token)
+    {
+        case TOKEN_INVALID:
+            assert(0);
+            break;
+        case TOKEN_EQUAL:
+            element.literal =
+            break;
+        case TOKEN_DASH:
+            break;
+        case TOKEN_PLUS:
+            break;
+        case TOKEN_ASTERISC:
+            break;
+        case TOKEN_SLASH:
+            break;
+        case TOKEN_BACKSLASH:
+            break;
+        case TOKEN_SEMICOLON:
+            break;
+        case TOKEN_DOUBLE_COLON:
+            break;
+        case TOKEN_LEFT_PARENTHESIS:
+            break;
+        case TOKEN_RIGHT_PARENTHESIS:
+            break;
+        case TOKEN_LEFT_BRACE:
+            break;
+        case TOKEN_RIGHT_BRACE:
+            break;
+        case TOKEN_LEFT_BRACKET:
+            break;
+        case TOKEN_RIGHT_BRACKET:
+            break;
+        case TOKEN_COMMA:
+            break;
+        case TOKEN_DOT:
+            break;
+        case TOKEN_ARROW:
+            break;
+        case TOKEN_VAR:
+            break;
+        case TOKEN_VOID:
+            break;
+        case TOKEN_S8:
+            break;
+        case TOKEN_S16:
+            break;
+        case TOKEN_S32:
+            break;
+        case TOKEN_S64:
+            break;
+        case TOKEN_U8:
+            break;
+        case TOKEN_U16:
+            break;
+        case TOKEN_U32:
+            break;
+        case TOKEN_U64:
+            break;
+        case TOKEN_IF:
+            break;
+        case TOKEN_ELSE:
+            break;
+        case TOKEN_WHILE:
+            break;
+        case TOKEN_FOR:
+            break;
+        case TOKEN_RETURN:
+            break;
+        case TOKEN_FALSE:
+            break;
+        case TOKEN_TRUE:
+            break;
+        case TOKEN_NAME:
+            break;
+        case TOKEN_CHAR_LIT:
+            break;
+        case TOKEN_STRING_LIT:
+            break;
+        case TOKEN_NUMBER_LIT:
+            break;
+        case TOKEN_STRUCT:
+            break;
+        case TOKEN_UNION:
+            break;
+        case TOKEN_ENUM:
+            break;
+        case TOKEN_F32:
+            break;
+        case TOKEN_F64:
+            break;
+        case TOKEN_FN:
+            break;
+        default:
+            printf("Token doesn't exist\n");
+            assert(0);
+    }
+}
+
+static void parse_tokens(Token *tokens, u64 token_count)
+{
+    for (u64 i = 0; i < token_count; i++)
+    {
+        Token token = tokens[i];
+    }
+}
+
 int main(void)
 {
     const char *src_code = file_load("test.red");
@@ -597,6 +832,7 @@ int main(void)
     strcpy(src_buffer, src_code);
     lex();
     debug_lexing();
+    logger(LOG_TYPE_ERROR, "Hello  %s\n", "David");
+
     return 0;
 }
-
