@@ -10,12 +10,20 @@
 #include "types.h"
 #include <stdarg.h>
 
-typedef enum LOG_TYPE
+typedef enum LogType
 {
     LOG_TYPE_INFO,
     LOG_TYPE_WARN,
     LOG_TYPE_ERROR,
-} LOG_TYPE;
+} LogType;
+
+typedef enum
+{
+	FAIL = 0,
+	SUCCESS = 1,
+} GeneralError;
+
+#define GENERAL_FAILED(x) (!(x))
 
 const char *log_type_to_str(LOG_TYPE log_type)
 {
@@ -815,6 +823,20 @@ static ElementAST parse_token(Token token)
             printf("Token doesn't exist\n");
             assert(0);
     }
+}
+
+#define VARIABLE_OFFSET_WITH_COUNT 4
+static GeneralError parse_variable(size_t token_index, Token* token_arr, size_t token_count, VariableAST* variable)
+{
+	Token token = token[i];
+	assert(token == TOKEN_VAR);
+
+	if (token_count < token_index + VARIABLE_OFFSET_WITH_COUNT)
+	{
+		return FAIL;
+	}
+
+
 }
 
 static void parse_tokens(Token *tokens, u64 token_count)
