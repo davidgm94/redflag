@@ -25,7 +25,7 @@ typedef enum
 
 #define GENERAL_FAILED(x) (!(x))
 
-const char *log_type_to_str(LOG_TYPE log_type)
+const char *log_type_to_str(LogType log_type)
 {
     switch (log_type)
     {
@@ -36,7 +36,7 @@ const char *log_type_to_str(LOG_TYPE log_type)
     }
 }
 
-void logger(LOG_TYPE log_type, const char *format, ...)
+void logger(LogType log_type, const char *format, ...)
 {
     fprintf(stdout, "[%s] ", log_type_to_str(log_type));
     va_list args;
@@ -200,7 +200,7 @@ const char *get_token_str(Token t)
             //
 
         default:
-            printf("Token not recognized: %d\n");
+            printf("Token not recognized: %d\n", t);
             assert(0);
     }
 }
@@ -215,7 +215,7 @@ Word words[MAX_WORD_COUNT];
 u16 word_count = 0;
 
 
-static Token get_word(char *string, u32 *word_count);
+static Token get_word(char *string, size_t *word_count);
 
 static Token get_token(void)
 {
@@ -249,6 +249,7 @@ static Token get_token(void)
         case '\n': // backslash + char
         case ' ':
             return TOKEN_WHITESPACE;
+        case '\r':
         case '\t':
             return TOKEN_INVALID;
         case ';':
@@ -336,7 +337,7 @@ static Token get_token(void)
         case '8':
         case '9':
         {
-            u32 word_char_count = 0;
+            size_t word_char_count = 0;
             Token token = get_word(src_it, &word_char_count);
             src_it += word_char_count - 1;
             return token;
@@ -373,7 +374,7 @@ static inline bool is_char(char ch, const char *str, size_t i)
     return str[i] == ch && (i > 0 ? (str[i - 1] != '\\') : true);
 }
 
-static Token get_word(char *string, u32 *char_count)
+static Token get_word(char *string, size_t *char_count)
 {
     Token token = TOKEN_NAME;
     char word_buffer[WORD_MAX_CHAR_COUNT];
@@ -635,7 +636,7 @@ static void lex(void)
 static void debug_lexing(void)
 {
     size_t word_it = 0;
-    for (s32 i = 0; i < token_count; i++)
+    for (u32 i = 0; i < token_count; i++)
     {
         Token token = token_arr[i];
         if (is_onechar(token))
@@ -652,27 +653,26 @@ static void debug_lexing(void)
 }
 
 // PARSER / AST
-typedef struct LiteralAST
-{
-
-};
 typedef struct Type
 {
     u64 type;
 } Type;
+typedef struct LiteralAST
+{
+    Type type;
+    u8 value;
+} LiteralAST;
 
 typedef struct VariableAST
 {
-    Type type;
+    LiteralAST value;
     char *name;
-    GenericType64 value;
 } VariableAST;
 
 typedef struct ConstantAST
 {
-    Type type;
+    LiteralAST value;
     char *name;
-    GenericType64 value;
 } ConstantAST;
 
 typedef struct StructAST
@@ -688,12 +688,6 @@ typedef struct FunctionCallAST
     char *name;
 } FunctionCallAST;
 typedef FunctionCallAST FunctionPrototypeAST;
-
-typedef struct LiteralAST
-{
-    Type type;
-    GenericType64 value;
-} LiteralAST;
 
 typedef struct OperatorAST
 {
@@ -731,7 +725,7 @@ static ElementAST parse_token(Token token)
             assert(0);
             break;
         case TOKEN_EQUAL:
-            element.literal =
+            //element.literal =
             break;
         case TOKEN_DASH:
             break;
@@ -828,7 +822,7 @@ static ElementAST parse_token(Token token)
 #define VARIABLE_OFFSET_WITH_COUNT 4
 static GeneralError parse_variable(size_t token_index, Token* token_arr, size_t token_count, VariableAST* variable)
 {
-	Token token = token[i];
+	Token token = token_arr[token_index];
 	assert(token == TOKEN_VAR);
 
 	if (token_count < token_index + VARIABLE_OFFSET_WITH_COUNT)
@@ -836,6 +830,7 @@ static GeneralError parse_variable(size_t token_index, Token* token_arr, size_t 
 		return FAIL;
 	}
 
+    return SUCCESS;
 
 }
 
@@ -847,14 +842,14 @@ static void parse_tokens(Token *tokens, u64 token_count)
     }
 }
 
+#define TEST_SRC_PATH "../test.red"
 int main(void)
 {
-    const char *src_code = file_load("test.red");
+    const char *src_code = file_load(TEST_SRC_PATH);
     printf("Compiling:\n***\n%s\n***\n", src_code);
     strcpy(src_buffer, src_code);
     lex();
     debug_lexing();
-    logger(LOG_TYPE_ERROR, "Hello  %s\n", "David");
 
     return 0;
 }
