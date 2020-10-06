@@ -1,5 +1,5 @@
 //
-// Created by David on 28/09/2020.
+// Created by David on 04/10/2020.
 //
 
 #include <assert.h>
@@ -17,10 +17,10 @@ typedef enum LogType
     LOG_TYPE_ERROR,
 } LogType;
 
-typedef enum
+typedef enum GeneralError
 {
-	FAIL = 0,
-	SUCCESS = 1,
+    FAIL = 0,
+    SUCCESS = 1,
 } GeneralError;
 
 #define GENERAL_FAILED(x) (!(x))
@@ -68,61 +68,352 @@ char *file_load(const char *name)
     return src_it;
 }
 
-typedef enum Token
-{
-    TOKEN_INVALID = -1,
-    TOKEN_WHITESPACE = 0,
-    TOKEN_EQUAL = 1,
-    TOKEN_DASH = 2,
-    TOKEN_PLUS = 3,
-    TOKEN_ASTERISC = 4,
-    TOKEN_SLASH = 5,
-    TOKEN_BACKSLASH = 6,
-    TOKEN_SEMICOLON = 7,
-    TOKEN_DOUBLE_COLON = 8,
-    TOKEN_LEFT_PARENTHESIS = 9,
-    TOKEN_RIGHT_PARENTHESIS = 10,
-    TOKEN_LEFT_BRACE = 11,
-    TOKEN_RIGHT_BRACE = 12,
-    TOKEN_LEFT_BRACKET = 13,
-    TOKEN_RIGHT_BRACKET = 14,
-    TOKEN_COMMA = 15,
-    TOKEN_DOT = 16,
-    TOKEN_ARROW = 17,
-    //
-    TOKEN_VAR = 18,
-    TOKEN_VOID = 19,
-    TOKEN_S8 = 20,
-    TOKEN_S16 = 21,
-    TOKEN_S32 = 22,
-    TOKEN_S64 = 23,
-    TOKEN_U8 = 24,
-    TOKEN_U16 = 25,
-    TOKEN_U32 = 26,
-    TOKEN_U64 = 27,
-    TOKEN_IF = 28,
-    TOKEN_ELSE = 29,
-    TOKEN_WHILE = 30,
-    TOKEN_FOR = 31,
-    TOKEN_RETURN = 32,
-    TOKEN_FALSE = 33,
-    TOKEN_TRUE = 34,
-    //
-    TOKEN_NAME = 35,
-    TOKEN_CHAR_LIT = 36,
-    TOKEN_STRING_LIT = 37,
-    TOKEN_NUMBER_LIT = 38,
-    //
-    TOKEN_STRUCT = 39,
-    TOKEN_UNION = 40,
-    TOKEN_ENUM = 41,
-    TOKEN_F32 = 42,
-    TOKEN_F64 = 43,
-    TOKEN_FN = 44,
-    //
-} Token;
+// typedef enum TokenEnum
+// {
+//     TOKEN_INVALID = -1,
+//     TOKEN_WHITESPACE = 0,
+//     TOKEN_EQUAL = 1,
+//     TOKEN_DASH = 2,
+//     TOKEN_PLUS = 3,
+//     TOKEN_ASTERISC = 4,
+//     TOKEN_SLASH = 5,
+//     TOKEN_BACKSLASH = 6,
+//     TOKEN_SEMICOLON = 7,
+//     TOKEN_DOUBLE_COLON = 8,
+//     TOKEN_LEFT_PARENTHESIS = 9,
+//     TOKEN_RIGHT_PARENTHESIS = 10,
+//     TOKEN_LEFT_BRACE = 11,
+//     TOKEN_RIGHT_BRACE = 12,
+//     TOKEN_LEFT_BRACKET = 13,
+//     TOKEN_RIGHT_BRACKET = 14,
+//     TOKEN_COMMA = 15,
+//     TOKEN_DOT = 16,
+//     TOKEN_ARROW = 17,
+//     //
+//     TOKEN_VAR = 18,
+//     TOKEN_VOID = 19,
+//     TOKEN_S8 = 20,
+//     TOKEN_S16 = 21,
+//     TOKEN_S32 = 22,
+//     TOKEN_S64 = 23,
+//     TOKEN_U8 = 24,
+//     TOKEN_U16 = 25,
+//     TOKEN_U32 = 26,
+//     TOKEN_U64 = 27,
+//     TOKEN_IF = 28,
+//     TOKEN_ELSE = 29,
+//     TOKEN_WHILE = 30,
+//     TOKEN_FOR = 31,
+//     TOKEN_RETURN = 32,
+//     TOKEN_FALSE = 33,
+//     TOKEN_TRUE = 34,
+//     //
+//     TOKEN_NAME = 35,
+//     TOKEN_CHAR_LIT = 36,
+//     TOKEN_STRING_LIT = 37,
+//     TOKEN_NUMBER_LIT = 38,
+//     //
+//     TOKEN_STRUCT = 39,
+//     TOKEN_UNION = 40,
+//     TOKEN_ENUM = 41,
+//     TOKEN_F32 = 42,
+//     TOKEN_F64 = 43,
+//     TOKEN_FN = 44,
+//     //
+// } TokenEnum;
 
-bool is_onechar(Token t)
+static inline s32 char_to_int(char c)
+{
+    return (s32)c - 48;
+}
+enum TokenEnum
+{
+    TYPE_U8,
+    TYPE_U16,
+    TYPE_U32,
+    TYPE_U64,
+    TYPE_S8,
+    TYPE_S16,
+    TYPE_S32,
+    TYPE_S64,
+    TYPE_F32,
+    TYPE_F64,
+    VALUE_U8,
+    VALUE_U16,
+    VALUE_U32,
+    VALUE_U64,
+    VALUE_S8,
+    VALUE_S16,
+    VALUE_S32,
+    VALUE_S64,
+    VALUE_F32,
+    VALUE_F64,
+    ARITHMETIC_SUM,
+    ARITHMETIC_SUBSTRACT,
+    ARITHMETIC_MULTIPLY,
+    ARITHMETIC_DIVIDE,
+    ARITHMETIC_MODULUS,
+    RELATIONAL_EQUAL,
+    RELATIONAL_NOT_EQUAL,
+    RELATIONAL_GREATER,
+    RELATIONAL_LESS,
+    RELATIONAL_GREATER_OR_EQUAL,
+    RELATIONAL_LESS_OR_EQUAL,
+    LOGICAL_AND,
+    LOGICAL_OR,
+    LOGICAL_NOT,
+    BITWISE_AND,
+    BITWISE_OR,
+    BITWISE_NOT,
+    BITWISE_XOR,
+    BITWISE_SHL,
+    BITWISE_SHR,
+    ASSIGN_ASSIGN,
+    ASSIGN_SUM,
+    ASSIGN_SUBSTRACT,
+    ASSIGN_MULTIPLY,
+    ASSIGN_DIVIDE,
+    ASSIGN_MODULUS,
+    ASSIGN_BIT_AND,
+    ASSIGN_BIT_OR,
+    ASSIGN_BIT_XOR,
+    ASSIGN_SHL,
+    ASSIGN_SHR,
+    PTR_OP,
+    DEREF_OP,
+    SIZE_OP,
+};
+
+struct Token
+{
+    TokenEnum t;
+};
+struct TokenU8 : Token
+{
+    u8 value;
+};
+struct TokenU16 : Token
+{
+    u16 value;
+};
+struct TokenU32 : Token
+{
+    u32 value;
+};
+struct TokenU64 : Token
+{
+    u64 value;
+};
+struct TokenS8 : Token
+{
+    s8 value;
+};
+struct TokenS16 : Token
+{
+    s16 value;
+};
+struct TokenS32 : Token
+{
+    s32 value;
+};
+struct TokenS64 : Token
+{
+    s64 value;
+};
+struct TokenF32 : Token
+{
+    f32 value;
+};
+struct TokenF64 : Token
+{
+    f64 value;
+};
+
+struct RedKeyword
+{
+    const char* text;
+    TokenEnum type;
+};
+
+static const struct RedKeyword red_keywords[] =
+        {
+
+        };
+
+bool is_red_keyword(Buffer* buf)
+{
+    for (size_t i = 0; i < COUNT_OF(red_keywords); i++)
+    {
+        if ()
+    }
+}
+struct Lexer
+{
+    char* file;
+    size_t line;
+    size_t index;
+    char cursor;
+
+    void init()
+    {
+        assert(0);
+    }
+    char read_char()
+    {
+        cursor = file[++index];
+        return cursor;
+    }
+    bool read_char(char c)
+    {
+        read_char();
+        if (cursor != c)
+        {
+            return false;
+        }
+        cursor = ' ';
+        return true;
+    }
+};
+
+
+static void scan(Lexer* lexer, Token* token, size_t* token_bytes)
+{
+    while (true)
+    {
+        lexer->read_char();
+        if (lexer->cursor == ' ')
+            continue;
+        else if (lexer->cursor == '\n')
+            (lexer->line)++;
+        else break;
+    }
+
+    switch (lexer->cursor)
+    {
+        case '&':
+            if (lexer->read_char('&'))
+            {
+                token->t = TokenEnum::LOGICAL_AND;
+                return;
+            }
+            else
+            {
+                // TODO: ptr
+                token->t = TokenEnum::BITWISE_AND;
+                return;
+            }
+        case '|':
+            if (lexer->read_char('|'))
+            {
+                token->t = TokenEnum::LOGICAL_OR;
+                return;
+            }
+            else
+            {
+                token->t = TokenEnum::BITWISE_OR;
+                return;
+            }
+        case '=':
+            if (lexer->read_char('='))
+            {
+                token->t = TokenEnum::RELATIONAL_EQUAL;
+                return;
+            }
+            else
+            {
+                token->t = TokenEnum::ASSIGN_ASSIGN;
+                return;
+            }
+        case '!':
+            if (lexer->read_char('='))
+            {
+                token->t = TokenEnum::RELATIONAL_NOT_EQUAL;
+                return;
+            }
+            else
+            {
+                token->t = TokenEnum::LOGICAL_NOT;
+                return;
+            }
+        case '<':
+            if (lexer->read_char('='))
+            {
+                token->t = TokenEnum::RELATIONAL_LESS_OR_EQUAL;
+                return;
+            }
+            else if (lexer->read_char('<'))
+            {
+                token->t = TokenEnum::BITWISE_SHL;
+                return;
+            }
+            else
+            {
+                token->t = TokenEnum::RELATIONAL_LESS;
+                return;
+            }
+        case '>':
+            if (lexer->read_char('='))
+            {
+                token->t = TokenEnum::RELATIONAL_GREATER_OR_EQUAL;
+                return;
+            }
+            else if (lexer->read_char('>'))
+            {
+                token->t = TokenEnum::BITWISE_SHR;
+                return;
+            }
+            else
+            {
+                token->t = TokenEnum::RELATIONAL_GREATER;
+                return;
+            }
+            // more cases?
+    }
+
+    if (isdigit(lexer->cursor))
+    {
+        u64 v = 0;
+        do
+        {
+            v = 10 * v + char_to_int(lexer->cursor);
+            lexer->read_char();
+        } while (isdigit(lexer->cursor));
+
+        if (lexer->cursor != '.')
+        {
+            token->t = TokenEnum::VALUE_S32;
+            // TODO: check number
+            TokenS32* s32_token = (TokenS32*)token;
+            s32_token->value = (s32)v;
+            *token_bytes = sizeof(TokenS32);
+        }
+        else
+        {
+            token->t = TokenEnum::VALUE_F32;
+            // TODO: check number
+            TokenF32* f32_token = (TokenF32*)token;
+            f32 x = v;
+            f32 d = 10;
+            for (;;)
+            {
+                lexer->read_char();
+                if (!isdigit(lexer->cursor)) break;
+                x = x + char_to_int(lexer->cursor) / d;
+                d *= 10;
+            }
+            *token_bytes = sizeof(TokenF32);
+            return;
+        }
+    }
+
+    if (isalpha(lexer->cursor))
+    {
+
+    }
+
+}
+
+bool is_onechar(TokenEnum t)
 {
     return t == TOKEN_DASH ||
            t == TOKEN_ARROW ||
@@ -146,7 +437,7 @@ bool is_onechar(Token t)
 }
 
 
-const char *get_token_str(Token t)
+const char *get_token_str(TokenEnum t)
 {
     switch (t)
     {
@@ -202,7 +493,7 @@ const char *get_token_str(Token t)
             //
 
         default:
-            printf("Token not recognized: %d\n", t);
+            printf("TokenEnum not recognized: %d\n", t);
             assert(0);
             return NULL;
     }
@@ -210,7 +501,7 @@ const char *get_token_str(Token t)
 
 
 #define MAX_TOKENS 10000
-Token token_arr[MAX_TOKENS];
+TokenEnum token_arr[MAX_TOKENS];
 u32 token_count = 0;
 u32 word_indices[MAX_TOKENS];
 
@@ -226,9 +517,12 @@ static inline char* get_token_name(size_t token_index)
     return words[word_indices[token_index]];
 }
 
-static Token get_word(char *string, size_t *word_count);
+static bool is_keyword()
+{
 
-static Token get_token(void)
+}
+
+static TokenEnum get_token(void)
 {
     char ch = *src_it;
     printf("Lexing string:\n***\n%s\n***\n", src_it);
@@ -349,7 +643,7 @@ static Token get_token(void)
         case '9':
         {
             size_t word_char_count = 0;
-            Token token = get_word(src_it, &word_char_count);
+            TokenEnum token = get_word(src_it, &word_char_count);
             src_it += word_char_count - 1;
             return token;
         }
@@ -386,9 +680,9 @@ static inline bool is_char(char ch, const char *str, size_t i)
     return str[i] == ch && (i > 0 ? (str[i - 1] != '\\') : true);
 }
 
-static Token get_word(char *string, size_t *char_count)
+static TokenEnum get_word(char *string, size_t *char_count)
 {
-    Token token = TOKEN_NAME;
+    TokenEnum token = TOKEN_NAME;
     char word_buffer[WORD_MAX_CHAR_COUNT];
     char ch = *string;
 
@@ -636,7 +930,7 @@ static void lex(void)
 {
     while (*src_it != 0)
     {
-        Token token = get_token();
+        TokenEnum token = get_token();
         if (token != TOKEN_WHITESPACE)
         {
             printf("Got token: %s\n", get_token_str(token));
@@ -652,14 +946,14 @@ static void debug_lexing(void)
     size_t word_it = 0;
     for (u32 i = 0; i < token_count; i++)
     {
-        Token token = token_arr[i];
+        TokenEnum token = token_arr[i];
         if (is_onechar(token))
         {
-            printf("[%d] Token: %s\n", i, get_token_str(token));
+            printf("[%d] TokenEnum: %s\n", i, get_token_str(token));
         }
         else
         {
-            printf("[%d] Token: %s    Value: %s\n", i, get_token_str(token), words[word_it]);
+            printf("[%d] TokenEnum: %s    Value: %s\n", i, get_token_str(token), words[word_it]);
             word_it++;
             assert(word_it <= word_count);
         }
@@ -822,7 +1116,7 @@ size_t registered_enum_count = 0;
 DataField data_fields[MAX_DATA_FIELDS];
 size_t data_field_count = 0;
 
-static bool is_primitive_type(Token token)
+static bool is_primitive_type(TokenEnum token)
 {
     switch (token)
     {
@@ -843,7 +1137,7 @@ static bool is_primitive_type(Token token)
 }
 
 // TODO: substitute for a better way
-static bool struct_ends(Token* token_arr, size_t index)
+static bool struct_ends(TokenEnum* token_arr, size_t index)
 {
     return token_arr[index] == TOKEN_RIGHT_BRACE;
 }
@@ -890,54 +1184,13 @@ static void register_struct_field(StructAST* struct_to_fill, DataField* field)
     field->complex_value.values = struct_to_fill->fields;
 }
 
-static Type get_primitive_type(Token token)
-{
-    Type type = {0};
-    switch (token)
-    {
-        case TOKEN_S8:
-            type.type_enum = TYPE_S8;
-            break;
-        case TOKEN_S16:
-            type.type_enum = TYPE_S16;
-            break;
-        case TOKEN_S32:
-            type.type_enum = TYPE_S32;
-            break;
-        case TOKEN_S64:
-            type.type_enum = TYPE_S64;
-            break;
-        case TOKEN_U8:
-            type.type_enum = TYPE_U8;
-            break;
-        case TOKEN_U16:
-            type.type_enum = TYPE_U16;
-            break;
-        case TOKEN_U32:
-            type.type_enum = TYPE_U32;
-            break;
-        case TOKEN_U64:
-            type.type_enum = TYPE_U64;
-            break;
-        case TOKEN_F32:
-            type.type_enum = TYPE_F32;
-            break;
-        case TOKEN_F64:
-            type.type_enum = TYPE_F64;
-            break;
-        default:
-            assert(0);
-            return type;
-    }
-    return type;
-}
-static size_t register_data_fields(Token* token_arr, size_t* token_index, DataField* data_fields, size_t data_field_count)
+static size_t register_data_fields(TokenEnum* token_arr, size_t* token_index, DataField* data_fields, size_t data_field_count)
 {
     size_t i = *token_index;
     while (!struct_ends(token_arr, i))
     {
         size_t data_field_index = data_field_count;
-        Token token = token_arr[i];
+        TokenEnum token = token_arr[i];
         data_fields[data_field_index].name = get_token_name(i + 1);
         assert(!strempty(data_fields[i].name));
         if (is_primitive_type(token))
@@ -976,7 +1229,7 @@ static size_t register_data_fields(Token* token_arr, size_t* token_index, DataFi
     return data_field_count;
 }
 
-static size_t get_cursor_into_the_struct(Token* token_arr, size_t token_index)
+static size_t get_cursor_into_the_struct(TokenEnum* token_arr, size_t token_index)
 {
     while (token_index != TOKEN_RIGHT_BRACE)
     {
@@ -986,12 +1239,12 @@ static size_t get_cursor_into_the_struct(Token* token_arr, size_t token_index)
     return token_index;
 }
 
-static void register_types(Token* token_arr, size_t token_count)
+static void register_types(TokenEnum* token_arr, size_t token_count)
 {
     size_t token_index = 0;
     while (token_index < token_count)
     {
-        Token token = token_arr[token_index];
+        TokenEnum token = token_arr[token_index];
         if (token == TOKEN_STRUCT || token == TOKEN_UNION || token == TOKEN_ENUM)
         {
             switch (token) {
@@ -1016,7 +1269,7 @@ static void register_types(Token* token_arr, size_t token_count)
     }
 }
 
-bool is_type(Token token, size_t i)
+bool is_type(TokenEnum token, size_t i)
 {
     if (token == TOKEN_STRUCT ||
         token == TOKEN_UNION ||
@@ -1064,28 +1317,28 @@ bool is_type(Token token, size_t i)
     }
 }
 #define VARIABLE_OFFSET_WITH_COUNT 4
-static GeneralError parse_variable(size_t* token_index, Token* token_arr, size_t token_count, VariableAST* variable)
+static GeneralError parse_variable(size_t* token_index, TokenEnum* token_arr, size_t token_count, VariableAST* variable)
 {
-	Token var_tag = token_arr[*token_index];
-	Token var_name = 0;
-	assert(var_tag == TOKEN_VAR);
+    TokenEnum var_tag = token_arr[*token_index];
+    TokenEnum var_name = 0;
+    assert(var_tag == TOKEN_VAR);
 
-	if (token_count < *token_index + VARIABLE_OFFSET_WITH_COUNT)
-	{
-		return FAIL;
-	}
-
-	size_t next = *token_index + 1;
-	bool next_is_type = is_type(token_arr[*token_index], next);
-	if (is_type)
+    if (token_count < *token_index + VARIABLE_OFFSET_WITH_COUNT)
     {
-        Token var_type = token_arr[next++];
+        return FAIL;
+    }
+
+    size_t next = *token_index + 1;
+    bool next_is_type = is_type(token_arr[*token_index], next);
+    if (is_type)
+    {
+        TokenEnum var_type = token_arr[next++];
         var_name = token_arr[next];
         logger(LOG_TYPE_INFO, "Var type: %s. Var name: %s(%s)\n", get_token_str(var_type), get_token_str(var_name), get_token_name(next));
     }
-	else
+    else
     {
-	    var_name = token_arr[next];
+        var_name = token_arr[next];
     }
     // TODO: go search var_name
     (*token_index) += (1 + next_is_type);
@@ -1103,9 +1356,9 @@ static void debug_variable(VariableAST* variable)
     logger(LOG_TYPE_INFO, "Variable %s\n\t" LITERAL_FORMAT "\n", variable->name ? variable->name : "Unnamed", variable->complex_value.lit_value.type, variable->complex_value.lit_value.value);
 }
 
-static ElementAST parse_token(size_t* token_index, Token* token_arr, size_t token_count)
+static ElementAST parse_token(size_t* token_index, TokenEnum* token_arr, size_t token_count)
 {
-    Token token = token_arr[*token_index];
+    TokenEnum token = token_arr[*token_index];
     ElementAST element = {0};
     switch (token)
     {
@@ -1204,30 +1457,24 @@ static ElementAST parse_token(size_t* token_index, Token* token_arr, size_t toke
         case TOKEN_FN:
             break;
         default:
-            printf("Token doesn't exist\n");
+            printf("TokenEnum doesn't exist\n");
             assert(0);
     }
     return element;
 }
 
-static void parse_tokens(Token *tokens, size_t token_count)
+static void parse_tokens(TokenEnum *tokens, size_t token_count)
 {
     register_types(tokens, token_count);
     for (u64 i = 0; i < token_count; i++)
     {
-        Token token = tokens[i];
+        TokenEnum token = tokens[i];
         logger(LOG_TYPE_INFO, "Parsing: %s\n", get_token_str(token));
         parse_token(&i, tokens, token_count);
     }
 }
 
-#define TEST_SRC_PATH "../test.red"
-s32 main(void)
+s32 main()
 {
-    const char *src_code = file_load(TEST_SRC_PATH);
-    printf("Compiling:\n***\n%s\n***\n", src_code);
-    strcpy(src_buffer, src_code);
-    lex();
-    debug_lexing();
-    parse_tokens(token_arr, token_count);
+    return 0;
 }

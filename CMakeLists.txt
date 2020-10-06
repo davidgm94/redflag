@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
-project(redflag C)
+project(redflag)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-add_executable(redflag main.c)
+add_executable(redflag list.cpp list.h main.cpp alloc.cpp alloc.h buffer.cpp buffer.h)
