@@ -8,14 +8,9 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "types.h"
+#include "buffer.h"
 #include <stdarg.h>
 
-typedef enum LogType
-{
-    LOG_TYPE_INFO,
-    LOG_TYPE_WARN,
-    LOG_TYPE_ERROR,
-} LogType;
 
 typedef enum GeneralError
 {
@@ -25,27 +20,7 @@ typedef enum GeneralError
 
 #define GENERAL_FAILED(x) (!(x))
 
-const char *log_type_to_str(LogType log_type)
-{
-    switch (log_type)
-    {
-        CASE_TO_STR(LOG_TYPE_INFO);
-        CASE_TO_STR(LOG_TYPE_WARN);
-        CASE_TO_STR(LOG_TYPE_ERROR);
-        default:
-            assert(0);
-    }
-    return NULL;
-}
 
-void logger(LogType log_type, const char *format, ...)
-{
-    fprintf(stdout, "[%s] ", log_type_to_str(log_type));
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
-}
 
 static char src_buffer[10000];
 char *src_it = &src_buffer[0];
@@ -244,9 +219,14 @@ bool is_red_keyword(Buffer* buf)
 {
     for (size_t i = 0; i < COUNT_OF(red_keywords); i++)
     {
-        if ()
+        if (buf_eql_str(buf, red_keywords[i].text))
+        {
+            return true;
+        }
     }
+    return false;
 }
+
 struct Lexer
 {
     char* file;
@@ -413,6 +393,7 @@ static void scan(Lexer* lexer, Token* token, size_t* token_bytes)
 
 }
 
+/*
 bool is_onechar(TokenEnum t)
 {
     return t == TOKEN_DASH ||
@@ -1473,6 +1454,7 @@ static void parse_tokens(TokenEnum *tokens, size_t token_count)
         parse_token(&i, tokens, token_count);
     }
 }
+*/
 
 s32 main()
 {

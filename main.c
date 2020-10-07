@@ -10,13 +10,6 @@
 #include "types.h"
 #include <stdarg.h>
 
-typedef enum LogType
-{
-    LOG_TYPE_INFO,
-    LOG_TYPE_WARN,
-    LOG_TYPE_ERROR,
-} LogType;
-
 typedef enum
 {
 	FAIL = 0,

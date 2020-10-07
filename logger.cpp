@@ -1,0 +1,37 @@
+//
+// Created by david on 10/6/20.
+//
+
+#include "logger.h"
+#include "types.h"
+#include <stdio.h>
+#include <stdarg.h>
+
+
+static const char *log_type_to_str(LogType log_type)
+{
+    switch (log_type)
+    {
+        CASE_TO_STR(LOG_TYPE_INFO);
+        CASE_TO_STR(LOG_TYPE_WARN);
+        CASE_TO_STR(LOG_TYPE_ERROR);
+        default:
+            assert(0);
+    }
+    return NULL;
+}
+
+void logger(LogType log_type, const char *format, ...)
+{
+    fprintf(stdout, "[%s] ", log_type_to_str(log_type));
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+}
+
+void panic(const char* message)
+{
+    logger(LOG_TYPE_ERROR, message);
+    assert(0);
+}

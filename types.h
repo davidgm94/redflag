@@ -1,7 +1,7 @@
+#pragma once
 #include <stdint.h>
 #include <assert.h>
-#define renum typedef enum
-#define rstruct typedef struct
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -23,4 +23,3 @@ typedef double f64;
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-#define PANIC() assert(0)

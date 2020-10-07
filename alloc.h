@@ -6,6 +6,7 @@
 #define REDFLAG_ALLOC_H
 #include "types.h"
 #include <malloc.h>
+#include "logger.h"
 
 template<typename T>
 static inline T* ealloc(size_t count)
@@ -23,7 +24,7 @@ static inline T* reallocate_nonzero(T* old, size_t new_count)
 {
     T* ptr = reinterpret_cast<T*>(realloc(old, new_count * sizeof(T)));
     if (!ptr)
-        PANIC();
+        panic();
     return ptr;
 }
 
