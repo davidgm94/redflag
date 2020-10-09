@@ -33,11 +33,16 @@ static inline T max(T a, T b)
 {
     return (a >= b) ? a : b;
 }
-template <typename T>
-static inline T max(T& a, T& b)
-{
-    return (a >= b) ? a : b;
-}
+//template <typename T>
+//static inline T max(T& a, T& b)
+//{
+//    return (a >= b) ? a : b;
+//}
+//template <typename T>
+//static inline T max(const T& a, const T& b)
+//{
+//    return (a >= b) ? a : b;
+//}
 template <typename T>
 static inline T min(T a, T b)
 {

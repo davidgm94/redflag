@@ -156,6 +156,20 @@ struct RedKeyword
     TokenID id;
 };
 
+void print_tokens(Buffer *buffer, List<Token> *tokens)
+{
+    for (size_t i = 0; i < tokens->length; i++)
+    {
+        Token* token = &((*tokens)[i]);
+        logger(LOG_TYPE_INFO, "%s ", token_name(token->id));
+        if (token->start_position != SIZE_MAX)
+        {
+            fwrite(buf_ptr(buffer) + token->start_position, 1, token->end_position - token->start_position, stdout);
+        }
+        fprintf(stdout, "\n");
+    }
+}
+
 static const struct RedKeyword red_keywords[] =
         {
             "align", TOKEN_ID_KEYWORD_ALIGN,
@@ -1078,139 +1092,42 @@ LexingResult lex(Buffer* buffer)
     return l.result;
 }
 
-//static void scan(Lexer* lexer, Token* token, size_t* token_bytes)
-//{
-//    while (true)
-//    {
-//        lexer->read_char();
-//        if (lexer->cursor == ' ')
-//            continue;
-//        else if (lexer->cursor == '\n')
-//            (lexer->line)++;
-//        else break;
-//    }
-//
-//    switch (lexer->cursor)
-//    {
-//        case '&':
-//            if (lexer->read_char('&'))
-//            {
-//                token->t = TokenEnum::LOGICAL_AND;
-//                return;
-//            }
-//            else
-//            {
-//                // TODO: ptr
-//                token->t = TokenEnum::BITWISE_AND;
-//                return;
-//            }
-//        case '|':
-//            if (lexer->read_char('|'))
-//            {
-//                token->t = TokenEnum::LOGICAL_OR;
-//                return;
-//            }
-//            else
-//            {
-//                token->t = TokenEnum::BITWISE_OR;
-//                return;
-//            }
-//        case '=':
-//            if (lexer->read_char('='))
-//            {
-//                token->t = TokenEnum::RELATIONAL_EQUAL;
-//                return;
-//            }
-//            else
-//            {
-//                token->t = TokenEnum::ASSIGN_ASSIGN;
-//                return;
-//            }
-//        case '!':
-//            if (lexer->read_char('='))
-//            {
-//                token->t = TokenEnum::RELATIONAL_NOT_EQUAL;
-//                return;
-//            }
-//            else
-//            {
-//                token->t = TokenEnum::LOGICAL_NOT;
-//                return;
-//            }
-//        case '<':
-//            if (lexer->read_char('='))
-//            {
-//                token->t = TokenEnum::RELATIONAL_LESS_OR_EQUAL;
-//                return;
-//            }
-//            else if (lexer->read_char('<'))
-//            {
-//                token->t = TokenEnum::BITWISE_SHL;
-//                return;
-//            }
-//            else
-//            {
-//                token->t = TokenEnum::RELATIONAL_LESS;
-//                return;
-//            }
-//        case '>':
-//            if (lexer->read_char('='))
-//            {
-//                token->t = TokenEnum::RELATIONAL_GREATER_OR_EQUAL;
-//                return;
-//            }
-//            else if (lexer->read_char('>'))
-//            {
-//                token->t = TokenEnum::BITWISE_SHR;
-//                return;
-//            }
-//            else
-//            {
-//                token->t = TokenEnum::RELATIONAL_GREATER;
-//                return;
-//            }
-//            // more cases?
-//    }
-//
-//    if (isdigit(lexer->cursor))
-//    {
-//        u64 v = 0;
-//        do
-//        {
-//            v = 10 * v + char_to_int(lexer->cursor);
-//            lexer->read_char();
-//        } while (isdigit(lexer->cursor));
-//
-//        if (lexer->cursor != '.')
-//        {
-//            token->t = TokenEnum::VALUE_S32;
-//            // TODO: check number
-//            TokenS32* s32_token = (TokenS32*)token;
-//            s32_token->value = (s32)v;
-//            *token_bytes = sizeof(TokenS32);
-//        }
-//        else
-//        {
-//            token->t = TokenEnum::VALUE_F32;
-//            // TODO: check number
-//            TokenF32* f32_token = (TokenF32*)token;
-//            f32 x = v;
-//            f32 d = 10;
-//            for (;;)
-//            {
-//                lexer->read_char();
-//                if (!isdigit(lexer->cursor)) break;
-//                x = x + char_to_int(lexer->cursor) / d;
-//                d *= 10;
-//            }
-//            *token_bytes = sizeof(TokenF32);
-//            return;
-//        }
-//    }
-//
-//    if (isalpha(lexer->cursor))
-//    {
-//
-//    }
-//
-//}
+const char *token_name(TokenID id)
+{
+    switch (id)
+    {
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_ARROW: return "->";
+        case TOKEN_ID_AT: return "@";
+        case TOKEN_ID_BANG: return "!";
+        case TOKEN_ID_BIT_OR: return "|";
+        case TOKEN_ID_BIT_XOR: return "^";
+        case TOKEN_ID_BIT_AND: return "&";
+        case TOKEN_ID_BIT_SHL: return "&";
+        case TOKEN_ID_BIT_SHR: return "&";
+        case TOKEN_ID_BIT_XOR_EQ: return "^=";
+        case TOKEN_ID_BIT_AND_EQ: return "&=";
+        case TOKEN_ID_BIT_SHL_EQ: return "<<=";
+        case TOKEN_ID_BIT_SHR_EQ: return ">>=";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_AMPERSAND: return "&";
+    }
+}
+
+void print_tokens(Buffer* buffer, List<Token>* tokens);
