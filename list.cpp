@@ -3,7 +3,3 @@
 //
 
 #include "list.h"
-void foo()
-{
-
-}

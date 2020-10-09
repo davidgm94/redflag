@@ -34,6 +34,7 @@ struct RedList
     T pop()
     {
         assert(length >= 1);
+        return items[--length];
     }
 
     void add_one()
@@ -65,7 +66,7 @@ struct RedList
 
     void ensure_capacity(size_t new_capacity)
     {
-        size_t better_capacity = MAX(capacity, 16);
+        size_t better_capacity = max(this->capacity, (size_t)16);
         while (better_capacity < new_capacity)
         {
             better_capacity *= 2;

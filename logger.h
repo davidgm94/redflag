@@ -15,6 +15,5 @@ enum LogType
 };
 
 void logger(LogType log_type, const char *format, ...);
-void panic();
 
 #endif //REDFLAG_LOGGER_H

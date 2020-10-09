@@ -4,6 +4,7 @@
 
 #include "logger.h"
 #include "types.h"
+#include "error.h"
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -16,7 +17,7 @@ static const char *log_type_to_str(LogType log_type)
         CASE_TO_STR(LOG_TYPE_WARN);
         CASE_TO_STR(LOG_TYPE_ERROR);
         default:
-            assert(0);
+            NOT_IMPLEMENTED;
     }
     return NULL;
 }
@@ -30,8 +31,3 @@ void logger(LogType log_type, const char *format, ...)
     va_end(args);
 }
 
-void panic(const char* message)
-{
-    logger(LOG_TYPE_ERROR, message);
-    assert(0);
-}

@@ -11,6 +11,7 @@
 #include <string.h>
 
 typedef List<char> Buffer;
+
 Buffer *buf_sprintf(const char *format, ...)
 __attribute__ ((format (printf, 1, 2)));
 
@@ -30,13 +31,13 @@ static inline void buf_resize(Buffer *buf, int new_len) {
 }
 
 static inline Buffer *buf_alloc(void) {
-    Buffer *buf = ealloc<Buffer>(1);
+    Buffer *buf = new_elements(Buffer, 1);
     buf_resize(buf, 0);
     return buf;
 }
 
 static inline Buffer *buf_alloc_fixed(int size) {
-    Buffer *buf = ealloc<Buffer>(1);
+    Buffer *buf = new_elements(Buffer, 1);
     buf_resize(buf, size);
     return buf;
 }
@@ -60,7 +61,7 @@ static inline void buf_init_from_buf(Buffer *buf, Buffer *other) {
 }
 
 static inline Buffer *buf_create_from_mem(const char *ptr, int len) {
-    Buffer *buf = ealloc<Buffer>(1);
+    Buffer *buf = new_elements(Buffer, 1);
     buf_init_from_mem(buf, ptr, len);
     return buf;
 }
@@ -75,7 +76,7 @@ static inline Buffer *buf_slice(Buffer *in_buf, int start, int end) {
     assert(end >= 0);
     assert(start < buf_len(in_buf));
     assert(end <= buf_len(in_buf));
-    Buffer *out_buf = ealloc<Buffer>(1);
+    Buffer *out_buf = new_elements(Buffer, 1);
     out_buf->resize(end - start + 1);
     memcpy(buf_ptr(out_buf), buf_ptr(in_buf) + start, end - start);
     (*out_buf)[buf_len(out_buf)] = 0;
@@ -121,20 +122,16 @@ static inline bool buf_eql_str(Buffer *buf, const char *str) {
     return buf_eql_mem(buf, str, strlen(str));
 }
 
-static inline bool buf_eql_buf(Buffer *buf, Buffer *other) {
-    assert(buf->length);
-    return buf_eql_mem(buf, buf_ptr(other), buf_len(other));
+static inline bool buf_starts_with_mem(Buffer *buf, const char *mem, size_t mem_len) {
+    if (buf_len(buf) < mem_len) {
+        return false;
+    }
+    return memcmp(buf_ptr(buf), mem, mem_len) == 0;
 }
 
-static inline uint32_t buf_hash(Buffer *buf) {
-    assert(buf->length);
-    // FNV 32-bit hash
-    uint32_t h = 2166136261;
-    for (int i = 0; i < buf_len(buf); i += 1) {
-        h = h ^ ((uint8_t)((*buf)[i]));
-        h = h * 16777619;
-    }
-    return h;
-}
+bool buf_eql_buf(Buffer *buf, Buffer *other);
+uint32_t buf_hash(Buffer *buf);
+
+Buffer* buf_vprintf(const char *format, va_list ap);
 
 #endif //REDFLAG_BUFFER_H
