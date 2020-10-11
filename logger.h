@@ -2,9 +2,7 @@
 // Created by david on 10/6/20.
 //
 
-#ifndef REDFLAG_LOGGER_H
-#define REDFLAG_LOGGER_H
-
+#pragma once
 #include "types.h"
 
 enum LogType
@@ -16,4 +14,3 @@ enum LogType
 
 void logger(LogType log_type, const char *format, ...);
 
-#endif //REDFLAG_LOGGER_H

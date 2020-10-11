@@ -1,13 +1,9 @@
 //
 // Created by david on 7/10/20.
 //
+#pragma once
 
-#ifndef REDFLAG_ERROR_H
-#define REDFLAG_ERROR_H
-
-void panic(const char* message);
-#define NOT_IMPLEMENTED panic("Not implemented")
-#define UNREACHABLE panic("Unreachable")
-
-
-#endif //REDFLAG_ERROR_H
+void red_panic(const char* file, int line, const char* function, const char* format, ...);
+#define RED_NOT_IMPLEMENTED red_panic(__FILE__, __LINE__, __func__, "Not implemented")
+#define RED_UNREACHABLE red_panic(__FILE__, __LINE__, __func__, "Unreachable")
+#define RED_PANIC(x) red_panic(__FILE__, __LINE__, __func__, x)

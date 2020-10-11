@@ -48,7 +48,6 @@ static inline T min(T a, T b)
 {
     return (a <= b) ? a : b;
 }
-#define min(x, y) (((x) < (y)) ? (x) : (y))
 
 static inline s32 char_to_int(char c)
 {

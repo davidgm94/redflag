@@ -5,14 +5,14 @@
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
-#include "error.h"
 #include "bigint.h"
 #include "bigfloat.h"
+#include "error.h"
 
 /* TODO: do right */
 f128 parse_f128(char *begin, char **p_string)
 {
-    NOT_IMPLEMENTED;
+    RED_NOT_IMPLEMENTED;
     return float128_t();
 }
 
@@ -35,7 +35,7 @@ Error BigFloat_init_buffer(BigFloat *dst, const u8 *buffer, size_t buffer_length
 
 void f32_to_f128M(f32 value, f128 *ptr)
 {
-    NOT_IMPLEMENTED;
+    RED_NOT_IMPLEMENTED;
 }
 
 void BigFloat_init_32(BigFloat* dst, f32 x)

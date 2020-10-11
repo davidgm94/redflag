@@ -4,9 +4,9 @@
 
 #include "logger.h"
 #include "types.h"
-#include "error.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include "error.h"
 
 
 static const char *log_type_to_str(LogType log_type)
@@ -17,7 +17,7 @@ static const char *log_type_to_str(LogType log_type)
         CASE_TO_STR(LOG_TYPE_WARN);
         CASE_TO_STR(LOG_TYPE_ERROR);
         default:
-            NOT_IMPLEMENTED;
+            RED_UNREACHABLE;
     }
     return NULL;
 }

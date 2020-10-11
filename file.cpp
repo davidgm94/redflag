@@ -4,27 +4,25 @@
 
 #include "file.h"
 #include "types.h"
+#include "buffer.h"
 #include <stdio.h>
 #include <assert.h>
 
-static char src_buffer[10000];
-char *src_it = &src_buffer[0];
-
-
-char *file_load(const char *name)
+Buffer file_load(const char *name)
 {
+    Buffer file_buffer = {0};
     FILE *file = fopen(name, "rb");
     assert(file);
 
     fseek(file, 0, SEEK_END);
-    long length = ftell(file);
+    size_t length = ftell(file);
     printf("[FILE] File length: %ld.\n", length);
-    assert(0 < length && (src_it + length) < src_it + array_length(src_buffer));
+    buf_resize(&file_buffer, length);
     fseek(file, 0, SEEK_SET);
 
-    size_t rc = fread(src_it, 1, length, file);
+    size_t rc = fread(file_buffer.items, 1, length, file);
     assert(rc == (size_t) length);
     fclose(file);
 
-    return src_it;
+    return file_buffer;
 }

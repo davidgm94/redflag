@@ -7,11 +7,10 @@
 #include "types.h"
 #include "memory.h"
 #include <malloc.h>
+#include <assert.h>
 #include "type_info.h"
 #include "logger.h"
-
-extern void panic(const char* message);
-
+#include "error.h"
 
 static constexpr size_t max_filename_length = 512;
 struct Allocation
@@ -69,13 +68,13 @@ static inline T* alloc_size(const char* type, const char* filename, size_t line,
     return register_allocation<T>(type, filename, line, function_name, size);
 }
 
-template <typename T>
-static inline T* reallocate_nonzero(T* old, size_t new_count)
-{
+template<typename T>
+static inline T *reallocate_nonzero(T *old, size_t new_count) {
     T* ptr = reinterpret_cast<T*>(realloc(old, new_count * sizeof(T)));
     if (!ptr)
-        panic("Memory error");
+        RED_PANIC("realloc error");
     return ptr;
 }
+
 
 #endif //REDFLAG_ALLOC_H

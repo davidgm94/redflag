@@ -1,9 +1,7 @@
 //
 // Created by david on 8/10/20.
 //
-
-#ifndef REDFLAG_COMPILER_TYPES_H
-#define REDFLAG_COMPILER_TYPES_H
+#pragma once
 
 enum Cmp
 {
@@ -93,5 +91,3 @@ enum Error {
     ERROR_FILE_BUSY,
     ERROR_LOCKED,
 };
-
-#endif //REDFLAG_COMPILER_TYPES_H

@@ -5,6 +5,8 @@
 #ifndef REDFLAG_FILE_H
 #define REDFLAG_FILE_H
 
-char *file_load(const char *name);
+#include "buffer.h"
+
+Buffer file_load(const char *name);
 
 #endif //REDFLAG_FILE_H

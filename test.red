@@ -1,7 +1,7 @@
 struct a
 {
+    u64 a = 1;
     s32 b = 5;
-    f32 c = 15198.0f;
 }
 var s32 bl = "blue";
 var a jaja = {};

@@ -92,63 +92,6 @@
 #define SYMBOL_START \
     ALPHA: \
     case '_'
-//enum TokenEnum
-//{
-//    TYPE_U8,
-//    TYPE_U16,
-//    TYPE_U32,
-//    TYPE_U64,
-//    TYPE_S8,
-//    TYPE_S16,
-//    TYPE_S32,
-//    TYPE_S64,
-//    TYPE_F32,
-//    TYPE_F64,
-//    VALUE_U8,
-//    VALUE_U16,
-//    VALUE_U32,
-//    VALUE_U64,
-//    VALUE_S8,
-//    VALUE_S16,
-//    VALUE_S32,
-//    VALUE_S64,
-//    VALUE_F32,
-//    VALUE_F64,
-//    ARITHMETIC_SUM,
-//    ARITHMETIC_SUBSTRACT,
-//    ARITHMETIC_MULTIPLY,
-//    ARITHMETIC_DIVIDE,
-//    ARITHMETIC_MODULUS,
-//    RELATIONAL_EQUAL,
-//    RELATIONAL_NOT_EQUAL,
-//    RELATIONAL_GREATER,
-//    RELATIONAL_LESS,
-//    RELATIONAL_GREATER_OR_EQUAL,
-//    RELATIONAL_LESS_OR_EQUAL,
-//    LOGICAL_AND,
-//    LOGICAL_OR,
-//    LOGICAL_NOT,
-//    BITWISE_AND,
-//    BITWISE_OR,
-//    BITWISE_NOT,
-//    BITWISE_XOR,
-//    BITWISE_SHL,
-//    BITWISE_SHR,
-//    ASSIGN_ASSIGN,
-//    ASSIGN_SUM,
-//    ASSIGN_SUBSTRACT,
-//    ASSIGN_MULTIPLY,
-//    ASSIGN_DIVIDE,
-//    ASSIGN_MODULUS,
-//    ASSIGN_BIT_AND,
-//    ASSIGN_BIT_OR,
-//    ASSIGN_BIT_XOR,
-//    ASSIGN_SHL,
-//    ASSIGN_SHR,
-//    PTR_OP,
-//    DEREF_OP,
-//    SIZE_OP,
-//};
 
 struct RedKeyword
 {
@@ -160,8 +103,8 @@ void print_tokens(Buffer *buffer, List<Token> *tokens)
 {
     for (size_t i = 0; i < tokens->length; i++)
     {
-        Token* token = &((*tokens)[i]);
-        logger(LOG_TYPE_INFO, "%s ", token_name(token->id));
+        Token* token = &(*tokens)[i];
+        //logger(LOG_TYPE_INFO, "%s ", token_name(token->id));
         if (token->start_position != SIZE_MAX)
         {
             fwrite(buf_ptr(buffer) + token->start_position, 1, token->end_position - token->start_position, stdout);
@@ -250,8 +193,7 @@ struct Lexer
     size_t char_code_index;
     bool unicode;
     u32 char_code;
-    size_t remaining_code_units;
-};
+    size_t remaining_code_units; };
 
 static void lexer_error(Lexer* l, const char* format, ...)
 {
@@ -372,7 +314,7 @@ static void handle_string_escape(Lexer* l, u8 c)
     }
     else
     {
-        UNREACHABLE;
+        RED_UNREACHABLE;
     }
 }
 
@@ -478,7 +420,7 @@ LexingResult lex(Buffer* buffer)
                         break;
                     case '(':
                         begin_token(&l, TOKEN_ID_LEFT_PARENTHESIS);
-                        l.state = LEXER_STATE_CHAR_LITERAL;
+                        end_token(&l);
                         break;
                     case ')':
                         begin_token(&l, TOKEN_ID_RIGHT_PARENTHESIS);
@@ -580,34 +522,48 @@ LexingResult lex(Buffer* buffer)
                         break;
                     case '.':
                         begin_token(&l, TOKEN_ID_DOT);
-                        l.state = LEXER_STATE_DOT;
+                        end_token(&l);
                         break;
                     default:
                         invalid_char_error(&l, c);
                 }
                 break;
             }
-            case LEXER_STATE_DOT:
-            {
-                switch (c)
-                {
-
-                }
-                break;
-            }
-            case LEXER_STATE_DOT_DOT:
-            {
-                switch (c)
-                {
-
-                }
-                break;
-            }
+//            case LEXER_STATE_DOT:
+//            {
+//                switch (c)
+//                {
+//                    case '.':
+//
+//                }
+//                break;
+//            }
+//            case LEXER_STATE_DOT_DOT:
+//            {
+//                switch (c)
+//                {
+//
+//                }
+//                break;
+//            }
             case LEXER_STATE_GREATER_THAN:
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_CMP_GREATER_OR_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    case '>':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_SHR);
+                        l.state = LEXER_STATE_GREATER_THAN_GREATER_THAN;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -615,7 +571,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_SHR_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
                 }
                 break;
             }
@@ -623,7 +588,20 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_CMP_LESS_OR_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    case '<':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_SHL);
+                        l.state = LEXER_STATE_LESS_THAN_LESS_THAN;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -631,7 +609,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_SHL_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -639,7 +626,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_CMP_NOT_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -647,7 +643,21 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_CMP_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    case '>':
+                        set_token_id(&l, l.current_token, TOKEN_ID_FAT_ARROW);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -655,7 +665,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_TIMES_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -663,7 +682,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_MOD_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -671,7 +699,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_PLUS_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -679,7 +716,19 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '&':
+                        lexer_error(&l, "\'&&\' is invalid. For boolean AND, use the \'and\' keyword");
+                        break;
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_AND_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -687,7 +736,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_XOR_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -695,7 +753,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_BIT_OR_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -703,7 +770,16 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '=':
+                        set_token_id(&l, l.current_token, TOKEN_ID_DIV_EQ);
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        break;
+                    default:
+                        l.position -= 1;
+                        end_token(&l);
+                        l.state = LEXER_STATE_START;
+                        continue;
                 }
                 break;
             }
@@ -711,7 +787,12 @@ LexingResult lex(Buffer* buffer)
             {
                 switch (c)
                 {
-
+                    case '\\':
+                        l.state = LEXER_STATE_LINE_STRING;
+                        break;
+                    default:
+                        invalid_char_error(&l, c);
+                        break;
                 }
                 break;
             }
@@ -760,14 +841,14 @@ LexingResult lex(Buffer* buffer)
                 }
                 break;
             }
-            case LEXER_STATE_AT:
-            {
-                switch (c)
-                {
-
-                }
-                break;
-            }
+//            case LEXER_STATE_AT:
+//            {
+//                switch (c)
+//                {
+//                    case '"':
+//                }
+//                break;
+//            }
             case LEXER_STATE_SYMBOL:
             {
                 switch (c)
@@ -817,7 +898,7 @@ LexingResult lex(Buffer* buffer)
                         break;
                     }
                     case 'u':
-                        NOT_IMPLEMENTED;
+                        RED_NOT_IMPLEMENTED;
                         break;
                     case 'n':
                         handle_string_escape(&l, '\n');
@@ -844,7 +925,7 @@ LexingResult lex(Buffer* buffer)
             }
             case LEXER_STATE_CHAR_CODE:
             {
-                NOT_IMPLEMENTED;
+                RED_NOT_IMPLEMENTED;
                 break;
             }
             case LEXER_STATE_CHAR_LITERAL:
@@ -863,15 +944,15 @@ LexingResult lex(Buffer* buffer)
                 }
                 else if (c >= 0xc0 && c <= 0xdf)
                 {
-                    NOT_IMPLEMENTED;
+                    RED_NOT_IMPLEMENTED;
                 }
                 else if (c >= 0xe0 && c <= 0xef)
                 {
-                    NOT_IMPLEMENTED;
+                    RED_NOT_IMPLEMENTED;
                 }
                 else if (c >= 0xf0 && c <= 0xf7)
                 {
-                    NOT_IMPLEMENTED;
+                    RED_NOT_IMPLEMENTED;
                 }
                 else
                 {
@@ -931,7 +1012,7 @@ LexingResult lex(Buffer* buffer)
                 u32 digit_value = get_digit_value(c);
                 if (digit_value >= l.radix)
                 {
-                    if  (is_symbol_char(c))
+                    if (is_symbol_char(c))
                     {
                         invalid_char_error(&l, c);
                     }
@@ -970,7 +1051,7 @@ LexingResult lex(Buffer* buffer)
             }
             case LEXER_STATE_FLOAT:
             {
-                NOT_IMPLEMENTED;
+                RED_NOT_IMPLEMENTED;
             }
             case LEXER_STATE_DASH:
             {
@@ -1034,7 +1115,7 @@ LexingResult lex(Buffer* buffer)
             }
             else
             {
-                UNREACHABLE;
+                RED_UNREACHABLE;
             }
             break;
         case LEXER_STATE_CHAR_LITERAL:
@@ -1078,7 +1159,7 @@ LexingResult lex(Buffer* buffer)
             Token* last_token = &l.tokens.last();
             l.line = (s32)last_token->start_line;
             l.column = (s32)last_token->start_column;
-            l.position = last_token->start_position;
+            l.position = last_token->start_position + 1;
         }
         else
         {
@@ -1089,6 +1170,7 @@ LexingResult lex(Buffer* buffer)
         assert(!l.current_token);
     }
 
+    l.result.tokens = l.tokens;
     return l.result;
 }
 
@@ -1103,31 +1185,56 @@ const char *token_name(TokenID id)
         case TOKEN_ID_BIT_OR: return "|";
         case TOKEN_ID_BIT_XOR: return "^";
         case TOKEN_ID_BIT_AND: return "&";
-        case TOKEN_ID_BIT_SHL: return "&";
-        case TOKEN_ID_BIT_SHR: return "&";
+        case TOKEN_ID_BIT_SHL: return "<<";
+        case TOKEN_ID_BIT_SHR: return ">>";
         case TOKEN_ID_BIT_XOR_EQ: return "^=";
+        case TOKEN_ID_BIT_OR_EQ: return "&=";
         case TOKEN_ID_BIT_AND_EQ: return "&=";
         case TOKEN_ID_BIT_SHL_EQ: return "<<=";
         case TOKEN_ID_BIT_SHR_EQ: return ">>=";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
-        case TOKEN_ID_AMPERSAND: return "&";
+        case TOKEN_ID_CHAR_LIT: return "CharLiteral";
+        case TOKEN_ID_CMP_EQ: return "==";
+        case TOKEN_ID_CMP_NOT_EQ: return "!=";
+        case TOKEN_ID_CMP_GREATER: return ">";
+        case TOKEN_ID_CMP_GREATER_OR_EQ: return ">=";
+        case TOKEN_ID_CMP_LESS: return "<=";
+        case TOKEN_ID_CMP_LESS_OR_EQ: return "<=";
+        case TOKEN_ID_COLON: return ";";
+        case TOKEN_ID_COMMA: return ",";
+        case TOKEN_ID_DASH: return "-";
+        case TOKEN_ID_DIV_EQ: return "/=";
+        case TOKEN_ID_DOT: return ".";
+        case TOKEN_ID_END_OF_FILE: return "EOF";
+        case TOKEN_ID_EQ: return "=";
+        case TOKEN_ID_FAT_ARROW: return "=>";
+        case TOKEN_ID_FLOAT_LIT: return "FloatLiteral";
+        case TOKEN_ID_INT_LIT: return "IntLiteral";
+        case TOKEN_ID_LEFT_BRACE: return "{";
+        case TOKEN_ID_LEFT_BRACKET: return "[";
+        case TOKEN_ID_LEFT_PARENTHESIS: return "(";
+        case TOKEN_ID_QUESTION: return "?";
+        case TOKEN_ID_MINUS_EQ: return "-=";
+        case TOKEN_ID_MOD_EQ: return "%=";
+        case TOKEN_ID_HASH: return "#";
+        case TOKEN_ID_PERCENT: return "%";
+        case TOKEN_ID_PLUS: return "+";
+        case TOKEN_ID_PLUS_EQ: return "+=";
+        case TOKEN_ID_RIGHT_BRACE: return "}";
+        case TOKEN_ID_RIGHT_BRACKET: return "]";
+        case TOKEN_ID_RIGHT_PARENTHESIS: return ")";
+        case TOKEN_ID_SEMICOLON: return ";";
+        case TOKEN_ID_SLASH: return "/";
+        case TOKEN_ID_STAR: return "*";
+        case TOKEN_ID_STRING_LIT: return "StringLiteral";
+        case TOKEN_ID_MULTILINE_STRING_LIT: return "MultilineStringLiteral";
+        case TOKEN_ID_SYMBOL: return "Symbol";
+        case TOKEN_ID_TILDE: return "~";
+        case TOKEN_ID_TIMES_EQ: return "*=";
+        case TOKEN_ID_COUNT:
+            RED_UNREACHABLE;
+        default:
+            RED_NOT_IMPLEMENTED;
+            break;
     }
+    return nullptr;
 }
-
-void print_tokens(Buffer* buffer, List<Token>* tokens);
