@@ -1,12 +1,13 @@
 //
 // Created by david on 7/10/20.
 //
-
-#ifndef REDFLAG_FILE_H
-#define REDFLAG_FILE_H
-
+#pragma once
 #include "buffer.h"
 
-Buffer file_load(const char *name);
+enum FileLoadResult
+{
+    FILE_LOAD_RESULT_ERROR,
+    FILE_LOAD_RESULT_SUCCESS,
+};
 
-#endif //REDFLAG_FILE_H
+FileLoadResult file_load(const char *name, Buffer* file_buffer);

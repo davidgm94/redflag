@@ -3,7 +3,7 @@
 //
 
 #include "types.h"
-#include "error.h"
+#include "panic.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

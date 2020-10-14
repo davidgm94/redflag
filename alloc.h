@@ -10,7 +10,7 @@
 #include <assert.h>
 #include "type_info.h"
 #include "logger.h"
-#include "error.h"
+#include "panic.h"
 
 static constexpr size_t max_filename_length = 512;
 struct Allocation

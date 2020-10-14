@@ -6,23 +6,40 @@
 #include "types.h"
 #include "buffer.h"
 #include <stdio.h>
-#include <assert.h>
 
-Buffer file_load(const char *name)
+FileLoadResult file_load(const char *name, Buffer* file_buffer)
 {
-    Buffer file_buffer = {0};
+    s32 rc;
     FILE *file = fopen(name, "rb");
-    assert(file);
+    if (!file)
+        return FILE_LOAD_RESULT_ERROR;
 
-    fseek(file, 0, SEEK_END);
+    rc = fseek(file, 0, SEEK_END);
+    if (rc) // not zero
+    {
+        return FILE_LOAD_RESULT_ERROR;
+    }
     size_t length = ftell(file);
-    printf("[FILE] File length: %ld.\n", length);
-    buf_resize(&file_buffer, length);
-    fseek(file, 0, SEEK_SET);
+    buf_resize(file_buffer, length);
+    if (!file_buffer->items)
+        return FILE_LOAD_RESULT_ERROR;
+    rc = fseek(file, 0, SEEK_SET);
+    if (rc) // not zero
+    {
+        return FILE_LOAD_RESULT_ERROR;
+    }
 
-    size_t rc = fread(file_buffer.items, 1, length, file);
-    assert(rc == (size_t) length);
-    fclose(file);
+    rc = fread(file_buffer->items, 1, length, file);
+    if (rc != (size_t) length)
+    {
+        return FILE_LOAD_RESULT_ERROR;
+    }
 
-    return file_buffer;
+    rc = fclose(file);
+    if (rc) // not zero
+    {
+        return FILE_LOAD_RESULT_ERROR;
+    }
+
+    return FILE_LOAD_RESULT_SUCCESS;
 }

@@ -8,7 +8,7 @@
 #include "bigint.h"
 #include "bigfloat.h"
 #include "memory.h"
-#include "error.h"
+#include "panic.h"
 #include <stdarg.h>
 
 #define WHITESPACE \
@@ -115,7 +115,7 @@ void print_tokens(Buffer *buffer, List<Token> *tokens)
 
 static const struct RedKeyword red_keywords[] =
         {
-            "align", TOKEN_ID_KEYWORD_ALIGN,
+            "align_expression", TOKEN_ID_KEYWORD_ALIGN,
         };
 
 bool is_red_keyword(Buffer* buf)
@@ -193,7 +193,8 @@ struct Lexer
     size_t char_code_index;
     bool unicode;
     u32 char_code;
-    size_t remaining_code_units; };
+    size_t remaining_code_units;
+};
 
 static void lexer_error(Lexer* l, const char* format, ...)
 {

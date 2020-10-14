@@ -31,6 +31,12 @@ struct RedList
         assert(index < length);
         return items[index];
     }
+    T& at(size_t index)
+    {
+        assert(index != SIZE_MAX);
+        assert(index < length);
+        return items[index];
+    }
     T pop()
     {
         assert(length >= 1);
