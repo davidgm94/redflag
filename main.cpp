@@ -6,6 +6,7 @@
 #include "lexer.h"
 #include "file.h"
 #include "src_file.h"
+#include "logger.h"
 
 struct FileManager
 {
@@ -34,7 +35,7 @@ s32 main(s32 argc, char* argv[])
 
 static inline void print_header(void)
 {
-    printf("Red language compiler\n");
+    print("Red language compiler\n");
 }
 
 
@@ -46,8 +47,8 @@ static FileManager handle_main_arguments(s32 argc, char* argv[])
 
     if (argc < 2)
     {
-        printf("Error: not enough arguments\n");
-        printf("\tUsage: -h, --help\n");
+        print("Error: not enough arguments\n");
+        print("\tUsage: -h, --help\n");
         return fm;
     }
 

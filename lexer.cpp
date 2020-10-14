@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "panic.h"
 #include <stdarg.h>
+#include <stdio.h>
 
 #define WHITESPACE \
          ' ': \

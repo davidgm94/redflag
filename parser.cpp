@@ -844,33 +844,19 @@ ASTNode*AST_parse_block_expression_statement(ParseContext*pc)
     return nullptr;
 }
 
+ASTNode*AST_parse_call_convention_expression(ParseContext*pc)
+{
+    return nullptr;
+}
+
+ASTNode* AST_parse_parameter_declaration(ParseContext* pc)
+{
+    return nullptr;
+}
+
 ASTNode* AST_parse_type_expression(ParseContext* pc)
 {
     return AST_parse_prefix_op_expression(pc, AST_parse_prefix_type_op, AST_parse_error_union_expression);
-}
-
-
-static ASTNode* AST_parse_block(ParseContext* pc)
-{
-    Token* left_brace = eat_token_if(pc, TOKEN_ID_LEFT_BRACE);
-    if (left_brace == nullptr)
-    {
-        return nullptr;
-    }
-
-    List<ASTNode*> statements ={};
-    ASTNode* statement;
-
-    while ((statement = AST_parse_statement(pc)) != nullptr)
-    {
-        statements.append(statement);
-    }
-
-    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
-
-    ASTNode* result = AST_create_node(pc, NODE_TYPE_BLOCK, left_brace);
-    result->data.block.statements = statements;
-    return result;
 }
 
 static ASTNode* AST_parse_test_declaration(ParseContext* pc)
@@ -1154,12 +1140,9 @@ ASTNode* AST_parse_function_prototype(ParseContext* pc)
         return_type = AST_expect(pc, AST_parse_type_expression);
     }
 
+#error
 }
 
-ASTNode*AST_parse_call_convention_expression(ParseContext*pc)
-{
-    return nullptr;
-}
 
 
 ASTNode* parse(Buffer*buffer, List<Token>*tokens, RedType*owner, ErrorColor error_color)

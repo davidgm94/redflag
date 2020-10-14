@@ -4,6 +4,7 @@
 
 #include "buffer.h"
 #include <stdarg.h>
+#include <stdio.h>
 
 Buffer *buf_vprintf(const char *format, va_list ap)
 {

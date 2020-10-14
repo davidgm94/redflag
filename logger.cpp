@@ -22,6 +22,14 @@ static const char *log_type_to_str(LogType log_type)
     return NULL;
 }
 
+void print(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+}
+
 void logger(LogType log_type, const char *format, ...)
 {
     fprintf(stdout, "[%s] ", log_type_to_str(log_type));
