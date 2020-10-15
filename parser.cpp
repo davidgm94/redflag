@@ -7,7 +7,6 @@
 #include "optional.h"
 #include <stdarg.h>
 
-
 struct ParseContext
 {
     Buffer* buffer;
@@ -55,11 +54,9 @@ static ASTNode* AST_parse_labeled_statement(ParseContext*pc);
 static ASTNode* AST_parse_switch_expression(ParseContext*pc);
 static ASTNode* AST_parse_function_prototype(ParseContext* pc);
 static ASTNode* AST_parse_parameter_declaration(ParseContext* pc);
+static ASTNode* AST_parse_call_convention_expression(ParseContext*pc);
+static ASTNode* AST_parse_block(ParseContext*pc);
 static Token* AST_parse_payload(ParseContext*pc);
-
-ASTNode*AST_parse_call_convention_expression(ParseContext*pc);
-
-static ASTNode*AST_parse_block(ParseContext*pc);
 
 static void AST_error(ParseContext* pc, Token* token, const char* format, ...)
 {
@@ -327,25 +324,6 @@ static ASTNode* AST_parse_binary_op_expression(ParseContext* pc, BinaryOpChain c
 
     return node;
 }
-
-
-//static ASTNode* AST_parse_if_prefix(ParseContext* pc)
-//{
-//    Token* first = eat_token_if(pc, TOKEN_ID_KEYWORD_IF);
-//    if (first == nullptr)
-//    {
-//        return nullptr;
-//    }
-//
-//    expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
-//    ASTNode* condition = AST_expect(pc, ast_parse_expr)
-//}
-
-//static ASTNode* AST_parse_if_expression_helper(ParseContext* pc,
-//                                               ASTNode* *(body_parser)(ParseContext*))
-//{
-//    ASTNode* node = AST_parse_if_pre
-//}
 
 enum ContainerFieldState
 {
@@ -1070,8 +1048,10 @@ static ASTNode* AST_parse_loop_statement(ParseContext* pc)
     {
         AST_invalid_token_error(pc, peek_token(pc));
     }
+
+    return nullptr;
 }
-static ASTNode*AST_parse_labeled_statement(ParseContext*pc)
+static ASTNode* AST_parse_labeled_statement(ParseContext*pc)
 {
     Token* label = AST_parse_block_label(pc);
     ASTNode* block = AST_parse_block(pc);
@@ -1334,6 +1314,373 @@ static ASTNode* AST_parse_container_declaration(ParseContext* pc)
     return result;
 
 }
+
+static ASTNode* AST_parse_field_init(ParseContext* pc)
+{
+    Token* first = eat_token_if(pc, TOKEN_ID_DOT);
+    if (!first)
+    {
+        return nullptr;
+    }
+
+    Token* name = eat_token_if(pc, TOKEN_ID_SYMBOL);
+    if (!name)
+    {
+        put_back_token(pc);
+        return nullptr;
+    }
+
+    if (!eat_token_if(pc, TOKEN_ID_EQ))
+    {
+        put_back_token(pc);
+        put_back_token(pc);
+        return nullptr;
+    }
+
+    ASTNode* expression = AST_expect(pc, AST_parse_expression);
+    ASTNode* result = AST_create_node(pc, NODE_TYPE_STRUCT_VALUE_FIELD, first);
+    result->data.struct_val_field.name = token_buffer(name);
+    result->data.struct_val_field.expression = expression;
+
+    return result;
+}
+
+static ASTNode* AST_parse_init_list(ParseContext* pc)
+{
+    Token* left_brace = eat_token_if(pc, TOKEN_ID_LEFT_BRACE);
+    if (!left_brace)
+    {
+        return nullptr;
+    }
+
+    ASTNode*first = AST_parse_field_init(pc);
+    if (first)
+    {
+        ASTNode* result = AST_create_node(pc, NODE_TYPE_CONTAINER_INIT_EXPR, left_brace);
+        result->data.container_init_expr.init_type = CONTAINER_INITIALIZATION_TYPE_STRUCT;
+        result->data.container_init_expr.entries.append(first);
+
+        while (eat_token_if(pc, TOKEN_ID_COMMA))
+        {
+            ASTNode* field_init = AST_parse_field_init(pc);
+            if (!field_init)
+            {
+                break;
+            }
+            result->data.container_init_expr.entries.append(field_init);
+        }
+
+        expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+        return result;
+    }
+
+    ASTNode* result = AST_create_node(pc, NODE_TYPE_CONTAINER_INIT_EXPR, left_brace);
+    result->data.container_init_expr.init_type = CONTAINER_INITIALIZATION_TYPE_ARRAY;
+
+    first = AST_parse_expression(pc);
+    if (first)
+    {
+        result->data.container_init_expr.entries.append(first);
+
+        while (eat_token_if(pc, TOKEN_ID_COMMA))
+        {
+            ASTNode* expression = AST_parse_expression(pc);
+            if (!expression)
+            {
+                break;
+            }
+            result->data.container_init_expr.entries.append(expression);
+        }
+    }
+
+    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+    return result;
+}
+
+static ASTNode* AST_parse_anonymous_literal(ParseContext* pc)
+{
+    Token* period = eat_token_if(pc, TOKEN_ID_DOT);
+    if (!period)
+    {
+        return nullptr;
+    }
+
+    Token* identifier = eat_token_if(pc, TOKEN_ID_SYMBOL);
+    if (identifier)
+    {
+        ASTNode* result = AST_create_node(pc, NODE_TYPE_ENUM_LITERAL, period);
+        result->data.enum_literal.period = period;
+        result->data.enum_literal.identifier = identifier;
+        return result;
+    }
+
+    ASTNode* result = AST_parse_init_list(pc);
+    if (result)
+    {
+        return result;
+    }
+
+    put_back_token(pc);
+    return nullptr;
+}
+
+static Token* AST_parse_doc_comments(ParseContext* pc, Buffer* buffer)
+{
+    Token* first_doc_token = nullptr;
+    Token* doc_token = nullptr;
+
+    assert(0);
+    //while ((doc_token = eat_token_if(pc, do)))
+    return nullptr;
+}
+static ASTNode* AST_parse_error_set_declaration(ParseContext* pc)
+{
+    Token* first = eat_token_if(pc, TOKEN_ID_KEYWORD_ERROR);
+    if (!first)
+    {
+        return nullptr;
+    }
+    if (!eat_token_if(pc, TOKEN_ID_LEFT_BRACE))
+    {
+        put_back_token(pc);
+        return nullptr;
+    }
+
+    List<ASTNode*> declarations = AST_parse_list<ASTNode>(pc, TOKEN_ID_COMMA, [](ParseContext* parse_context)
+    {
+        Buffer doc_comment_buffer = {{0}};
+        Token* doc_token = AST_parse_doc_comments(parse_context, &doc_comment_buffer);
+        Token* ident = eat_token_if(parse_context, TOKEN_ID_SYMBOL);
+        if (!ident)
+        {
+            return (ASTNode*)nullptr;
+        }
+
+        ASTNode* symbol_node = token_symbol(parse_context, ident);
+        if (!doc_token)
+        {
+            return symbol_node;
+        }
+
+        ASTNode* field_node = AST_create_node(parse_context, NODE_TYPE_ERROR_SET_FIELD, doc_token);
+        field_node->data.err_set_field.field_name = symbol_node;
+        field_node->data.err_set_field.document_comments = doc_comment_buffer;
+
+        return field_node;
+    });
+
+    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+
+    ASTNode* result = AST_create_node(pc, NODE_TYPE_ERROR_SET_DECL, first);
+    result->data.err_set_decl.declarations = declarations;
+
+    return result;
+}
+
+static ASTNode* AST_parse_grouped_expression(ParseContext* pc)
+{
+    Token* left_parenthesis = eat_token_if(pc, TOKEN_ID_LEFT_PARENTHESIS);
+    if (!left_parenthesis)
+    {
+        return nullptr;
+    }
+
+    ASTNode* expression = AST_expect(pc, AST_parse_expression);
+    expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
+
+    ASTNode* result = AST_create_node(pc, NODE_TYPE_GROUPED_EXPR, left_parenthesis);
+    result->data.grouped_expr = expression;
+
+    return result;
+}
+
+static ASTNode* AST_parse_for_expression_helper(ParseContext* pc, ASTNode* (*body_parser)(ParseContext*))
+{
+    ASTNode* result = AST_parse_for_prefix(pc);
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    ASTNode* body = AST_expect(pc, body_parser);
+    ASTNode* else_body = nullptr;
+    if (eat_token_if(pc, TOKEN_ID_KEYWORD_ELSE))
+    {
+        else_body = AST_expect(pc, body_parser);
+    }
+
+    assert(result->type == NODE_TYPE_FOR_EXPR);
+    result->data.for_expr.body = body;
+    result->data.for_expr.else_node = else_body;
+
+    return result;
+}
+
+static ASTNode* AST_parse_while_expression_helper(ParseContext* pc, ASTNode* (*body_parser)(ParseContext*))
+{
+    ASTNode* result = AST_parse_while_prefix(pc);
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    ASTNode* body = AST_expect(pc, body_parser);
+    Token* error_payload = nullptr;
+    ASTNode* else_body = nullptr;
+
+    if (eat_token_if(pc, TOKEN_ID_KEYWORD_ELSE))
+    {
+        error_payload = AST_parse_payload(pc);
+        else_body = AST_expect(pc, body_parser);
+    }
+
+    assert(result->type == NODE_TYPE_WHILE_EXPR);
+    result->data.while_expr.body;
+    result->data.while_expr.error_symbol = token_buffer(error_payload);
+    result->data.while_expr.else_node = else_body;
+
+    return result;
+}
+
+static ASTNode* AST_parse_for_type_expression(ParseContext* pc)
+{
+    return AST_parse_for_expression_helper(pc, AST_parse_type_expression);
+}
+
+static ASTNode* AST_parse_while_type_expression(ParseContext* pc)
+{
+    return AST_parse_while_expression_helper(pc, AST_parse_type_expression);
+}
+
+static ASTNode* AST_parse_loop_expression_helper(ParseContext* pc,
+    ASTNode* (*for_parser)(ParseContext*),
+    ASTNode* (*while_parser)(ParseContext*))
+{
+    Token* inline_token = eat_token_if(pc, TOKEN_ID_KEYWORD_INLINE);
+    ASTNode* for_expression = for_parser(pc);
+    if (for_expression)
+    {
+        assert(for_expression->type == NODE_TYPE_FOR_EXPR);
+        for_expression->data.for_expr.is_inline = inline_token != nullptr;
+        return for_expression;
+    }
+
+    ASTNode* while_expression = while_parser(pc);
+    if (while_expression)
+    {
+        assert(while_expression->type == NODE_TYPE_WHILE_EXPR);
+        while_expression->data.while_expr.is_inline = inline_token != nullptr;
+        return while_expression;
+    }
+
+    if (inline_token)
+    {
+        AST_invalid_token_error(pc, peek_token(pc));
+    }
+    return nullptr;
+}
+
+static ASTNode* AST_parse_loop_type_expression(ParseContext* pc)
+{
+    return AST_parse_loop_expression_helper(pc, AST_parse_for_type_expression, AST_parse_while_type_expression);
+}
+
+static ASTNode* AST_parse_labeled_type_expression(ParseContext* pc)
+{
+    Token* label = AST_parse_block_label(pc);
+    if (label)
+    {
+        ASTNode* block = AST_parse_block(pc);
+        if (block)
+        {
+            assert(block->type == NODE_TYPE_BLOCK);
+            block->data.block.name = token_buffer(label);
+            return block;
+        }
+    }
+
+    ASTNode* loop = AST_parse_loop_type_expression(pc);
+    if (loop)
+    {
+        switch (loop->type)
+        {
+            case NODE_TYPE_FOR_EXPR:
+                loop->data.for_expr.name = token_buffer(label);
+                break;
+            case NODE_TYPE_WHILE_EXPR:
+                loop->data.while_expr.name = token_buffer(label);
+                break;
+            default:
+                RED_UNREACHABLE;
+        }
+        return loop;
+    }
+
+    if (label)
+    {
+        put_back_token(pc);
+        put_back_token(pc);
+    }
+
+    return nullptr;
+}
+
+static ASTNode* AST_parse_if_prefix(ParseContext* pc)
+{
+    Token* first = eat_token_if(pc, TOKEN_ID_KEYWORD_IF);
+    if (!first)
+    {
+        return nullptr;
+    }
+
+    expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
+    ASTNode* condition = AST_expect(pc, AST_parse_expression);
+    expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
+    Optional<PointerPayload> opt_payload = AST_parse_ptr_payload(pc);
+
+    PointerPayload payload;
+    ASTNode* result = AST_create_node(pc, NODE_TYPE_IF_OPTIONAL, first);
+    result->data.test_expr.target_node = condition;
+    if (opt_payload.unwrap(&payload))
+    {
+        result->data.test_expr.var_symbol = token_buffer(payload.payload);
+        result->data.test_expr.var_is_ptr = payload.asterisk != nullptr;
+    }
+
+    return result;
+}
+
+static ASTNode* AST_parse_if_expression_helper(ParseContext* pc, ASTNode* (*body_parser)(ParseContext*))
+{
+    ASTNode* result = AST_parse_if_prefix(pc);
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    ASTNode* body = AST_expect(pc, body_parser);
+    Token* error_payload = nullptr;
+    ASTNode* else_body = nullptr;
+    if (eat_token_if(pc, TOKEN_ID_KEYWORD_ELSE))
+    {
+        error_payload = AST_parse_payload(pc);
+        else_body = AST_expect(pc, body_parser);
+    }
+
+    assert(result->type == NODE_TYPE_IF_OPTIONAL);
+    if (error_payload)
+    {
+        //ASTNodeErrorType old = result->data.test_expr;
+        //result->type = NODE_TYPE_IF_ERROR_EXPR;
+    }
+    RED_NOT_IMPLEMENTED;
+    return nullptr;
+}
+static ASTNode* AST_parse_if_type_expression(ParseContext* pc)
+{
+    return AST_parse_if_expression_helper(pc, AST_parse_type_expression);
+}
+
 static ASTNode* AST_parse_primary_type_expression(ParseContext* pc)
 {
     // TODO: This is not in line with the grammar.
@@ -1372,112 +1719,112 @@ static ASTNode* AST_parse_primary_type_expression(ParseContext* pc)
         return res;
     }
 
-    ASTNode *container_decl = ast_parse_container_declaration(pc);
+    ASTNode *container_decl = AST_parse_container_declaration(pc);
     if (container_decl != nullptr)
         return container_decl;
 
-    ASTNode *anon_lit = ast_parse_anon_lit(pc);
+    ASTNode *anon_lit = AST_parse_anonymous_literal(pc);
     if (anon_lit != nullptr)
         return anon_lit;
 
-    ASTNode *error_set_decl = ast_parse_error_set_decl(pc);
+    ASTNode *error_set_decl = AST_parse_error_set_declaration(pc);
     if (error_set_decl != nullptr)
         return error_set_decl;
 
-    Token *float_lit = eat_token_if(pc, TokenIdFloatLiteral);
+    Token *float_lit = eat_token_if(pc, TOKEN_ID_FLOAT_LIT);
     if (float_lit != nullptr) {
-        ASTNode *res = ast_create_node(pc, NodeTypeFloatLiteral, float_lit);
-        res->data.float_literal.bigfloat = &float_lit->data.float_lit.bigfloat;
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_FLOAT_LITERAL, float_lit);
+        res->data.float_literal.big_float = &float_lit->data.float_lit.big_float;
         res->data.float_literal.overflow = float_lit->data.float_lit.overflow;
         return res;
     }
 
-    ASTNode *fn_proto = ast_parse_fn_proto(pc);
+    ASTNode *fn_proto = AST_parse_function_prototype(pc);
     if (fn_proto != nullptr)
         return fn_proto;
 
-    ASTNode *grouped_expr = ast_parse_grouped_expr(pc);
+    ASTNode *grouped_expr = AST_parse_grouped_expression(pc);
     if (grouped_expr != nullptr)
         return grouped_expr;
 
-    ASTNode *labeled_type_expr = ast_parse_labeled_type_expr(pc);
+    ASTNode *labeled_type_expr = AST_parse_labeled_type_expression(pc);
     if (labeled_type_expr != nullptr)
         return labeled_type_expr;
 
-    Token *identifier = eat_token_if(pc, TokenIdSymbol);
+    Token *identifier = eat_token_if(pc, TOKEN_ID_SYMBOL);
     if (identifier != nullptr)
         return token_symbol(pc, identifier);
 
-    ASTNode *if_type_expr = ast_parse_if_type_expr(pc);
+    ASTNode *if_type_expr = AST_parse_if_type_expression(pc);
     if (if_type_expr != nullptr)
         return if_type_expr;
 
-    Token *int_lit = eat_token_if(pc, TokenIdIntLiteral);
+    Token *int_lit = eat_token_if(pc, TOKEN_ID_INT_LIT);
     if (int_lit != nullptr) {
-        ASTNode *res = ast_create_node(pc, NodeTypeIntLiteral, int_lit);
-        res->data.int_literal.bigint = &int_lit->data.int_lit.bigint;
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_INT_LITERAL, int_lit);
+        res->data.int_literal.big_int = &int_lit->data.int_lit.big_int;
         return res;
     }
 
-    Token *comptime = eat_token_if(pc, TokenIdKeywordCompTime);
+    Token *comptime = eat_token_if(pc, TOKEN_ID_KEYWORD_COMPTIME);
     if (comptime != nullptr) {
-        ASTNode *expr = ast_expect(pc, ast_parse_type_expr);
-        ASTNode *res = ast_create_node(pc, NodeTypeCompTime, comptime);
-        res->data.comptime_expr.expr = expr;
+        ASTNode *expr = AST_expect(pc, AST_parse_type_expression);
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_COMP_TIME, comptime);
+        res->data.comptime_expr.expression = expr;
         return res;
     }
 
-    Token *error = eat_token_if(pc, TokenIdKeywordError);
+    Token *error = eat_token_if(pc, TOKEN_ID_KEYWORD_ERROR);
     if (error != nullptr) {
-        Token *dot = expect_token(pc, TokenIdDot);
-        Token *name = expect_token(pc, TokenIdSymbol);
-        ASTNode *left = ast_create_node(pc, NodeTypeErrorType, error);
-        ASTNode *res = ast_create_node(pc, NodeTypeFieldAccessExpr, dot);
-        res->data.field_access_expr.struct_expr = left;
-        res->data.field_access_expr.field_name = token_buf(name);
+        Token *dot = expect_token(pc, TOKEN_ID_DOT);
+        Token *name = expect_token(pc, TOKEN_ID_SYMBOL);
+        ASTNode *left = AST_create_node(pc, NODE_TYPE_ERROR_TYPE, error);
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_FIELD_ACCESS_EXPR, dot);
+        res->data.field_access_expr.struct_ref = left;
+        res->data.field_access_expr.field_name = token_buffer(name);
         return res;
     }
 
-    Token *false_token = eat_token_if(pc, TokenIdKeywordFalse);
+    Token *false_token = eat_token_if(pc, TOKEN_ID_KEYWORD_FALSE);
     if (false_token != nullptr) {
-        ASTNode *res = ast_create_node(pc, NodeTypeBoolLiteral, false_token);
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_BOOL_LITERAL, false_token);
         res->data.bool_literal.value = false;
         return res;
     }
 
-    Token *null = eat_token_if(pc, TokenIdKeywordNull);
+    Token *null = eat_token_if(pc, TOKEN_ID_KEYWORD_NULL);
     if (null != nullptr)
-        return ast_create_node(pc, NodeTypeNullLiteral, null);
+        return AST_create_node(pc, NODE_TYPE_NULL_LITERAL, null);
 
-    Token *anyframe = eat_token_if(pc, TokenIdKeywordAnyFrame);
+    Token *anyframe = eat_token_if(pc, TOKEN_ID_KEYWORD_ANY_FRAME);
     if (anyframe != nullptr)
-        return ast_create_node(pc, NodeTypeAnyFrameType, anyframe);
+        return AST_create_node(pc, NODE_TYPE_ANY_FRAME_TYPE, anyframe);
 
-    Token *true_token = eat_token_if(pc, TokenIdKeywordTrue);
+    Token *true_token = eat_token_if(pc, TOKEN_ID_KEYWORD_TRUE);
     if (true_token != nullptr) {
-        ASTNode *res = ast_create_node(pc, NodeTypeBoolLiteral, true_token);
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_BOOL_LITERAL, true_token);
         res->data.bool_literal.value = true;
         return res;
     }
 
-    Token *undefined = eat_token_if(pc, TokenIdKeywordUndefined);
+    Token *undefined = eat_token_if(pc, TOKEN_ID_KEYWORD_UNDEFINED);
     if (undefined != nullptr)
-        return ast_create_node(pc, NodeTypeUndefinedLiteral, undefined);
+        return AST_create_node(pc, NODE_TYPE_UNDEFINED_LITERAL, undefined);
 
-    Token *unreachable = eat_token_if(pc, TokenIdKeywordUnreachable);
-    if (unreachable != nullptr)
-        return ast_create_node(pc, NodeTypeUnreachable, unreachable);
+//    Token *unreachable = eat_token_if(pc, TokenIdKeywordUnreachable);
+//    if (unreachable != nullptr)
+//        return ast_create_node(pc, NODE_TYPE_UNREACHABLE, unreachable);
 
-    Token *string_lit = eat_token_if(pc, TokenIdStringLiteral);
+    Token *string_lit = eat_token_if(pc, TOKEN_ID_STRING_LIT);
     if (string_lit == nullptr)
-        string_lit = eat_token_if(pc, TokenIdMultilineStringLiteral);
+        string_lit = eat_token_if(pc, TOKEN_ID_MULTILINE_STRING_LIT);
     if (string_lit != nullptr) {
-        ASTNode *res = ast_create_node(pc, NodeTypeStringLiteral, string_lit);
-        res->data.string_literal.buf = token_buf(string_lit);
+        ASTNode *res = AST_create_node(pc, NODE_TYPE_STRING_LITERAL, string_lit);
+        res->data.string_literal.buffer = token_buffer(string_lit);
         return res;
     }
 
-    ASTNode *switch_expr = ast_parse_switch_expr(pc);
+    ASTNode *switch_expr = AST_parse_switch_expression(pc);
     if (switch_expr != nullptr)
         return switch_expr;
 
@@ -1486,17 +1833,113 @@ static ASTNode* AST_parse_primary_type_expression(ParseContext* pc)
 
 ASTNode*AST_parse_block_expression_statement(ParseContext*pc)
 {
+    ASTNode* block = AST_parse_block_expression(pc);
+    if (block)
+    {
+        return block;
+    }
+
+    ASTNode* assign_expression = AST_parse_assign_expression(pc);
+    if (assign_expression)
+    {
+        expect_token(pc, TOKEN_ID_SEMICOLON);
+        return assign_expression;
+    }
+
     return nullptr;
 }
 
-ASTNode*AST_parse_call_convention_expression(ParseContext*pc)
+static ASTNode* AST_parse_parameter_type(ParseContext* pc)
 {
+    Token* any_type_token = eat_token_if(pc, TOKEN_ID_KEYWORD_ANY);
+    if (any_type_token)
+    {
+        ASTNode* result = AST_create_node(pc, NODE_TYPE_PARAM_DECL, any_type_token);
+        result->data.param_decl.any_type_token = any_type_token;
+        return result;
+    }
+
+    // three dots for varargs
+
+    ASTNode* type_expression = AST_parse_type_expression(pc);
+    if (type_expression)
+    {
+        ASTNode* result = AST_create_node_copy_line_info(pc, NODE_TYPE_PARAM_DECL, type_expression);
+        result->data.param_decl.type = type_expression;
+        return result;
+    }
+
     return nullptr;
 }
 
-ASTNode* AST_parse_parameter_declaration(ParseContext* pc)
+static ASTNode* AST_parse_call_convention_expression(ParseContext*pc)
 {
-    return nullptr;
+    Token* first = eat_token_if(pc, TOKEN_ID_KEYWORD_CALL_CONV);
+    if (!first)
+    {
+        return nullptr;
+    }
+
+    expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
+    ASTNode* result = AST_expect(pc, AST_parse_expression);
+    expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
+
+    return result;
+}
+
+static ASTNode* AST_parse_parameter_declaration(ParseContext* pc)
+{
+    Buffer doc_comments = {{0}};
+    AST_parse_doc_comments(pc, &doc_comments);
+
+    Token* first = eat_token_if(pc, TOKEN_ID_KEYWORD_NO_ALIAS);
+    if (!first)
+    {
+        first = eat_token_if(pc, TOKEN_ID_KEYWORD_COMPTIME);
+    }
+
+    Token* name = eat_token_if(pc, TOKEN_ID_SYMBOL);
+    if (name)
+    {
+        if (eat_token_if(pc, TOKEN_ID_COLON))
+        {
+            if (!first)
+            {
+                first = name;
+            }
+        }
+        else
+        {
+            put_back_token(pc);
+            name = nullptr;
+        }
+    }
+
+    ASTNode* result;
+    if (!first)
+    {
+        first = peek_token(pc);
+        result = AST_parse_parameter_type(pc);
+    }
+    else
+    {
+        result = AST_expect(pc, AST_parse_parameter_type);
+    }
+
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    assert(result->type == NODE_TYPE_PARAM_DECL);
+    result->line = first->start_line;
+    result->column = first->start_column;
+    result->data.param_decl.name = token_buffer(name);
+    result->data.param_decl.document_comments = doc_comments;
+    result->data.param_decl.is_noalias = first->id == TOKEN_ID_KEYWORD_NO_ALIAS;
+    result->data.param_decl.is_compile_time = first->id == TOKEN_ID_KEYWORD_COMPTIME;
+
+    return result;
 }
 
 ASTNode* AST_parse_type_expression(ParseContext* pc)
