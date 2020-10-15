@@ -360,7 +360,7 @@ static void invalid_char_error(Lexer* l, u8 c)
 
     if (isprint(c))
     {
-        lexer_error(l, "Invalid character: '%c'", c);
+        lexer_error(l, "Invalid character: '%value'", c);
     }
 
     lexer_error(l, "Invalid character: '\\x%02x'", c);
@@ -533,7 +533,7 @@ LexingResult lex(Buffer* buffer)
             }
 //            case LEXER_STATE_DOT:
 //            {
-//                switch (c)
+//                switch (value)
 //                {
 //                    case '.':
 //
@@ -542,7 +542,7 @@ LexingResult lex(Buffer* buffer)
 //            }
 //            case LEXER_STATE_DOT_DOT:
 //            {
-//                switch (c)
+//                switch (value)
 //                {
 //
 //                }
@@ -845,7 +845,7 @@ LexingResult lex(Buffer* buffer)
             }
 //            case LEXER_STATE_AT:
 //            {
-//                switch (c)
+//                switch (value)
 //                {
 //                    case '"':
 //                }

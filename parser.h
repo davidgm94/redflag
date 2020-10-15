@@ -511,7 +511,7 @@ struct ASTNodeStringLiteral
 
 struct ASTNodeCharLiteral
 {
-    char c;
+    char value;
 };
 
 struct ASTNodeFloatLiteral
