@@ -1,0 +1,28 @@
+primitive types:
+u8, u16, u32, u64, (u128)
+s8, s16, s32, s64, (s128)
+f32, f64, (f128)
+aliases: char -> u8
+
+type definition:
+alias NewType = OldType
+struct new_struct_type
+{
+}
+enum new_enum_type
+{
+}
+union new_union_type
+{
+}
+
+function prototype : none
+
+function definition
+
+fn return_type fn_name(param_type param_name, ...)
+{
+}
+
+variable declaration:
+var s = 5;

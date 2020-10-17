@@ -5,7 +5,9 @@
 #include "parser.h"
 #include "error_message.h"
 #include "optional.h"
+#include "type.h"
 #include <stdarg.h>
+#include <stdlib.h>
 
 struct ParseContext
 {
@@ -65,8 +67,12 @@ static void AST_error(ParseContext* pc, Token* token, const char* format, ...)
     Buffer* message = buf_vprintf(format, args);
     va_end(args);
 
-    //ErrorMessage* error =
-    RED_NOT_IMPLEMENTED;
+    ErrorMessage* error = ErrorMessage_create_with_line(pc->owner->data.structure.root_struct->path, token->start_line, token->start_column, pc->owner->data.structure.root_struct->src_code, pc->owner->data.structure.root_struct->line_offsets, message);
+    error->line_start = token->start_line;
+    error->column_start = token->start_column;
+
+    print_error_message(error, pc->error_color);
+    exit(-1);
 }
 
 static void AST_invalid_token_error(ParseContext* pc, Token* token)
@@ -2266,4 +2272,240 @@ ASTNode* parse(Buffer*buffer, List<Token>*tokens, RedType*owner, ErrorColor erro
     pc.error_color = error_color;
     pc.tokens = tokens;
     return AST_parse_root(&pc);
+}
+
+static void visit_field(ASTNode** node, void (*visit)(ASTNode**, void* context), void* context)
+{
+    if (*node)
+    {
+        visit(node, context);
+    }
+}
+
+static void visit_node_list(List<ASTNode*>* list, void (*visit)(ASTNode**, void* context), void* context)
+{
+    if (list)
+    {
+        for (size_t i = 0; i < list->length; i++)
+        {
+            visit(&list->at(i), context);
+        }
+    }
+}
+
+void AST_visit_node_children(ASTNode* node, void (*visit)(ASTNode**, void* context), void*context)
+{
+    switch (node->type)
+    {
+        case NODE_TYPE_FN_PROTO:
+            visit_field(&node->data.fn_prototype.return_type, visit, context);
+            visit_node_list(&node->data.fn_prototype.parameters, visit, context);
+            visit_field(&node->data.fn_prototype.align_expression, visit, context);
+            visit_field(&node->data.fn_prototype.section_expression, visit, context);
+            break;
+        case NODE_TYPE_FN_DEF:
+            visit_field(&node->data.fn_definition.function_prototype, visit, context);
+            visit_field(&node->data.fn_definition.body, visit, context);
+            break;
+        case NODE_TYPE_PARAM_DECL:
+            visit_field(&node->data.param_decl.type, visit, context);
+            break;
+        case NODE_TYPE_BLOCK:
+            visit_node_list(&node->data.block.statements, visit, context);
+            break;
+        case NODE_TYPE_GROUPED_EXPR:
+            visit_field(&node->data.grouped_expr, visit, context);
+            break;
+        case NODE_TYPE_RETURN_EXPR:
+            visit_field(&node->data.grouped_expr, visit, context);
+            break;
+        case NODE_TYPE_DEFER:
+            visit_field(&node->data.defer.expression, visit, context);
+            break;
+        case NODE_TYPE_VARIABLE_DECLARATION:
+            visit_field(&node->data.variable_declaration.type, visit, context);
+            visit_field(&node->data.variable_declaration.expression, visit, context);
+            visit_field(&node->data.variable_declaration.align_expression, visit, context);
+            visit_field(&node->data.variable_declaration.section_expression, visit, context);
+            break;
+        case NODE_TYPE_TEST_DECL:
+            visit_field(&node->data.test_decl.body, visit, context);
+            break;
+        case NODE_TYPE_BIN_OP_EXPR:
+            visit_field(&node->data.bin_op_expr.op1, visit, context);
+            visit_field(&node->data.bin_op_expr.op2, visit, context);
+            break;
+        case NODE_TYPE_CATCH_EXPR:
+            RED_NOT_IMPLEMENTED;
+            break;
+        case NODE_TYPE_FLOAT_LITERAL:
+            //none
+            break;
+        case NODE_TYPE_INT_LITERAL:
+            //none
+            break;
+        case NODE_TYPE_STRING_LITERAL:
+            //none
+            break;
+        case NODE_TYPE_CHAR_LITERAL:
+            //none
+            break;
+        case NODE_TYPE_SYMBOL:
+            //none
+            break;
+        case NODE_TYPE_PREFIX_OP_EXPR:
+            visit_field(&node->data.prefix_op_expr.expression, visit, context);
+            break;
+        case NODE_TYPE_POINTER_TYPE:
+            break;
+        case NODE_TYPE_FN_CALL_EXPR:
+            visit_field(&node->data.fn_call_expr.function, visit, context);
+            visit_node_list(&node->data.fn_call_expr.parameters, visit, context);
+            break;
+        case NODE_TYPE_ARRAY_ACCESS_EXPR:
+            visit_field(&node->data.array_access_expr.array, visit, context);
+            visit_field(&node->data.array_access_expr.subscript, visit, context);
+            break;
+        case NODE_TYPE_SLICE_EXPR:
+            visit_field(&node->data.slice_expr.array, visit, context);
+            visit_field(&node->data.slice_expr.start, visit, context);
+            visit_field(&node->data.slice_expr.end, visit, context);
+            visit_field(&node->data.slice_expr.sentinel, visit, context);
+            break;
+        case NODE_TYPE_FIELD_ACCESS_EXPR:
+            visit_field(&node->data.field_access_expr.struct_ref, visit, context);
+            break;
+        case NODE_TYPE_PTR_DEREF:
+            visit_field(&node->data.ptr_deref_expr.target, visit, context);
+            break;
+        case NODE_TYPE_UNWRAP_OPTIONAL:
+            RED_NOT_IMPLEMENTED;
+            break;
+        case NODE_TYPE_USING_NAMESPACE:
+            visit_field(&node->data.using_namespace.expression, visit, context);
+            break;
+        case NODE_TYPE_BOOL_LITERAL:
+            // none
+            break;
+        case NODE_TYPE_NULL_LITERAL:
+            // none
+            break;
+        case NODE_TYPE_UNDEFINED_LITERAL:
+            // none
+            break;
+        case NODE_TYPE_UNREACHABLE:
+            // none
+            break;
+        case NODE_TYPE_IF_BOOL_EXPR:
+            visit_field(&node->data.if_bool_expr.condition, visit, context);
+            visit_field(&node->data.if_bool_expr.true_block, visit, context);
+            visit_field(&node->data.if_bool_expr.false_block, visit, context);
+            break;
+        case NODE_TYPE_WHILE_EXPR:
+            visit_field(&node->data.while_expr.condition, visit, context);
+            visit_field(&node->data.while_expr.body, visit, context);
+            break;
+        case NODE_TYPE_FOR_EXPR:
+            visit_field(&node->data.for_expr.element_node, visit, context);
+            visit_field(&node->data.for_expr.array_expression, visit, context);
+            visit_field(&node->data.for_expr.index_node, visit, context);
+            visit_field(&node->data.for_expr.body, visit, context);
+            break;
+        case NODE_TYPE_SWITCH_EXPR:
+            visit_field(&node->data.switch_expr.expression, visit, context);
+            visit_node_list(&node->data.switch_expr.cases, visit, context);
+            break;
+        case NODE_TYPE_SWITCH_PRONG:
+            visit_node_list(&node->data.switch_prong.items, visit, context);
+            visit_field(&node->data.switch_prong.var_symbol, visit, context);
+            visit_field(&node->data.switch_prong.expression, visit, context);
+            break;
+        case NODE_TYPE_SWITCH_RANGE:
+            visit_field(&node->data.switch_range.start, visit, context);
+            visit_field(&node->data.switch_range.end, visit, context);
+            break;
+        case NODE_TYPE_COMP_TIME:
+            visit_field(&node->data.comptime_expr.expression, visit, context);
+            break;
+        case NODE_TYPE_NO_SUSPEND:
+            visit_field(&node->data.comptime_expr.expression, visit, context);
+            break;
+        case NODE_TYPE_BREAK:
+            //none
+            break;
+        case NODE_TYPE_CONTINUE:
+            //none
+            break;
+        case NODE_TYPE_ASM_EXPR:
+            for (size_t i = 0; i < node->data.asm_expr.input_list.length; i++)
+            {
+                ASMInput* asm_input = node->data.asm_expr.input_list.at(i);
+                visit_field(&asm_input->expression, visit, context);
+            }
+            for (size_t i = 0; i < node->data.asm_expr.output_list.length; i++)
+            {
+                ASMOutput* asm_output = node->data.asm_expr.output_list.at(i);
+                visit_field(&asm_output->return_type, visit, context);
+            }
+            break;
+        case NODE_TYPE_CONTAINER_DECL:
+            visit_node_list(&node->data.container_decl.fields, visit, context);
+            visit_node_list(&node->data.container_decl.declarations, visit, context);
+            visit_field(&node->data.container_decl.init_argument_expression, visit, context);
+            break;
+        case NODE_TYPE_STRUCT_FIELD:
+            visit_field(&node->data.struct_field.type, visit, context);
+            visit_field(&node->data.struct_field.value, visit, context);
+            break;
+        case NODE_TYPE_CONTAINER_INIT_EXPR:
+            visit_field(&node->data.container_init_expr.type, visit, context);
+            visit_node_list(&node->data.container_init_expr.entries, visit, context);
+            break;
+        case NODE_TYPE_STRUCT_VALUE_FIELD:
+            visit_field(&node->data.struct_val_field.expression, visit, context);
+            break;
+        case NODE_TYPE_ARRAY_TYPE:
+            visit_field(&node->data.array_type.size, visit, context);
+            visit_field(&node->data.array_type.sentinel, visit, context);
+            visit_field(&node->data.array_type.child_type, visit, context);
+            visit_field(&node->data.array_type.align_expression, visit, context);
+            break;
+        case NODE_TYPE_INFERRED_ARRAYTYPE:
+            visit_field(&node->data.array_type.sentinel, visit, context);
+            visit_field(&node->data.array_type.child_type, visit, context);
+            break;
+        case NODE_TYPE_ERROR_TYPE:
+            // none
+            break;
+        case NODE_TYPE_IF_ERROR_EXPR:
+            RED_NOT_IMPLEMENTED;
+            break;
+        case NODE_TYPE_IF_OPTIONAL:
+            visit_field(&node->data.test_expr.target_node, visit, context);
+            visit_field(&node->data.test_expr.true_node, visit, context);
+            visit_field(&node->data.test_expr.false_node, visit, context);
+            break;
+        case NODE_TYPE_ERROR_SET_DECL:
+            visit_node_list(&node->data.err_set_decl.declarations, visit, context);
+            break;
+        case NODE_TYPE_ERROR_SET_FIELD:
+            visit_field(&node->data.err_set_field.field_name, visit, context);
+            break;
+        case NODE_TYPE_RESUME:
+            visit_field(&node->data.resume_expr.expression, visit, context);
+            break;
+        case NODE_TYPE_AWAIT_EXPR:
+            visit_field(&node->data.await_expr.expression, visit, context);
+            break;
+        case NODE_TYPE_SUSPEND:
+            visit_field(&node->data.suspend.block, visit, context);
+            break;
+        case NODE_TYPE_ANY_FRAME_TYPE:
+            visit_field(&node->data.anyframe_type.payload_type, visit, context);
+            break;
+        case NODE_TYPE_ENUM_LITERAL:
+        case NODE_TYPE_ANY_TYPE_FIELD:
+            // none
+            break;
+    }
 }

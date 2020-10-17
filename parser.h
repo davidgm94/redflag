@@ -5,6 +5,8 @@
 #include "types.h"
 #include "buffer.h"
 #include "lexer.h"
+#include "ast_render.h"
+
 
 enum ErrorColor
 {
@@ -670,7 +672,6 @@ struct ASTNode
         ASTNodeEnumLiteral enum_literal;
     } data;
 };
-
 
 void parser_error(Token* token, const char* format, ...);
 

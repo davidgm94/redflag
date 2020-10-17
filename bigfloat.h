@@ -6,7 +6,8 @@
 #define REDFLAG_BIGFLOAT_H
 
 #include "types.h"
-enum Error;
+#include "error.h"
+
 enum Cmp;
 
 struct BigFloat

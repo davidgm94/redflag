@@ -38,6 +38,7 @@ static inline Buffer *buf_alloc(void) {
 
 static inline Buffer *buf_alloc_fixed(int size) {
     Buffer *buf = new_elements(Buffer, 1);
+    *buf = {{0}};
     buf_resize(buf, size);
     return buf;
 }

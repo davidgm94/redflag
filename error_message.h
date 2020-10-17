@@ -7,6 +7,7 @@
 #include "types.h"
 #include "list.h"
 #include "buffer.h"
+#include "parser.h"
 
 struct ErrorMessage
 {
@@ -18,3 +19,7 @@ struct ErrorMessage
 
     List<ErrorMessage*> notes;
 };
+
+ErrorMessage* ErrorMessage_create_with_line(Buffer* path, size_t line, size_t column, Buffer* source, List<size_t>* line_offsets, Buffer* message);
+
+void print_error_message(ErrorMessage* error, ErrorColor error_color);
