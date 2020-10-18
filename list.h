@@ -71,7 +71,7 @@ struct RedList
 
     void ensure_capacity(size_t new_capacity)
     {
-        size_t better_capacity = max(this->capacity, (size_t)16);
+        size_t better_capacity = max(capacity, (size_t)16);
         while (better_capacity < new_capacity)
         {
             better_capacity *= 2;

@@ -7,6 +7,7 @@
 #include "file.h"
 #include "src_file.h"
 #include "logger.h"
+#include "os.h"
 
 struct FileManager
 {
@@ -41,6 +42,9 @@ static inline void print_header(void)
 
 static FileManager handle_main_arguments(s32 argc, char* argv[])
 {
+    Buffer* cwd = buf_alloc();
+    os_get_cwd(cwd);
+    print("CWD: %s\n", buf_ptr(cwd));
     FileManager fm = {0};
     FileLoadResult file_load_result;
     print_header();
@@ -64,6 +68,7 @@ static FileManager handle_main_arguments(s32 argc, char* argv[])
             file_load_result = file_load(argv[i + 1], &fm.buffers[i]);
             if (file_load_result != FILE_LOAD_RESULT_SUCCESS)
             {
+                print("Failed to load file: %s\n", argv[i + 1]);
                 FileManager_cleanup(&fm);
                 return fm;
             }

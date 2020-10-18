@@ -14,5 +14,6 @@ void print_tokens(Buffer* buffer, List<Token>* tokens);
 const char* token_name(TokenID token_enum);
 bool valid_symbol_starter(char c);
 bool is_red_keyword(Buffer* buffer);
+bool is_red_keyword(TokenID token_id);
 
 #endif //REDFLAG_LEXER_H

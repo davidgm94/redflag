@@ -160,6 +160,16 @@ namespace AST
         return node;
     }
 
+    static inline bool is_container_keyword(TokenID id)
+    {
+        return id == TOKEN_ID_KEYWORD_STRUCT || id == TOKEN_ID_KEYWORD_ENUM || id == TOKEN_ID_KEYWORD_UNION;
+    }
+
+    static inline bool is_variable_keyword(TokenID id)
+    {
+        return id == TOKEN_ID_KEYWORD_VAR || id == TOKEN_ID_KEYWORD_CONST;
+    }
+
     static ASTNodeContainerDeclaration parse_container_members(ParseContext* pc);
 
     static inline ASTNode* parse_container_declaration(ParseContext* pc)
@@ -224,31 +234,23 @@ namespace AST
     static inline ASTNode* parse_top_level_declaration(ParseContext* pc)
     {
         Token* token = get_token(pc);
-        if (token->id == TOKEN_ID_SYMBOL)
+        if (is_container_keyword(token->id))
         {
-            ASTNode* node = parse_container_declaration(pc);
-            if (node)
+            return parse_container_declaration(pc);
+        }
+        else if (is_variable_keyword(token->id))
+        {
+            return parse_variable_declaration(pc);
+        }
+        else
+        {
+            ASTNode* symbol_node = parse_function_declaration(pc);
+            if (symbol_node)
             {
-                return node;
+                return symbol_node;
             }
-
-            node = parse_variable_declaration(pc);
-            if (node)
-            {
-                return node;
-            }
-
-            node = parse_symbol_assignment(pc);
-            if (node)
-            {
-                return node;
-            }
-
-            node = parse_function_declaration(pc);
-            if (node)
-            {
-                return node;
-            }
+            symbol_node = parse_symbol_assignment(pc);
+            return symbol_node;
         }
 
         return nullptr;

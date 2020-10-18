@@ -7,12 +7,13 @@
 
 #if __linux__
 #define RED_OS_LINUX
+#elif _WIN32
+#define RED_OS_WINDOWS
 #else
 #error
 #endif
 
 #include "buffer.h"
-#include "error.h"
 
 #ifdef RED_OS_LINUX
 #define RED_PRI_usize "zu"
@@ -21,5 +22,15 @@
 #define RED_PRI_llu "llu"
 #define OS_SEP "/"
 #define RED_OS_SEP_CHAR '/'
-Error os_get_cwd(Buffer* out_cwd);
 #endif
+#ifdef RED_OS_WINDOWS
+#define RED_PRI_usize "zu"
+#define RED_PRI_s64 PRId64
+#define RED_PRI_u64 PRIu64
+#define RED_PRI_llu "llu"
+#define OS_SEP "/"
+#define RED_OS_SEP_CHAR '/'
+#endif
+
+Error os_get_cwd(Buffer* out_cwd);
+

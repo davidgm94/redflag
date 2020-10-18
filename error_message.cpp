@@ -5,6 +5,7 @@
 #include "error_message.h"
 #include "slice.h"
 #include "os.h"
+#include <stdio.h>
 
 enum ErrorType
 {

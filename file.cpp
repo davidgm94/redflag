@@ -20,6 +20,7 @@ FileLoadResult file_load(const char *name, Buffer* file_buffer)
         return FILE_LOAD_RESULT_ERROR;
     }
     size_t length = ftell(file);
+    memset(file_buffer, 0, sizeof(Buffer));
     buf_resize(file_buffer, length);
     if (!file_buffer->items)
         return FILE_LOAD_RESULT_ERROR;

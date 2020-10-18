@@ -24,11 +24,13 @@ static inline char *buf_ptr(Buffer *buf) {
 
 static inline void buf_resize(Buffer *buf, int new_len) {
     buf->resize(new_len + 1);
-    buf->items[buf_len(buf)] = 0;
+    size_t len = buf_len(buf);
+    buf->items[len] = 0;
 }
 
 static inline Buffer *buf_alloc(void) {
     Buffer *buf = new_elements(Buffer, 1);
+    memset(buf, 0, sizeof(Buffer));
     buf_resize(buf, 0);
     return buf;
 }

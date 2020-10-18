@@ -3,15 +3,14 @@
 //
 
 #include "os.h"
-#include "error.h"
 #include "buffer.h"
 
 #ifdef RED_OS_LINUX
 #define RED_OS_POSIX
 #include <unistd.h>
 #include <linux/limits.h>
-#else
-#error
+#elif defined RED_OS_WINDOWS
+#include <Windows.h>
 #endif
 
 #include <errno.h>
@@ -29,6 +28,14 @@ Error os_get_cwd(Buffer*out_cwd)
     buf_init_from_str(out_cwd, result);
     return ERROR_NONE;
 #else
-#error
+    char buffer[MAX_PATH];
+    DWORD result = GetCurrentDirectoryA(MAX_PATH, buffer);
+    if (result == 0)
+    {
+        RED_PANIC("Unable to get cwd", strerror(errno));
+    }
+    buf_init_from_str(out_cwd, buffer);
+
+    return ERROR_NONE;
 #endif
 }

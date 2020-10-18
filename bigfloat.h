@@ -7,7 +7,6 @@
 
 #include "types.h"
 #include "compiler_types.h"
-#include "error.h"
 
 void BigFloat_init_16(BigFloat* dst, f16 x);
 void BigFloat_init_32(BigFloat* dst, f32 x);

@@ -7,6 +7,8 @@
 #include "bigint.h"
 #include "bigfloat.h"
 #include "memory.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 #define WHITESPACE \
          ' ': \
@@ -111,9 +113,35 @@ void print_tokens(Buffer *buffer, List<Token> *tokens)
 }
 
 static const struct RedKeyword red_keywords[] =
+{
+    "const", TOKEN_ID_KEYWORD_CONST,
+    "else", TOKEN_ID_KEYWORD_ELSE,
+    "enum", TOKEN_ID_KEYWORD_ENUM,
+    "false", TOKEN_ID_KEYWORD_FALSE,
+    "for", TOKEN_ID_KEYWORD_FOR,
+    "if", TOKEN_ID_KEYWORD_IF,
+    "null", TOKEN_ID_KEYWORD_NULL,
+    "struct", TOKEN_ID_KEYWORD_STRUCT,
+    "switch", TOKEN_ID_KEYWORD_SWITCH,
+    "true", TOKEN_ID_KEYWORD_TRUE,
+    "undefined", TOKEN_ID_KEYWORD_UNDEFINED,
+    "union", TOKEN_ID_KEYWORD_UNION,
+    "var", TOKEN_ID_KEYWORD_VAR,
+    "while", TOKEN_ID_KEYWORD_WHILE,
+};
+
+bool is_red_keyword(TokenID id)
+{
+    for (size_t i = 0; i < array_length(red_keywords); i++)
+    {
+        if (id == red_keywords[i].id)
         {
-            "align_expression", TOKEN_ID_KEYWORD_ALIGN,
-        };
+            return true;
+        }
+    }
+
+    return false;
+}
 
 bool is_red_keyword(Buffer* buf)
 {

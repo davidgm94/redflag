@@ -33,6 +33,7 @@ void add_source_file(Buffer*source_code, const char* path)
     Buffer buffer;
     buf_init_from_str(&buffer, "main");
     RootStruct* root_struct = new_elements(RootStruct, 1);
+    root_struct->path = buf_alloc_fixed(strlen(path));
     buf_init_from_str(root_struct->path, path);
     root_struct->line_offsets = &lexing_result.line_offsets;
     root_struct->src_code = source_code;

@@ -2,7 +2,6 @@
 // Created by david on 10/16/20.
 //
 
-#include <stdio.h>
 #include "ast_render.h"
 #include "compiler_types.h"
 #include "red_parser.h"
