@@ -2,27 +2,27 @@ primitive types:
 u8, u16, u32, u64, (u128)
 s8, s16, s32, s64, (s128)
 f32, f64, (f128)
+
 aliases: char -> u8
 
 type definition:
 alias NewType = OldType
-struct new_struct_type
+
+container types:
+new_container_type = struct/enum/union
 {
-}
-enum new_enum_type
-{
-}
-union new_union_type
-{
+
 }
 
-function prototype : none
-
-function definition
-
-fn return_type fn_name(param_type param_name, ...)
+function prototype : none for the moment (?)
+function definition:
+fn_name = return_type (param T, ...)
 {
+
 }
+
+where T could be something more complex like * [] T
 
 variable declaration:
-var s = 5;
+a (s32 var) = 5;
+b (const s32) = 50;

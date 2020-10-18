@@ -7,7 +7,6 @@
 #include "lexer.h"
 #include "ast_render.h"
 
-
 enum ErrorColor
 {
     ERROR_COLOR_AUTO,
@@ -675,7 +674,7 @@ struct ASTNode
 
 void parser_error(Token* token, const char* format, ...);
 
-ASTNode* parse(Buffer* buffer, List<Token>* tokens, RedType* owner, ErrorColor error_color);
+ASTNode* parse(Buffer* buffer, List<Token>* tokens);
 
 void parser_print(ASTNode* node, s32 indent);
 

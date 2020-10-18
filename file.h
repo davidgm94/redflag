@@ -2,7 +2,7 @@
 // Created by david on 7/10/20.
 //
 #pragma once
-#include "buffer.h"
+#include "compiler_types.h"
 
 enum FileLoadResult
 {

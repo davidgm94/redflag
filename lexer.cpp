@@ -3,14 +3,10 @@
 //
 
 #include "lexer.h"
-#include "types.h"
 #include "buffer.h"
 #include "bigint.h"
 #include "bigfloat.h"
 #include "memory.h"
-#include "panic.h"
-#include <stdarg.h>
-#include <stdio.h>
 
 #define WHITESPACE \
          ' ': \

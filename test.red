@@ -1,14 +1,15 @@
-struct a
+struct A
 {
-    u64 a = 1;
-    s32 b = 5;
+    a u64;
+    b s32;
 }
-var s32 bl = "blue";
-var a jaja = {};
-s32 yl = "yellow";
-s32 integer = 17283;
 
-fn void foo(s32 i)
+var foo_v s32 = 7;
+const foo_c u16 = 8;
+
+foo_v = 6;
+
+foo = (s s32) u32
 {
-    return i + 5;
+    return (u32)s;
 }

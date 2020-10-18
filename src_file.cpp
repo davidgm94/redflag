@@ -2,13 +2,25 @@
 // Created by david on 10/12/20.
 //
 
-#include "buffer.h"
+#include "compiler_types.h"
 #include "src_file.h"
 #include "lexer.h"
-#include "parser.h"
+#include "red_parser.h"
+#include "ast_render.h"
+#include "buffer.h"
 
-void
-add_source_file(CodeGen*code_gen, RedPackage*red_package, Buffer*resolved_path, Buffer*source_code, SourceType src_type)
+static RedType* get_root_container_type(const char* name, RootStruct* root_struct)
+{
+    RedType* entry = new_elements(RedType, 1);
+    entry->id = RED_TYPE_STRUCT;
+    buf_init_from_str(&entry->name, name);
+    entry->data.structure.root_struct = root_struct;
+
+    return entry;
+}
+
+
+void add_source_file(Buffer*source_code, const char* path)
 {
     LexingResult lexing_result = lex(source_code);
     if (lexing_result.error)
@@ -18,7 +30,14 @@ add_source_file(CodeGen*code_gen, RedPackage*red_package, Buffer*resolved_path, 
 
     print_tokens(source_code, &lexing_result.tokens);
 
-    ASTNode* root_node = parse(source_code, &lexing_result.tokens, NULL, ERROR_COLOR_ON);
+    Buffer buffer;
+    buf_init_from_str(&buffer, "main");
+    RootStruct* root_struct = new_elements(RootStruct, 1);
+    buf_init_from_str(root_struct->path, path);
+    root_struct->line_offsets = &lexing_result.line_offsets;
+    root_struct->src_code = source_code;
+    RedType* root_struct_entry = get_root_container_type("root", root_struct);
+    ASTNode* root_node = red_parse(source_code, &lexing_result.tokens, root_struct_entry);
     assert(root_node);
     assert(root_node->type == NODE_TYPE_CONTAINER_DECL);
     ast_print(stdout, root_node, 0);

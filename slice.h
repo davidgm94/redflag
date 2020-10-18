@@ -7,7 +7,6 @@
 #include "heap.h"
 #include <assert.h>
 
-
 template<typename T>
 struct Slice {
     T *ptr;

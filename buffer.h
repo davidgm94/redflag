@@ -5,12 +5,9 @@
 #ifndef REDFLAG_BUFFER_H
 #define REDFLAG_BUFFER_H
 
-
-#include "list.h"
-#include "alloc.h"
+#include "compiler_types.h"
 #include <string.h>
 
-typedef List<char> Buffer;
 
 Buffer *buf_sprintf(const char *format, ...)
 __attribute__ ((format (printf, 1, 2)));
@@ -38,7 +35,7 @@ static inline Buffer *buf_alloc(void) {
 
 static inline Buffer *buf_alloc_fixed(int size) {
     Buffer *buf = new_elements(Buffer, 1);
-    *buf = {{0}};
+    memset(buf, 0, sizeof(Buffer));
     buf_resize(buf, size);
     return buf;
 }
@@ -48,9 +45,10 @@ static inline void buf_deinit(Buffer *buf) {
 }
 
 static inline void buf_init_from_mem(Buffer *buf, const char *ptr, int len) {
+    memset(buf, 0, sizeof(Buffer));
     buf->resize(len + 1);
     memcpy(buf_ptr(buf), ptr, len);
-    (*buf)[buf_len(buf)] = 0;
+    buf->at(buf_len(buf)) = 0;
 }
 
 static inline void buf_init_from_str(Buffer *buf, const char *str) {

@@ -2,35 +2,14 @@
 // Created by David on 04/10/2020.
 //
 
-#ifndef REDFLAG_ALLOC_H
-#define REDFLAG_ALLOC_H
+#pragma once
 #include "types.h"
-#include "memory.h"
-#include <malloc.h>
-#include <assert.h>
-#include "type_info.h"
 #include "logger.h"
-#include "panic.h"
+#include <malloc.h>
+#include <string.h>
 
-static constexpr size_t max_filename_length = 512;
-struct Allocation
-{
-    char file[max_filename_length];
-    char function[max_filename_length];
-    char type[max_filename_length];
-    TypeInfo type_info;
-    void* address;
-    size_t line;
-};
-static constexpr size_t MAX_ALLOCS = 1024 * 100;
-struct Allocator
-{
-    Allocation allocations[MAX_ALLOCS];
-    size_t allocation_count;
-};
-static Allocator allocator = {};
 
-static void display_allocation_error(Allocation* allocation)
+static inline void display_allocation_error(Allocation* allocation)
 {
     logger(LOG_TYPE_ERROR, "Error in %s allocation at (%s:%zu:%s). Size: %zu. Alignment: %zu.\n",
            allocation->type, allocation->file, allocation->line, allocation->function, allocation->type_info.size, allocation->type_info.alignment);
@@ -70,11 +49,16 @@ static inline T* alloc_size(const char* type, const char* filename, size_t line,
 
 template<typename T>
 static inline T *reallocate_nonzero(T *old, size_t new_count) {
-    T* ptr = reinterpret_cast<T*>(realloc(old, new_count * sizeof(T)));
+    T* ptr = nullptr;
+    if (old)
+    {
+        ptr = reinterpret_cast<T*>(realloc(old, new_count * sizeof(T)));
+    }
+    else
+    {
+        ptr = reinterpret_cast<T*>(malloc(new_count * sizeof(T)));
+    }
     if (!ptr)
-        RED_PANIC("realloc error");
+        RED_PANIC("Reallocation not sucessful!");
     return ptr;
 }
-
-
-#endif //REDFLAG_ALLOC_H

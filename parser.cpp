@@ -2262,14 +2262,12 @@ ASTNode* AST_parse_function_prototype(ParseContext* pc)
     return result;
 }
 
-
-
-ASTNode* parse(Buffer*buffer, List<Token>*tokens, RedType*owner, ErrorColor error_color)
+ASTNode* parse(Buffer*buffer, List<Token>*tokens)
 {
     ParseContext pc = {};
     pc.buffer = buffer;
-    pc.owner = owner;
-    pc.error_color = error_color;
+    //pc.owner = owner;
+    //pc.error_color = error_color;
     pc.tokens = tokens;
     return AST_parse_root(&pc);
 }

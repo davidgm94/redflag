@@ -53,3 +53,42 @@ static inline s32 char_to_int(char c)
 {
     return (s32)c - 48;
 }
+enum LogType
+{
+    LOG_TYPE_INFO,
+    LOG_TYPE_WARN,
+    LOG_TYPE_ERROR,
+};
+struct TypeInfo
+{
+    size_t size;
+    size_t alignment;
+
+    template<typename T>
+    static constexpr TypeInfo make()
+    {
+        return {sizeof(T), alignof(T)};
+    }
+};
+static constexpr size_t max_filename_length = 512;
+struct Allocation
+{
+    char file[max_filename_length];
+    char function[max_filename_length];
+    char type[max_filename_length];
+    TypeInfo type_info;
+    void* address;
+    size_t line;
+};
+static constexpr size_t MAX_ALLOCS = 1024 * 100;
+struct Allocator
+{
+    Allocation allocations[MAX_ALLOCS];
+    size_t allocation_count;
+};
+static Allocator allocator = {};
+
+void red_panic(const char* file, int line, const char* function, const char* format, ...);
+#define RED_NOT_IMPLEMENTED red_panic(__FILE__, __LINE__, __func__, "Not implemented")
+#define RED_UNREACHABLE red_panic(__FILE__, __LINE__, __func__, "Unreachable")
+#define RED_PANIC(...) red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__)

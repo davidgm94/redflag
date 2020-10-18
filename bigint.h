@@ -8,19 +8,6 @@
 #include "types.h"
 #include "compiler_types.h"
 #include "list.h"
-typedef List<char> Buffer;
-struct BigInt
-{
-    size_t digit_count;
-    union
-    {
-        u64 digit;
-        u64* digits; // least significan digit first
-    } data;
-    bool is_negative;
-};
-
-struct BigFloat;
 
 void BigInt_init_unsigned(BigInt* dst, u64 x);
 

@@ -4,11 +4,8 @@
 
 #pragma once
 
-#include "types.h"
+#include "compiler_types.h"
 #include "heap.h"
-#include "list.h"
-#include <malloc.h>
-#include <string.h>
 
 template <typename K, typename V, u32 (*HashFunction)(K key), bool (*EqualFn)(K a, K b)>
 class HashMap

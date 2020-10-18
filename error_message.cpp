@@ -12,7 +12,7 @@ enum ErrorType
     ERROR_TYPE_NOTE,
 };
 
-static void print_error_message_type(ErrorMessage* error, ErrorColor color, ErrorType error_type)
+static void print_error_message_type(ErrorMessage* error, ErrorType error_type)
 {
     if (error->path)
     {
@@ -77,7 +77,7 @@ static void print_error_message_type(ErrorMessage* error, ErrorColor color, Erro
     for (size_t i = 0; i < error->notes.length; i++)
     {
         ErrorMessage* note = error->notes.at(i);
-        print_error_message_type(note, color, ERROR_TYPE_NOTE);
+        print_error_message_type(note, ERROR_TYPE_NOTE);
     }
 }
 
@@ -103,8 +103,8 @@ ErrorMessage* ErrorMessage_create_with_line(Buffer* path, size_t line, size_t co
     return error_message;
 }
 
-void print_error_message(ErrorMessage*error, ErrorColor error_color)
+void print_error_message(ErrorMessage*error)
 {
-    print_error_message_type(error, error_color, ERROR_TYPE_ERROR);
+    print_error_message_type(error, ERROR_TYPE_ERROR);
 }
 

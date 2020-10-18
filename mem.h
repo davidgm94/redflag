@@ -6,7 +6,6 @@
 #include <malloc.h>
 #include "types.h"
 #include "panic.h"
-#include "type_info.h"
 
 namespace mem {
 

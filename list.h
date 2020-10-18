@@ -2,8 +2,7 @@
 // Created by David on 04/10/2020.
 //
 
-#ifndef REDFLAG_LIST_H
-#define REDFLAG_LIST_H
+#pragma once
 
 #include "types.h"
 #include <assert.h>
@@ -88,5 +87,4 @@ struct RedList
 template <typename T>
 using List = RedList<T>;
 
-
-#endif //REDFLAG_LIST_H
+typedef List<char> Buffer;

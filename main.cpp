@@ -26,7 +26,7 @@ s32 main(s32 argc, char* argv[])
     for (size_t i = 0; i < fm.count; i++)
     {
         Buffer* src_buffer = &fm.buffers[i];
-        add_source_file(nullptr, nullptr, nullptr, src_buffer, PKG_MAIN);
+        add_source_file(src_buffer, "whateverpathrandom");
     }
 
     FileManager_cleanup(&fm);
