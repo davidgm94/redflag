@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(redflag)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-add_executable(redflag list.cpp list.h main.cpp alloc.cpp alloc.h buffer.cpp buffer.h logger.cpp logger.h lexer.cpp lexer.h file.cpp file.h panic.cpp panic.h bigint.cpp bigint.h bigfloat.cpp bigfloat.h compiler_types.h memory.h error_message.cpp error_message.h src_file.h src_file.cpp optional.h ast_render.cpp ast_render.h hash_map.h heap.h mem.h slice.h os.cpp os.h red_parser.cpp red_parser.h)
+add_executable(redflag src/list.cpp src/list.h src/main.cpp src/alloc.cpp src/alloc.h src/buffer.cpp src/buffer.h src/logger.cpp src/logger.h src/lexer.cpp src/lexer.h src/file.cpp src/file.h src/panic.cpp src/panic.h src/bigint.cpp src/bigint.h src/bigfloat.cpp src/bigfloat.h src/compiler_types.h src/memory.h src/error_message.cpp src/error_message.h src/src_file.h src/src_file.cpp src/optional.h src/ast_render.cpp src/ast_render.h src/hash_map.h src/heap.h src/mem.h src/slice.h src/os.cpp src/os.h src/red_parser.cpp src/red_parser.h)

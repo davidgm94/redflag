@@ -221,14 +221,17 @@ namespace AST
     static inline ASTNode* parse_variable_declaration(ParseContext* pc)
     {
         RED_NOT_IMPLEMENTED;
+        return nullptr;
     }
     static inline ASTNode* parse_symbol_assignment(ParseContext* pc)
     {
         RED_NOT_IMPLEMENTED;
+        return nullptr;
     }
     static inline ASTNode* parse_function_declaration(ParseContext* pc)
     {
         RED_NOT_IMPLEMENTED;
+        return nullptr;
     }
 
     static inline ASTNode* parse_top_level_declaration(ParseContext* pc)
@@ -272,6 +275,9 @@ namespace AST
                 RED_NOT_IMPLEMENTED;
             }
         }
+
+        RED_NOT_IMPLEMENTED;
+        return result;
     }
     static inline ASTNode* parse_root(ParseContext* pc)
     {
@@ -280,6 +286,9 @@ namespace AST
         {
             invalid_token_error(pc, get_token(pc));
         }
+
+        RED_NOT_IMPLEMENTED;
+        return nullptr;
     }
 }
 
