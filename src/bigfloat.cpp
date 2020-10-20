@@ -7,7 +7,6 @@
 #include <string.h>
 #include "bigint.h"
 #include "bigfloat.h"
-#include "panic.h"
 
 /* TODO: do right */
 f128 parse_f128(char *begin, char **p_string)

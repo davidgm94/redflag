@@ -28,6 +28,7 @@
     <ClCompile Include="src\src_file.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\config.h" />
     <ClInclude Include="src\alloc.h" />
     <ClInclude Include="src\ast_render.h" />
     <ClInclude Include="src\bigfloat.h" />
@@ -45,7 +46,6 @@
     <ClInclude Include="src\memory.h" />
     <ClInclude Include="src\optional.h" />
     <ClInclude Include="src\os.h" />
-    <ClInclude Include="src\panic.h" />
     <ClInclude Include="src\red_parser.h" />
     <ClInclude Include="src\slice.h" />
     <ClInclude Include="src\src_file.h" />

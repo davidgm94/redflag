@@ -98,6 +98,12 @@ struct RedKeyword
     TokenID id;
 };
 
+void print_token(Buffer* buffer, Token* token)
+{
+    fwrite(buf_ptr(buffer) + token->start_position, 1, token->end_position - token->start_position, stdout);
+    fputc('\n', stdout);
+}
+
 void print_tokens(Buffer *buffer, List<Token> *tokens)
 {
     for (size_t i = 0; i < tokens->length; i++)
@@ -114,20 +120,21 @@ void print_tokens(Buffer *buffer, List<Token> *tokens)
 
 static const struct RedKeyword red_keywords[] =
 {
-    "const", TOKEN_ID_KEYWORD_CONST,
-    "else", TOKEN_ID_KEYWORD_ELSE,
-    "enum", TOKEN_ID_KEYWORD_ENUM,
-    "false", TOKEN_ID_KEYWORD_FALSE,
-    "for", TOKEN_ID_KEYWORD_FOR,
-    "if", TOKEN_ID_KEYWORD_IF,
-    "null", TOKEN_ID_KEYWORD_NULL,
-    "struct", TOKEN_ID_KEYWORD_STRUCT,
-    "switch", TOKEN_ID_KEYWORD_SWITCH,
-    "true", TOKEN_ID_KEYWORD_TRUE,
-    "undefined", TOKEN_ID_KEYWORD_UNDEFINED,
-    "union", TOKEN_ID_KEYWORD_UNION,
-    "var", TOKEN_ID_KEYWORD_VAR,
-    "while", TOKEN_ID_KEYWORD_WHILE,
+    { "const", TOKEN_ID_KEYWORD_CONST, },
+    { "else", TOKEN_ID_KEYWORD_ELSE, },
+    { "enum", TOKEN_ID_KEYWORD_ENUM, },
+    { "false", TOKEN_ID_KEYWORD_FALSE, },
+    { "for", TOKEN_ID_KEYWORD_FOR, },
+    { "if", TOKEN_ID_KEYWORD_IF, },
+    { "null", TOKEN_ID_KEYWORD_NULL, },
+    { "return", TOKEN_ID_KEYWORD_RETURN, },
+    { "struct", TOKEN_ID_KEYWORD_STRUCT, },
+    { "switch", TOKEN_ID_KEYWORD_SWITCH, },
+    { "true", TOKEN_ID_KEYWORD_TRUE, },
+    { "undefined", TOKEN_ID_KEYWORD_UNDEFINED, },
+    { "union", TOKEN_ID_KEYWORD_UNION, },
+    { "var", TOKEN_ID_KEYWORD_VAR, },
+    { "while", TOKEN_ID_KEYWORD_WHILE, },
 };
 
 bool is_red_keyword(TokenID id)
@@ -1235,6 +1242,44 @@ const char *token_name(TokenID id)
         case TOKEN_ID_FAT_ARROW: return "=>";
         case TOKEN_ID_FLOAT_LIT: return "FloatLiteral";
         case TOKEN_ID_INT_LIT: return "IntLiteral";
+        case TOKEN_ID_KEYWORD_ALIGN:
+        case TOKEN_ID_KEYWORD_ALLOW_ZERO:
+        case TOKEN_ID_KEYWORD_AND:
+        case TOKEN_ID_KEYWORD_ANY:
+        case TOKEN_ID_KEYWORD_ANY_FRAME:
+        case TOKEN_ID_KEYWORD_CALL_CONV:
+        case TOKEN_ID_KEYWORD_COMPTIME:
+        case TOKEN_ID_KEYWORD_CONST:
+        case TOKEN_ID_KEYWORD_DEFER:
+        case TOKEN_ID_KEYWORD_ELSE:
+        case TOKEN_ID_KEYWORD_ENUM:
+        case TOKEN_ID_KEYWORD_ERROR:
+        case TOKEN_ID_KEYWORD_ERROR_DEFER:
+        case TOKEN_ID_KEYWORD_EXPORT:
+        case TOKEN_ID_KEYWORD_EXTERN:
+        case TOKEN_ID_KEYWORD_FALSE:
+        case TOKEN_ID_KEYWORD_FN:
+        case TOKEN_ID_KEYWORD_FOR:
+        case TOKEN_ID_KEYWORD_IF:
+        case TOKEN_ID_KEYWORD_INLINE:
+        case TOKEN_ID_KEYWORD_NO_ALIAS:
+        case TOKEN_ID_KEYWORD_NO_INLINE:
+        case TOKEN_ID_KEYWORD_NULL:
+        case TOKEN_ID_KEYWORD_OR:
+        case TOKEN_ID_KEYWORD_PACKED:
+        case TOKEN_ID_KEYWORD_PUB:
+        case TOKEN_ID_KEYWORD_RETURN: return "return";
+        case TOKEN_ID_KEYWORD_SECTION:
+        case TOKEN_ID_KEYWORD_STRUCT: return "struct";
+        case TOKEN_ID_KEYWORD_SWITCH:
+        case TOKEN_ID_KEYWORD_TEST:
+        case TOKEN_ID_KEYWORD_THREAD_LOCAL:
+        case TOKEN_ID_KEYWORD_TRUE:
+        case TOKEN_ID_KEYWORD_UNDEFINED:
+        case TOKEN_ID_KEYWORD_UNION:
+        case TOKEN_ID_KEYWORD_VAR:
+        case TOKEN_ID_KEYWORD_VOLATILE:
+        case TOKEN_ID_KEYWORD_WHILE:
         case TOKEN_ID_LEFT_BRACE: return "{";
         case TOKEN_ID_LEFT_BRACKET: return "[";
         case TOKEN_ID_LEFT_PARENTHESIS: return "(";

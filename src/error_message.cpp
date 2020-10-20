@@ -85,6 +85,7 @@ static void print_error_message_type(ErrorMessage* error, ErrorType error_type)
 ErrorMessage* ErrorMessage_create_with_line(Buffer* path, size_t line, size_t column, Buffer* source, List<size_t>* line_offsets, Buffer* message)
 {
     ErrorMessage* error_message = new_elements(ErrorMessage, 1);
+    memset(error_message, 0, sizeof(ErrorMessage));
     error_message->path = path;
     error_message->line_start = line;
     error_message->column_start = column;

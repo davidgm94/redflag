@@ -6,7 +6,6 @@
 #include "types.h"
 #include <stdio.h>
 #include <stdarg.h>
-#include "panic.h"
 
 
 static const char *log_type_to_str(LogType log_type)

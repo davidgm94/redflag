@@ -35,11 +35,11 @@
     <ClInclude Include="src\memory.h" />
     <ClInclude Include="src\optional.h" />
     <ClInclude Include="src\os.h" />
-    <ClInclude Include="src\panic.h" />
     <ClInclude Include="src\red_parser.h" />
     <ClInclude Include="src\slice.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
+    <ClInclude Include="src\config.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\redflag.sln" />

@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\src"
   ],
-  "SelectedNode": "\\C:\\Users\\David\\git\\redflag\\CMakeLists.txt\\CMakeLists.txt",
+  "SelectedNode": "\\src\\red_parser.cpp",
   "PreviewInSolutionExplorer": false
 }

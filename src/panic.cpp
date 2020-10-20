@@ -3,12 +3,11 @@
 //
 
 #include "types.h"
-#include "panic.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-void red_panic(const char* file, int line, const char* function, const char* format, ...)
+void red_panic(const char* file, size_t line, const char* function, const char* format, ...)
 {
     char buffer[10 * 1024];
     //memset(buffer, 0x00, sizeof(buffer));
@@ -21,5 +20,4 @@ void red_panic(const char* file, int line, const char* function, const char* for
     fprintf(stdout, "Panic at %s:%zu: %s -> %s\n", file, line, function, buffer);
     fprintf(stdout, "\n");
     fflush(stdout);
-    abort();
 }

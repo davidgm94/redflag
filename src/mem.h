@@ -5,7 +5,6 @@
 #pragma once
 #include <malloc.h>
 #include "types.h"
-#include "panic.h"
 
 namespace mem {
 

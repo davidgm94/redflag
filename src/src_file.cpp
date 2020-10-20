@@ -8,6 +8,7 @@
 #include "red_parser.h"
 #include "ast_render.h"
 #include "buffer.h"
+#include "config.h"
 
 static RedType* get_root_container_type(const char* name, RootStruct* root_struct)
 {
@@ -28,7 +29,9 @@ void add_source_file(Buffer*source_code, const char* path)
         RED_UNREACHABLE;
     }
 
+#if LEXER_VERBOSE
     print_tokens(source_code, &lexing_result.tokens);
+#endif
 
     Buffer buffer;
     buf_init_from_str(&buffer, "main");

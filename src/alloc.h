@@ -58,7 +58,11 @@ static inline T *reallocate_nonzero(T *old, size_t new_count) {
     {
         ptr = reinterpret_cast<T*>(malloc(new_count * sizeof(T)));
     }
-    if (!ptr)
+    if (ptr)
+    {
+        return ptr;
+    }
+    else
         RED_PANIC("Reallocation not sucessful!");
-    return ptr;
+    return nullptr;
 }

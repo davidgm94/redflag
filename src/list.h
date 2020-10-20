@@ -86,5 +86,4 @@ struct RedList
 
 template <typename T>
 using List = RedList<T>;
-
-typedef List<char> Buffer;
+using Buffer = List<char>;

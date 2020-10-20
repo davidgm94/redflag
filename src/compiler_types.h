@@ -11,7 +11,9 @@ struct ASTNode;
 //struct RedPackage;
 /* Enum declaration */
 #include "list.h"
-enum Error {
+
+enum Error
+{
     ERROR_NONE,
     ERROR_NO_MEM,
     ERROR_INVALID_FORMAT,
@@ -92,6 +94,7 @@ enum Error {
     ERROR_FILE_BUSY,
     ERROR_LOCKED,
 };
+
 enum Cmp
 {
     CMP_LESS,
@@ -135,6 +138,7 @@ enum TokenID
     TOKEN_ID_HASH,
     TOKEN_ID_KEYWORD_ALIGN,
     TOKEN_ID_KEYWORD_ALLOW_ZERO,
+    TOKEN_ID_KEYWORD_AND,
     TOKEN_ID_KEYWORD_ANY,
     TOKEN_ID_KEYWORD_ANY_FRAME,
     TOKEN_ID_KEYWORD_CALL_CONV,
@@ -155,8 +159,10 @@ enum TokenID
     TOKEN_ID_KEYWORD_NO_ALIAS,
     TOKEN_ID_KEYWORD_NO_INLINE,
     TOKEN_ID_KEYWORD_NULL,
+    TOKEN_ID_KEYWORD_OR,
     TOKEN_ID_KEYWORD_PACKED,
     TOKEN_ID_KEYWORD_PUB,
+    TOKEN_ID_KEYWORD_RETURN,
     TOKEN_ID_KEYWORD_SECTION,
     TOKEN_ID_KEYWORD_STRUCT,
     TOKEN_ID_KEYWORD_SWITCH,
@@ -232,8 +238,8 @@ enum BinaryOpType
     BIN_OP_TYPE_BOOL_AND,
     BIN_OP_TYPE_CMP_EQ,
     BIN_OP_TYPE_CMP_NOT_EQ,
-    BIN_OP_TYPE_CMP_LESS_THAN,
-    BIN_OP_TYPE_CMP_GREATER_THAN,
+    BIN_OP_TYPE_CMP_LESS,
+    BIN_OP_TYPE_CMP_GREATER,
     BIN_OP_TYPE_CMP_LESS_OR_EQ,
     BIN_OP_TYPE_CMP_GREATER_OR_EQ,
     BIN_OP_TYPE_BIN_OR,
@@ -254,6 +260,12 @@ enum BinaryOpType
     BIN_OP_TYPE_ARRAY_MULT,
     BIN_OP_TYPE_ERROR_UNION,
     BIN_OP_TYPE_MERGE_ERROR_SETS,
+};
+
+enum BinaryOpChain
+{
+    BINARY_OP_CHAIN_ONCE,
+    BINARY_OP_CHAIN_INFINITE,
 };
 
 enum ScopeID
@@ -619,6 +631,11 @@ struct ASTNodeEnumLiteral
     Token* identifier;
 };
 
+struct ASTNodeReturnExpression
+{
+    ASTNode* expression;
+};
+
 struct ASTNode
 {
     NodeType type;
@@ -633,7 +650,7 @@ struct ASTNode
         ASTNodeParameterDeclaration param_decl;
         ASTNodeBlock block;
         ASTNode* grouped_expr;
-        ASTNode* return_expr;
+        ASTNodeReturnExpression return_expr;
         ASTNodeVariableDeclaration variable_declaration;
         ASTNodeBinaryOpExpression bin_op_expr;
         ASTNodePrefixOpExpression prefix_op_expr;
