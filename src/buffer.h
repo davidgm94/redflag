@@ -118,10 +118,7 @@ static inline bool buf_eql_mem(Buffer *buf, const char *mem, int mem_len) {
     return memcmp(buf_ptr(buf), mem, mem_len) == 0;
 }
 
-static inline bool buf_eql_str(Buffer *buf, const char *str) {
-    assert(buf->length);
-    return buf_eql_mem(buf, str, strlen(str));
-}
+bool buf_eql_str(Buffer* buf, const char* str);
 
 static inline bool buf_starts_with_mem(Buffer *buf, const char *mem, size_t mem_len) {
     if (buf_len(buf) < mem_len) {

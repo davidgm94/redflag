@@ -48,6 +48,7 @@ static const char *node_type_str(NodeType node_type)
         CASE_TO_STR(NODE_TYPE_CONTAINER_DECL);
         CASE_TO_STR(NODE_TYPE_STRUCT_FIELD);
         CASE_TO_STR(NODE_TYPE_ENUM_LITERAL);
+        CASE_TO_STR(NODE_TYPE_TYPE);
     }
 
     return nullptr;

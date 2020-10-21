@@ -56,6 +56,11 @@ void buf_appendf(Buffer *buf, const char *format, ...) {
     va_end(ap);
 }
 
+bool buf_eql_str(Buffer* buf, const char* str) {
+    assert(buf->length);
+    return buf_eql_mem(buf, str, strlen(str));
+}
+
 // these functions are not static inline so they can be better used as template parameters
 bool buf_eql_buf(Buffer *buf, Buffer *other) {
     return buf_eql_mem(buf, buf_ptr(other), buf_len(other));

@@ -334,6 +334,7 @@ enum NodeType
     //NODE_TYPE_IF_OPTIONAL,
     NODE_TYPE_ENUM_LITERAL,
     //NODE_TYPE_ANY_TYPE_FIELD,
+    NODE_TYPE_TYPE,
 };
 
 enum ContainerType
@@ -550,8 +551,8 @@ struct SourcePosition
 
 struct ASTNodeContainerDeclaration
 {
-    Buffer* name;
-    ContainerType type;
+    ASTNode* type_node;
+    ContainerType type_kind;
     /* TODO: is this any different? */
     List<ASTNode*> fields;
     List<ASTNode*> declarations;
@@ -810,4 +811,11 @@ struct RedType
         RedTypeUnion union_;
         RedTypeFunction function;
     } data;
+};
+
+struct CodeGenConfig
+{
+    bool release;
+    bool strip_debug_symbols;
+    bool is_static;
 };

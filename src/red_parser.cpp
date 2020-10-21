@@ -168,6 +168,14 @@ namespace AST
         assert(token->id == TOKEN_ID_INT_LIT);
         return &token->data.int_lit.big_int;
     }
+    
+    static inline ASTNode* token_type_symbol(ParseContext* pc, Token* token)
+    {
+        assert(token->id == TOKEN_ID_SYMBOL);
+        ASTNode* node = create_node(pc, NODE_TYPE_TYPE, token);
+        node->data.symbol_expr.symbol = token_buffer(token);
+        return node;
+    }
 
     static inline ASTNode* token_symbol(ParseContext* pc, Token* token)
     {
@@ -354,36 +362,37 @@ namespace AST
 
     static inline ASTNode* parse_container_declaration(ParseContext* pc)
     {
-        ContainerType type;
+        ContainerType type_kind;
         Token* container_type_token = consume_token_if(pc, TOKEN_ID_KEYWORD_STRUCT);
         if (container_type_token)
         {
-            type = CONTAINER_TYPE_STRUCT;
+            type_kind = CONTAINER_TYPE_STRUCT;
             goto start;
         }
 
         container_type_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ENUM);
         if (container_type_token)
         {
-            type = CONTAINER_TYPE_ENUM;
+            type_kind = CONTAINER_TYPE_ENUM;
             goto start;
         }
 
         container_type_token = consume_token_if(pc, TOKEN_ID_KEYWORD_UNION);
         if (container_type_token)
         {
-            type = CONTAINER_TYPE_UNION;
+            type_kind = CONTAINER_TYPE_UNION;
             goto start;
         }
 
         return nullptr;
     start:
         ASTNode* container_node = create_node(pc, NODE_TYPE_CONTAINER_DECL, container_type_token);
-        container_node->data.container_decl.type = type;
+        container_node->data.container_decl.type_kind = type_kind;
 
         Token* token = expect_token(pc, TOKEN_ID_SYMBOL);
-        container_node->data.container_decl.name = token_buffer(token);
         consume_token(pc);
+        ASTNode* type_node = token_type_symbol(pc, token);
+        container_node->data.container_decl.type_node = type_node;
 
         expect_and_consume_token(pc, TOKEN_ID_LEFT_BRACE);
         ASTNodeContainerDeclaration members = parse_container_members(pc);
@@ -416,7 +425,7 @@ namespace AST
             print("Token type: %s\n", token_buffer(type)->items);
             expect_and_consume_token(pc, TOKEN_ID_SEMICOLON);
 
-            ASTNode* type_node = token_symbol(pc, type);
+            ASTNode* type_node = token_type_symbol(pc, type);
 
             ASTNode* variable_node = create_node(pc, NODE_TYPE_VARIABLE_DECLARATION, name);
             variable_node->data.variable_declaration.type = type_node;
@@ -428,31 +437,6 @@ namespace AST
         }
         return nullptr;
     }
-
-//    static inline ASTNode* parse_declaration_statement(ParseContext* pc, )
-//    {
-//        Token* member_name = consume_token_if(pc, TOKEN_ID_SYMBOL);
-//        if (!member_name)
-//        {
-//            return nullptr;
-//        }
-//        Token* type_token = consume_token_if(pc, TOKEN_ID_SYMBOL);
-//        if (!type_token)
-//        {
-//            put_back_token(pc);
-//            return nullptr;
-//        }
-//
-//        ASTNode* result = create_node(pc, NODE_TYPE_PARAM_DECL, member_name);
-//        result->data.struct_field.name = token_buffer(member_name);
-//        result->data.struct_field.type = token_symbol(pc, type_token);
-//#if 0
-//        result->data.struct_field.value = expression;
-//#else
-//        result->data.struct_field.value = nullptr;
-//#endif
-//        return result;
-//    }
 
     static inline ASTNode* parse_struct_union_member(ParseContext* pc)
     {
@@ -472,12 +456,9 @@ namespace AST
 
         ASTNode* result = create_node(pc, NODE_TYPE_STRUCT_FIELD, member_name);
         result->data.struct_field.name = token_buffer(member_name);
-        result->data.struct_field.type = token_symbol(pc, type_token);
-#if 0
-        result->data.struct_field.value = expression;
-#else
+        result->data.struct_field.type = token_type_symbol(pc, type_token);
         result->data.struct_field.value = nullptr;
-#endif
+
         return result;
     }
 
@@ -596,7 +577,7 @@ namespace AST
 
             ASTNode* param = create_node(pc, NODE_TYPE_PARAM_DECL, name);
             param->data.param_decl.name = token_buffer(name);
-            param->data.param_decl.type = token_symbol(pc, type_token);
+            param->data.param_decl.type = token_type_symbol(pc, type_token);
             result.append(param);
 
             token = get_token(pc);
@@ -814,13 +795,16 @@ namespace AST
         }
 
 
-        Buffer* root_buffer = buf_alloc();
-        buf_init_from_str(root_buffer, "Root container");
+        ASTNode* root_node_type = create_node(pc, NODE_TYPE_TYPE, first);
+        root_node_type->data.symbol_expr.symbol = buf_alloc();
+        buf_init_from_str(root_node_type->data.symbol_expr.symbol, "ROOT");
+
         ASTNode* root_node = create_node(pc, NODE_TYPE_CONTAINER_DECL, first);
         root_node->data.container_decl.is_root = true;
         root_node->data.container_decl.declarations = root_members.declarations;
         root_node->data.container_decl.fields = root_members.fields;
-        root_node->data.container_decl.name = root_buffer;
+        root_node->data.container_decl.type_node = root_node_type;
+
         return root_node;
     }
 }

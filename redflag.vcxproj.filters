@@ -16,6 +16,7 @@
     <ClCompile Include="src\panic.cpp" />
     <ClCompile Include="src\red_parser.cpp" />
     <ClCompile Include="src\src_file.cpp" />
+    <ClCompile Include="src\codegen.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\alloc.h" />
@@ -40,6 +41,8 @@
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
     <ClInclude Include="src\config.h" />
+    <ClInclude Include="src\codegen.h" />
+    <ClInclude Include="src\red_llvm.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\redflag.sln" />
