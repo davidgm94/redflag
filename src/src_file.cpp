@@ -7,7 +7,6 @@
 #include "lexer.h"
 #include "red_parser.h"
 #include "ast_render.h"
-#include "buffer.h"
 #include "config.h"
 
 static RedType* get_root_container_type(const char* name, RootStruct* root_struct)

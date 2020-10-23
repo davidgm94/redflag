@@ -2,11 +2,9 @@
 // Created by david on 10/6/20.
 //
 
-#include "logger.h"
-#include "types.h"
+#include "compiler_types.h"
 #include <stdio.h>
 #include <stdarg.h>
-
 
 static const char *log_type_to_str(LogType log_type)
 {

@@ -3,6 +3,7 @@
 //
 
 #include "bigint.h"
+#include <string.h>
 
 static void BigInt_normalize(BigInt *dst)
 {

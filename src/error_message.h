@@ -5,8 +5,7 @@
 #pragma once
 
 #include "types.h"
-#include "list.h"
-#include "buffer.h"
+#include "compiler_types.h"
 
 struct ErrorMessage
 {

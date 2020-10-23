@@ -3,7 +3,6 @@
 //
 
 #include <errno.h>
-#include <assert.h>
 #include <string.h>
 #include "bigint.h"
 #include "bigfloat.h"

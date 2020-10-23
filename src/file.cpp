@@ -2,9 +2,8 @@
 // Created by david on 7/10/20.
 //
 
+#include "compiler_types.h"
 #include "file.h"
-#include "types.h"
-#include "buffer.h"
 #include <stdio.h>
 
 FileLoadResult file_load(const char *name, Buffer* file_buffer)

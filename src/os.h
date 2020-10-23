@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "compiler_types.h"
 #include <inttypes.h>
 
 #if __linux__
@@ -12,8 +13,6 @@
 #else
 #error
 #endif
-
-#include "buffer.h"
 
 #ifdef RED_OS_LINUX
 #define RED_PRI_usize "zu"

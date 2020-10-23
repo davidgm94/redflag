@@ -3,7 +3,6 @@
 //
 
 #include "os.h"
-#include "buffer.h"
 
 #ifdef RED_OS_LINUX
 #define RED_OS_POSIX

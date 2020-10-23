@@ -6,6 +6,7 @@ typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef size_t usize;
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
@@ -93,3 +94,10 @@ void red_panic(const char* file, size_t line, const char* function, const char* 
 #define RED_NOT_IMPLEMENTED red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak()
 #define RED_UNREACHABLE red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak()
 #define RED_PANIC(...) red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__); __debugbreak()
+
+
+#ifdef RED_DEBUG
+#define assert(_expr) if (!(_expr)) { RED_PANIC("Expression " #_expr " is false\n"); }
+#else
+#define assert(_expr)
+#endif

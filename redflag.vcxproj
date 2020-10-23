@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\alloc.cpp" />
+    <ClCompile Include="src\heap.cpp" />
     <ClCompile Include="src\ast_render.cpp" />
     <ClCompile Include="src\bigfloat.cpp" />
     <ClCompile Include="src\bigint.cpp" />
@@ -20,7 +20,6 @@
     <ClCompile Include="src\error_message.cpp" />
     <ClCompile Include="src\file.cpp" />
     <ClCompile Include="src\lexer.cpp" />
-    <ClCompile Include="src\list.cpp" />
     <ClCompile Include="src\logger.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\os.cpp" />
@@ -29,28 +28,18 @@
     <ClCompile Include="src\src_file.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\red_llvm.h" />
     <ClInclude Include="src\codegen.h" />
+    <ClInclude Include="src\red_llvm.h" />
     <ClInclude Include="src\config.h" />
-    <ClInclude Include="src\alloc.h" />
     <ClInclude Include="src\ast_render.h" />
     <ClInclude Include="src\bigfloat.h" />
     <ClInclude Include="src\bigint.h" />
-    <ClInclude Include="src\buffer.h" />
     <ClInclude Include="src\compiler_types.h" />
     <ClInclude Include="src\error_message.h" />
     <ClInclude Include="src\file.h" />
-    <ClInclude Include="src\hash_map.h" />
-    <ClInclude Include="src\heap.h" />
     <ClInclude Include="src\lexer.h" />
-    <ClInclude Include="src\list.h" />
-    <ClInclude Include="src\logger.h" />
-    <ClInclude Include="src\mem.h" />
-    <ClInclude Include="src\memory.h" />
-    <ClInclude Include="src\optional.h" />
     <ClInclude Include="src\os.h" />
     <ClInclude Include="src\red_parser.h" />
-    <ClInclude Include="src\slice.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
   </ItemGroup>
@@ -102,7 +91,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RED_DEBUG;_ITERATOR_DEBUG_LEVEL=0;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -111,6 +100,7 @@
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,6 +124,7 @@
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

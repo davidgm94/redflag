@@ -3,10 +3,9 @@
 //
 
 #include "lexer.h"
-#include "buffer.h"
+#include "compiler_types.h"
 #include "bigint.h"
 #include "bigfloat.h"
-#include "memory.h"
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -1077,7 +1076,7 @@ LexingResult lex(Buffer* buffer)
                     invalid_char_error(&l, c);
                 }
                 l.position -= 1;
-                l.state = LEXER_STATE_FLOAT,
+                l.state = LEXER_STATE_FLOAT;
                 assert(l.current_token->id == TOKEN_ID_INT_LIT);
                 set_token_id(&l, l.current_token, TOKEN_ID_FLOAT_LIT);
                 continue;

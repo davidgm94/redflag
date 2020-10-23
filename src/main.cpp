@@ -6,7 +6,6 @@
 #include "lexer.h"
 #include "file.h"
 #include "src_file.h"
-#include "logger.h"
 #include "os.h"
 #include "config.h"
 
@@ -20,8 +19,23 @@ struct FileManager
 static FileManager handle_main_arguments(s32 argc, char* argv[]);
 static void FileManager_cleanup(FileManager* fm);
 
+#if TIMESTAMPS
+#include <Windows.h>
+f64 timestamp()
+{
+    LARGE_INTEGER freq, counter;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&counter);
+    return f64(counter.QuadPart) / f64(freq.QuadPart);
+}
+#endif
+
 s32 main(s32 argc, char* argv[])
 {
+#if TIMESTAMPS
+    f64 start = timestamp();
+#endif
+
     FileManager fm = handle_main_arguments(argc, argv);
     if (fm.count == 0)
         return 0;
@@ -33,6 +47,11 @@ s32 main(s32 argc, char* argv[])
     }
 
     FileManager_cleanup(&fm);
+#if TIMESTAMPS
+    f64 end = timestamp();
+    print("\nTIME: %Lf ms.\n", end - start);
+    assert(0);
+#endif
     return 0;
 }
 

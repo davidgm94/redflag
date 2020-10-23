@@ -5,7 +5,6 @@
 #include "red_parser.h"
 #include "compiler_types.h"
 #include "lexer.h"
-#include "buffer.h"
 #include "error_message.h"
 #include <stdlib.h>
 #include <stdarg.h>
@@ -173,7 +172,7 @@ namespace AST
     {
         assert(token->id == TOKEN_ID_SYMBOL);
         ASTNode* node = create_node(pc, NODE_TYPE_TYPE, token);
-        node->data.symbol_expr.symbol = token_buffer(token);
+        node->data.type.type = token_buffer(token);
         return node;
     }
 
@@ -796,8 +795,8 @@ namespace AST
 
 
         ASTNode* root_node_type = create_node(pc, NODE_TYPE_TYPE, first);
-        root_node_type->data.symbol_expr.symbol = buf_alloc();
-        buf_init_from_str(root_node_type->data.symbol_expr.symbol, "ROOT");
+        root_node_type->data.type.type = buf_alloc();
+        buf_init_from_str(root_node_type->data.type.type, "ROOT");
 
         ASTNode* root_node = create_node(pc, NODE_TYPE_CONTAINER_DECL, first);
         root_node->data.container_decl.is_root = true;

@@ -7,8 +7,6 @@
 
 #include "types.h"
 #include "compiler_types.h"
-#include "list.h"
-
 void BigInt_init_unsigned(BigInt* dst, u64 x);
 
 void BigInt_init_signed(BigInt* dst, s64 x);
