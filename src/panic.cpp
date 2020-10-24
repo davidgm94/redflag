@@ -7,9 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <Windows.h>
+
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...)
 {
     char buffer[10 * 1024];
+    char buffer2[10 * 1024];
+
     //memset(buffer, 0x00, sizeof(buffer));
 
     va_list args;
@@ -17,7 +21,6 @@ void red_panic(const char* file, size_t line, const char* function, const char* 
     vsprintf(buffer, format, args);
     va_end(args);
 
-    fprintf(stdout, "Panic at %s:%zu: %s -> %s\n", file, line, function, buffer);
-    fprintf(stdout, "\n");
-    fflush(stdout);
+    sprintf(buffer2, "Panic at %s:%zu: %s -> %s\n", file, line, function, buffer);
+    MessageBoxA(GetActiveWindow(), buffer2, "PANIC", MB_ABORTRETRYIGNORE);
 }

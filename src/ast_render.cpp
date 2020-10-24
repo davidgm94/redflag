@@ -61,10 +61,14 @@ static void AST_print_visit(ASTNode** node_ptr, void* context)
 
     for (s32 i = 0; i < ap->indent; i++)
     {
+#if PARSER_VERBOSE
         fprintf(ap->file, " ");
+#endif
     }
 
+#if PARSER_VERBOSE
     fprintf(ap->file, "%s\n", node_type_str(node->type));
+#endif
 
     ASTPrint new_ap;
     new_ap.indent = ap->indent + 2;

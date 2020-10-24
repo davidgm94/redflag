@@ -1,4 +1,6 @@
 #pragma once
+#include "config.h"
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -6,6 +8,7 @@ typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef uintptr_t uptr;
 typedef size_t usize;
 typedef int8_t  s8;
 typedef int16_t s16;
@@ -60,41 +63,46 @@ enum LogType
     LOG_TYPE_WARN,
     LOG_TYPE_ERROR,
 };
-struct TypeInfo
-{
-    size_t size;
-    size_t alignment;
-
-    template<typename T>
-    static constexpr TypeInfo make()
-    {
-        return {sizeof(T), alignof(T)};
-    }
-};
-static constexpr size_t max_filename_length = 512;
-struct Allocation
-{
-    char file[max_filename_length];
-    char function[max_filename_length];
-    char type[max_filename_length];
-    TypeInfo type_info;
-    void* address;
-    size_t line;
-};
-static constexpr size_t MAX_ALLOCS = 1024 * 100;
-struct Allocator
-{
-    Allocation allocations[MAX_ALLOCS];
-    size_t allocation_count;
-};
-static Allocator allocator = {};
+//struct TypeInfo
+//{
+//    size_t size;
+//    size_t alignment;
+//
+//    template<typename T>
+//    static constexpr TypeInfo make()
+//    {
+//        return {sizeof(T), alignof(T)};
+//    }
+//};
+//static constexpr size_t max_filename_length = 512;
+//struct Allocation
+//{
+//    char file[max_filename_length];
+//    char function[max_filename_length];
+//    char type[max_filename_length];
+//    TypeInfo type_info;
+//    void* address;
+//    size_t line;
+//};
+//static constexpr size_t MAX_ALLOCS = 1024 * 100;
+//struct Allocator
+//{
+//    Allocation allocations[MAX_ALLOCS];
+//    size_t allocation_count;
+//};
+//static Allocator allocator = {};
 
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...);
+void os_abort();
 
-#define RED_NOT_IMPLEMENTED red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak()
-#define RED_UNREACHABLE red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak()
-#define RED_PANIC(...) red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__); __debugbreak()
+#define RED_NOT_IMPLEMENTED { red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak(); os_abort(); }
+#define RED_UNREACHABLE { red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak(); os_abort(); }
+#define RED_PANIC(...) {  red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__);  __debugbreak(); os_abort();}
 
+#define A_BYTE 1ULL
+#define KILOBYTE (A_BYTE * 1024)
+#define MEGABYTE (KILOBYTE * 1024)
+#define GIGABYTE (KILOBYTE * 1024)
 
 #ifdef RED_DEBUG
 #define assert(_expr) if (!(_expr)) { RED_PANIC("Expression " #_expr " is false\n"); }

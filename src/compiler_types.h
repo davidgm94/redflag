@@ -3,7 +3,6 @@
 //
 #pragma once
 #include "types.h"
-#include <malloc.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -355,65 +354,20 @@ enum ContainerLayout
 
 void print(const char* format, ...);
 void logger(LogType log_type, const char *format, ...);
-
-static inline void display_allocation_error(Allocation* allocation)
-{
-    logger(LOG_TYPE_ERROR, "Error in %s allocation at (%s:%zu:%s). Size: %zu. Alignment: %zu.\n",
-           allocation->type, allocation->file, allocation->line, allocation->function, allocation->type_info.size, allocation->type_info.alignment);
-}
-
 template <typename T>
-static inline T* register_allocation(const char* type, const char* filename, size_t line, const char* function_name, size_t size)
+static inline T* NEW(size_t element_count)
 {
-    Allocation allocation = {};
-    void* address = malloc(size);
-    strcpy(allocation.file, filename);
-    strcpy(allocation.function, function_name);
-    strcpy(allocation.type, type);
-    allocation.type_info = TypeInfo::make<T>();
-    allocation.address = address;
-    allocation.line = line;
-
-    if (address != nullptr)
-    {
-        memcpy(&allocator.allocations[allocator.allocation_count++], &allocation, sizeof(allocation));
-        return reinterpret_cast<T*>(address);
-    }
-    else
-    {
-        display_allocation_error(&allocation);
-        return nullptr;
-    }
+    return reinterpret_cast<T*>(allocate_chunk(element_count * sizeof(T)));
 }
-
-#define new_elements(type, count) alloc_size<type>(#type, __FILE__, __LINE__, __FUNCTION__, count * sizeof(type))
-#define new_block(type, size) alloc_size<type>(#type, __FILE__, __LINE__, __FUNCTION__, size)
 template <typename T>
-static inline T* alloc_size(const char* type, const char* filename, size_t line, const char* function_name, size_t size)
+static inline T* RENEW(T* old_address, usize element_count)
 {
-    return register_allocation<T>(type, filename, line, function_name, size);
+    return reinterpret_cast<T*>(reallocate_chunk(old_address, element_count * sizeof(T)));
 }
 
-template<typename T>
-static inline T *reallocate_nonzero(T *old, size_t new_count) {
-    T* ptr = nullptr;
-    if (old)
-    {
-        ptr = reinterpret_cast<T*>(realloc(old, new_count * sizeof(T)));
-    }
-    else
-    {
-        ptr = reinterpret_cast<T*>(malloc(new_count * sizeof(T)));
-    }
-    if (ptr)
-    {
-        return ptr;
-    }
-    else
-        RED_PANIC("Reallocation not sucessful!");
-    return nullptr;
-}
-
+void* allocate_chunk(size_t size);
+void* reallocate_chunk(void* allocated_address, usize size);
+void mem_init(void);
 
 static inline bool mem_eql_mem(const char* a, size_t a_len, const char* b, size_t b_len)
 {
@@ -472,173 +426,6 @@ static inline bool mem_ends_with_str(const char* mem, size_t mem_len, const char
 {
     return mem_ends_with_mem(mem, mem_len, str, strlen(str));
 }
-namespace mem {
-
-// initialize mem module before any use
-    void init();
-
-// deinitialize mem module to free memory and print report
-    void deinit();
-
-// isolate system/libc allocators
-    namespace os {
-
-        inline void *malloc(size_t size) {
-#ifndef NDEBUG
-            // make behavior when size == 0 portable
-            if (size == 0)
-                return nullptr;
-#endif
-            auto ptr = ::malloc(size);
-            if (ptr == nullptr)
-                RED_PANIC("allocation failed");
-            return ptr;
-        }
-
-        inline void free(void *ptr) {
-            ::free(ptr);
-        }
-
-        inline void *calloc(size_t count, size_t size) {
-#ifndef NDEBUG
-            // make behavior when size == 0 portable
-            if (count == 0 || size == 0)
-                return nullptr;
-#endif
-            auto ptr = ::calloc(count, size);
-            if (ptr == nullptr)
-                RED_PANIC("allocation failed");
-            return ptr;
-        }
-
-        inline void *realloc(void *old_ptr, size_t size) {
-#ifndef NDEBUG
-            // make behavior when size == 0 portable
-            if (old_ptr == nullptr && size == 0)
-                return nullptr;
-#endif
-            auto ptr = ::realloc(old_ptr, size);
-            if (ptr == nullptr)
-                RED_PANIC("allocation failed");
-            return ptr;
-        }
-
-    } // namespace os
-
-    struct Allocator {
-        virtual void destruct(Allocator *allocator) = 0;
-
-        template <typename T>
-                T *allocate(size_t count) {
-            return reinterpret_cast<T *>(this->internal_allocate(TypeInfo::make<T>(), count));
-        }
-
-        template <typename T>
-                T *allocate_nonzero(size_t count) {
-            return reinterpret_cast<T *>(this->internal_allocate_nonzero(TypeInfo::make<T>(), count));
-        }
-
-        template <typename T>
-        T *reallocate(T *old_ptr, size_t old_count, size_t new_count) {
-            return reinterpret_cast<T *>(this->internal_reallocate(TypeInfo::make<T>(), old_ptr, old_count, new_count));
-        }
-
-        template <typename T>
-        T *reallocate_nonzero(T *old_ptr, size_t old_count, size_t new_count) {
-            return reinterpret_cast<T *>(this->internal_reallocate_nonzero(TypeInfo::make<T>(), old_ptr, old_count, new_count));
-        }
-
-        template<typename T>
-        void deallocate(T *ptr, size_t count) {
-            this->internal_deallocate(TypeInfo::make<T>(), ptr, count);
-        }
-
-        template<typename T>
-        T *create() {
-            return reinterpret_cast<T *>(this->internal_allocate(TypeInfo::make<T>(), 1));
-        }
-
-        template<typename T>
-        void destroy(T *ptr) {
-            this->internal_deallocate(TypeInfo::make<T>(), ptr, 1);
-        }
-
-    protected:
-        virtual void *internal_allocate(const TypeInfo &info, size_t count) = 0;
-        virtual void *internal_allocate_nonzero(const TypeInfo &info, size_t count) = 0;
-        virtual void *internal_reallocate(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) = 0;
-        virtual void *internal_reallocate_nonzero(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) = 0;
-        virtual void internal_deallocate(const TypeInfo &info, void *ptr, size_t count) = 0;
-    };
-
-} // namespace mem
-
-namespace heap {
-
-    struct BootstrapAllocator final : mem::Allocator {
-        void init(const char *name);
-        void deinit();
-        void destruct(Allocator *allocator) {}
-
-    private:
-        void *internal_allocate(const TypeInfo &info, size_t count) final;
-        void *internal_allocate_nonzero(const TypeInfo &info, size_t count) final;
-        void *internal_reallocate(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void *internal_reallocate_nonzero(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void internal_deallocate(const TypeInfo &info, void *ptr, size_t count) final;
-    };
-
-    struct CAllocator final : mem::Allocator {
-        void init(const char *name);
-        void deinit();
-
-        static CAllocator *construct(mem::Allocator *allocator, const char *name);
-        void destruct(mem::Allocator *allocator) final;
-
-
-    private:
-        void *internal_allocate(const TypeInfo &info, size_t count) final;
-        void *internal_allocate_nonzero(const TypeInfo &info, size_t count) final;
-        void *internal_reallocate(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void *internal_reallocate_nonzero(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void internal_deallocate(const TypeInfo &info, void *ptr, size_t count) final;
-
-    };
-
-//
-// arena allocator
-//
-// - allocations are backed by the underlying allocator's memory
-// - allocations are N:1 relationship to underlying allocations
-// - dellocations are noops
-// - deinit() releases all underlying memory
-//
-    struct ArenaAllocator final : mem::Allocator {
-        void init(Allocator *backing, const char *name);
-        void deinit();
-
-        static ArenaAllocator *construct(mem::Allocator *allocator, mem::Allocator *backing, const char *name);
-        void destruct(mem::Allocator *allocator) final;
-
-
-    private:
-        void *internal_allocate(const TypeInfo &info, size_t count) final;
-        void *internal_allocate_nonzero(const TypeInfo &info, size_t count) final;
-        void *internal_reallocate(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void *internal_reallocate_nonzero(const TypeInfo &info, void *old_ptr, size_t old_count, size_t new_count) final;
-        void internal_deallocate(const TypeInfo &info, void *ptr, size_t count) final;
-
-        struct Impl;
-        Impl *impl;
-    };
-
-    extern BootstrapAllocator bootstrap_allocator_state;
-    extern mem::Allocator &bootstrap_allocator;
-
-    extern CAllocator c_allocator_state;
-    extern mem::Allocator &c_allocator;
-
-} // namespace heap
 
 template<typename T>
 struct RedList
@@ -649,7 +436,7 @@ struct RedList
 
     void deinit()
     {
-        free(items);
+        RED_NOT_IMPLEMENTED;
     }
     void append(T item)
     {
@@ -716,7 +503,7 @@ struct RedList
         }
         if (better_capacity != capacity)
         {
-            items = reallocate_nonzero(items, better_capacity);
+            items = RENEW(items, better_capacity);
             capacity = better_capacity;
         }
     }
@@ -727,61 +514,71 @@ using List = RedList<T>;
 using Buffer = List<char>;
 
 
+static inline Buffer buf_create_in_stack()
+{
+    return {};
+}
+
 Buffer *buf_sprintf(const char *format, ...)
 __attribute__ ((format (printf, 1, 2)));
 
-static inline int buf_len(Buffer *buf) {
+static inline int buf_len(Buffer *buf)
+{
     assert(buf->length);
     return buf->length - 1;
 }
 
-static inline char *buf_ptr(Buffer *buf) {
+static inline char *buf_ptr(Buffer *buf)
+{
     assert(buf->length);
     return buf->items;
 }
 
-static inline void buf_resize(Buffer *buf, int new_len) {
+static inline void buf_resize(Buffer *buf, int new_len)
+{
     buf->resize(new_len + 1);
-    size_t len = buf_len(buf);
-    buf->items[len] = 0;
+    buf->at(buf_len(buf)) = 0;
 }
 
-
-static inline Buffer *buf_alloc(void) {
-    Buffer *buf = new_elements(Buffer, 1);
-    memset(buf, 0, sizeof(Buffer));
-    buf_resize(buf, 0);
+static inline Buffer *buf_alloc(void)
+{
+    Buffer* buf = NEW<Buffer>(1);
     return buf;
 }
 
-static inline Buffer *buf_alloc_fixed(int size) {
-    Buffer *buf = new_elements(Buffer, 1);
-    memset(buf, 0, sizeof(Buffer));
+static inline Buffer *buf_alloc_fixed(int size)
+{
+    Buffer *buf = NEW<Buffer>(1);
     buf_resize(buf, size);
     return buf;
 }
 
-static inline void buf_deinit(Buffer *buf) {
+static inline void buf_deinit(Buffer *buf)
+{
     buf->deinit();
 }
 
-static inline void buf_init_from_mem(Buffer *buf, const char *ptr, int len) {
-    memset(buf, 0, sizeof(Buffer));
+static inline void buf_init_from_mem(Buffer *buf, const char *ptr, int len)
+{
+    assert(len != SIZE_MAX);
     buf->resize(len + 1);
     memcpy(buf_ptr(buf), ptr, len);
     buf->at(buf_len(buf)) = 0;
 }
 
-static inline void buf_init_from_str(Buffer *buf, const char *str) {
+static inline void buf_init_from_str(Buffer *buf, const char *str)
+{
     buf_init_from_mem(buf, str, strlen(str));
 }
 
-static inline void buf_init_from_buf(Buffer *buf, Buffer *other) {
+static inline void buf_init_from_buf(Buffer *buf, Buffer *other)
+{
     buf_init_from_mem(buf, buf_ptr(other), buf_len(other));
 }
 
-static inline Buffer *buf_create_from_mem(const char *ptr, int len) {
-    Buffer *buf = new_elements(Buffer, 1);
+static inline Buffer *buf_create_from_mem(const char *ptr, int len)
+{
+    Buffer* buf = NEW<Buffer>(1);
     buf_init_from_mem(buf, ptr, len);
     return buf;
 }
@@ -796,7 +593,7 @@ static inline Buffer *buf_slice(Buffer *in_buf, int start, int end) {
     assert(end >= 0);
     assert(start < buf_len(in_buf));
     assert(end <= buf_len(in_buf));
-    Buffer *out_buf = new_elements(Buffer, 1);
+    Buffer* out_buf = NEW<Buffer>(1);
     out_buf->resize(end - start + 1);
     memcpy(buf_ptr(out_buf), buf_ptr(in_buf) + start, end - start);
     (*out_buf)[buf_len(out_buf)] = 0;
@@ -894,7 +691,7 @@ public:
                 return;
             } else {
                 _indexes_len = 32;
-                _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len);
+                _index_bytes = NEW<uint8_t>(_indexes_len);
                 _max_distance_from_start_index = 0;
                 for (size_t i = 0; i < _entries.length; i += 1) {
                     Entry *entry = &_entries.items[i];
@@ -906,12 +703,13 @@ public:
 
         // if we would get too full (60%), double the indexes size
         if ((_entries.length + 1) * 5 >= _indexes_len * 3) {
-            heap::c_allocator.deallocate(_index_bytes,
-                                         _indexes_len * capacity_index_size(_indexes_len));
+            // TODO: FREE
+            _index_bytes = nullptr;
             _indexes_len *= 2;
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes the bytes, setting them all empty.
-            _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+            //_index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+            _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
             _max_distance_from_start_index = 0;
             for (size_t i = 0; i < _entries.length; i += 1) {
                 Entry *entry = &_entries.items[i];
@@ -1041,7 +839,8 @@ private:
             _indexes_len = capacity * 5 / 3;
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes _index_bytes which sets them all to empty.
-            _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+            // _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+            _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
         } else {
             _index_bytes = nullptr;
         }

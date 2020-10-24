@@ -7,11 +7,11 @@
 #include "lexer.h"
 #include "red_parser.h"
 #include "ast_render.h"
-#include "config.h"
+#include "codegen.h"
 
 static RedType* get_root_container_type(const char* name, RootStruct* root_struct)
 {
-    RedType* entry = new_elements(RedType, 1);
+    RedType* entry = NEW<RedType>(1);
     entry->id = RED_TYPE_STRUCT;
     buf_init_from_str(&entry->name, name);
     entry->data.structure.root_struct = root_struct;
@@ -32,9 +32,9 @@ void add_source_file(Buffer*source_code, const char* path)
     print_tokens(source_code, &lexing_result.tokens);
 #endif
 
-    Buffer buffer;
+    Buffer buffer = {};
     buf_init_from_str(&buffer, "main");
-    RootStruct* root_struct = new_elements(RootStruct, 1);
+    RootStruct* root_struct = NEW<RootStruct>(1);
     root_struct->path = buf_alloc_fixed(strlen(path));
     buf_init_from_str(root_struct->path, path);
     root_struct->line_offsets = &lexing_result.line_offsets;
@@ -44,4 +44,12 @@ void add_source_file(Buffer*source_code, const char* path)
     assert(root_node);
     assert(root_node->type == NODE_TYPE_CONTAINER_DECL);
     ast_print(stdout, root_node, 0);
+    CodeGenConfig cg_cfg = {};
+    cg_cfg.is_static = true;
+    cg_cfg.release = false;
+    cg_cfg.strip_debug_symbols = false;
+
+    Buffer output_file = {};
+    buf_init_from_str(&output_file, "test");
+    red_codegen_and_link(root_node, &cg_cfg, source_code, &output_file);
 }

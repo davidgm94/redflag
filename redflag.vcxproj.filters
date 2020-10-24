@@ -15,7 +15,7 @@
     <ClCompile Include="src\red_parser.cpp" />
     <ClCompile Include="src\src_file.cpp" />
     <ClCompile Include="src\codegen.cpp" />
-    <ClCompile Include="src\heap.cpp" />
+    <ClCompile Include="src\allocator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ast_render.h" />

@@ -92,7 +92,7 @@ namespace codegen
     static inline void add_types(CodeGen* g)
     {
         {
-            TypeTableEntry* entry = new_elements(TypeTableEntry, 1);
+            TypeTableEntry* entry = NEW<TypeTableEntry>(1);
             entry->id = CODEGEN_TYPE_ID_U8;
             entry->type_ref = LLVMInt8Type();
             buf_init_from_str(&entry->name, "u8");
@@ -101,14 +101,15 @@ namespace codegen
 
         }
         {
-            TypeTableEntry* entry = new_elements(TypeTableEntry, 1);
+            TypeTableEntry* entry = NEW<TypeTableEntry>(1);
             entry->id = CODEGEN_TYPE_ID_S32;
             buf_init_from_str(&entry->name, "s32");
             entry->di_type = g->dbuilder->createBasicType(buf_ptr(&entry->name), 32, 32);
             g->type_table.put(&entry->name, *entry);
+            g->invalid_type_entry = entry;
         }
         {
-            TypeTableEntry* entry = new_elements(TypeTableEntry, 1);
+            TypeTableEntry* entry = NEW<TypeTableEntry>(1);
             entry->id = CODEGEN_TYPE_UNREACHABLE;
             entry->type_ref = LLVMVoidType();
             buf_init_from_str(&entry->name, "unreachable");
@@ -131,7 +132,7 @@ namespace codegen
     static inline void resolve_type_and_recurse(CodeGen* g, ASTNode* node)
     {
         assert(!node->codegen_node);
-        node->codegen_node = new_elements(CodeGenNode, 1);
+        node->codegen_node = NEW<CodeGenNode>(1);
         TypeNode* type_node = &node->codegen_node->data.type_node;
 
         // TODO: CONSIDER PRIMITIVE VS PTR
@@ -170,7 +171,7 @@ namespace codegen
                 }
                 else
                 {
-                    FnTableEntry* fn_table_entry = new_elements(FnTableEntry, 1);
+                    FnTableEntry* fn_table_entry = NEW<FnTableEntry>(1);
                     fn_table_entry->proto_node = proto_node;
                     fn_table_entry->fn_def_node = node;
                     g->fn_table.put(proto_name, fn_table_entry);
@@ -261,8 +262,8 @@ namespace codegen
                 {
                     FnTableEntry* fn_table_entry = entry->value;
                     assert(fn_table_entry->proto_node->type == NODE_TYPE_FN_PROTO);
-                    usize expected_param_count = fn_table_entry->proto_node->data.fn_prototype.parameters.length;
-                    usize actual_param_count = fn_table_entry->proto_node->data.fn_call_expr.parameters.length;
+                    s32 expected_param_count = fn_table_entry->proto_node->data.fn_prototype.parameters.length;
+                    s32 actual_param_count = fn_table_entry->proto_node->data.fn_call_expr.parameters.length;
 
                     if (expected_param_count != actual_param_count)
                     {
@@ -322,11 +323,233 @@ namespace codegen
         
         analyze_node(g, g->root);
     }
+
+    static inline LLVMValueRef gen_expr(CodeGen* g, ASTNode* expr_node)
+    {
+        RED_NOT_IMPLEMENTED;
+        return nullptr;
+    }
+
+    static inline LLVMTypeRef to_llvm_type(ASTNode* type_node)
+    {
+        assert(type_node->type == NODE_TYPE_TYPE);
+        assert(type_node->codegen_node);
+        assert(type_node->codegen_node->data.type_node.entry);
+
+        return type_node->codegen_node->data.type_node.entry->type_ref;
+    }
+
+    static inline llvm::DIType* to_llvm_debug_type(ASTNode* type_node)
+    {
+        assert(type_node->type == NODE_TYPE_TYPE);
+        assert(type_node->codegen_node);
+        assert(type_node->codegen_node->data.type_node.entry);
+
+        return type_node->codegen_node->data.type_node.entry->di_type;
+    }
+
+    static inline llvm::DISubroutineType* create_di_function_type(CodeGen* g, ASTNodeFunctionPrototype* fn_proto, llvm::DIFile* di_file)
+    {
+        llvm::SmallVector<llvm::Metadata*, 8> types;
+
+        llvm::DIType* return_type = to_llvm_debug_type(fn_proto->return_type);
+        types.push_back(return_type);
+
+        for (s32 i = 0; i < fn_proto->parameters.length; i++)
+        {
+            ASTNode* param_node = fn_proto->parameters.at(i);
+            llvm::DIType* param_type = to_llvm_debug_type(param_node);
+            types.push_back(param_type);
+        }
+
+        return g->dbuilder->createSubroutineType(g->dbuilder->getOrCreateTypeArray(types));
+    }
+
+    static inline void add_debug_source_node(CodeGen* g, ASTNode* node)
+    {
+        llvm::unwrap(g->builder)->SetCurrentDebugLocation(
+            llvm::DebugLoc::get(node->line + 1, node->column + 1, g->block_scopes.last())
+            );
+    }
+
+    static inline void gen_block(CodeGen* g, ASTNode* block_node)
+    {
+        assert(block_node->type == NODE_TYPE_BLOCK);
+
+        llvm::DILexicalBlock* di_block = g->dbuilder->createLexicalBlock(g->block_scopes.last(),
+            g->di_file, block_node->line + 1, block_node->column + 1);
+        g->block_scopes.append(di_block);
+
+        for (s32 i = 0; i < block_node->data.block.statements.length; i++)
+        {
+            ASTNode* statement_node = block_node->data.block.statements.at(i);
+
+            switch (statement_node->type)
+            {
+                case NODE_TYPE_RETURN_EXPR:
+                {
+                    ASTNode* expr_node = statement_node->data.return_expr.expression;
+                    LLVMValueRef value = gen_expr(g, expr_node);
+                    
+                    add_debug_source_node(g, statement_node);
+                    LLVMBuildRet(g->builder, value);
+                    break;
+                }
+
+                case NODE_TYPE_BIN_OP_EXPR:
+                {
+                    gen_expr(g, statement_node);
+                    break;
+                }
+                default:
+                    RED_UNREACHABLE;
+            }
+        }
+
+        g->block_scopes.pop();
+    }
+
+    static inline void gen_machine_code(CodeGen* g)
+    {
+        assert(!g->errors.length);
+
+        Buffer* producer = buf_sprintf("red %s", RED_VERSION_STRING);
+        bool is_optimized = g->build_type == CODEGEN_BUILD_TYPE_RELEASE;
+        const char* flags = "";
+        u32 runtime_version = 0;
+        llvm::DIFile* input_file = g->dbuilder->createFile(g->input_file.items, g->input_directory.items);
+        g->compile_unit = g->dbuilder->createCompileUnit(llvm::dwarf::DW_LANG_C99, input_file,
+            producer->items, is_optimized, flags, runtime_version);
+        g->block_scopes.append(g->compile_unit);
+        //g->di_file = 
+
+        auto it = g->fn_table.entry_iterator();
+        for (;;)
+        {
+            auto* entry = it.next();
+            if (!entry)
+            {
+                break;
+            }
+
+            FnTableEntry* fn_table_entry = entry->value;
+
+            ASTNode* proto_node = fn_table_entry->proto_node;
+            assert(proto_node->type == NODE_TYPE_FN_PROTO);
+            ASTNodeFunctionPrototype* fn_proto = &proto_node->data.fn_prototype;
+
+            LLVMTypeRef return_type = to_llvm_type(fn_proto->return_type);
+            LLVMTypeRef* parameter_types = NEW<LLVMTypeRef>(fn_proto->parameters.length);
+
+            for (usize i = 0; i < fn_proto->parameters.length; i++)
+            {
+                ASTNode* param_node = fn_proto->parameters.at(i);
+                assert(param_node->type == NODE_TYPE_PARAM_DECL);
+                ASTNode* type_node = param_node->data.param_decl.type;
+                parameter_types[i] = to_llvm_type(type_node);
+            }
+
+            LLVMTypeRef function_type = LLVMFunctionType(return_type, parameter_types, fn_proto->parameters.length, false);
+            LLVMValueRef fn = LLVMAddFunction(g->module, buf_ptr(fn_proto->name), function_type);
+
+            LLVMSetLinkage(fn, fn_table_entry->internal_linkage ? LLVMPrivateLinkage : LLVMExternalLinkage);
+
+            LLVMSetFunctionCallConv(fn, LLVMCCallConv);
+
+            fn_table_entry->fn_value = fn;
+        }
+
+        for (usize i = 0; i < g->fn_definitions.length; i++)
+        {
+            FnTableEntry* fn_table_entry = g->fn_definitions.at(i);
+            ASTNode* fn_def_node = fn_table_entry->fn_def_node;
+            LLVMValueRef fn = fn_table_entry->fn_value;
+
+            ASTNode* proto_node = fn_table_entry->proto_node;
+            assert(proto_node->type == NODE_TYPE_FN_PROTO);
+            ASTNodeFunctionPrototype* fn_proto = &proto_node->data.fn_prototype;
+
+            llvm::DIScope* fn_scope = g->di_file;
+            u32 line_number = fn_def_node->line + 1;
+            u32 scope_line = line_number;
+            bool is_definition = true;
+            u32 flags = 0;
+            llvm::Function* unwrapped_function = reinterpret_cast<llvm::Function*>(llvm::unwrap(fn));
+            llvm::DISubprogram* subprogram = g->dbuilder->createFunction(fn_scope,
+                buf_ptr(fn_proto->name), "", g->di_file, line_number, create_di_function_type(g, fn_proto, g->di_file),
+                scope_line);
+
+            g->block_scopes.append(subprogram);
+
+            LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(fn, "entry");
+            LLVMPositionBuilderAtEnd(g->builder, entry_block);
+
+            gen_block(g, fn_def_node->data.fn_definition.body);
+
+            g->block_scopes.pop();
+        }
+
+        assert(!g->errors.length);
+
+        g->dbuilder->finalize();
+        LLVMDumpModule(g->module);
+
+        char* error = nullptr;
+        LLVMVerifyModule(g->module, LLVMAbortProcessAction, &error);
+    }
+
+    static inline void link(CodeGen* g, const char* out_file)
+    {
+        LLVMPassRegistryRef registry = LLVMGetGlobalPassRegistry();
+        LLVMInitializeCore(registry);
+        LLVMInitializeCodeGen(registry);
+        red_llvm::initialize_loop_strength_reduce_pass(registry);
+        red_llvm::initialize_lower_intrinsics_pass(registry);
+        red_llvm::initialize_unreachable_block_elim_pass(registry);
+
+        Buffer outfile_o = {};
+        buf_init_from_str(&outfile_o, out_file);
+        buf_append_str(&outfile_o, ".o");
+
+        char* error_message = nullptr;
+        if (LLVMTargetMachineEmitToFile(g->target_machine, g->module, buf_ptr(&outfile_o), LLVMObjectFile, &error_message))
+        {
+            RED_PANIC("Unable to write obj file %s!", error_message);
+        }
+
+        List<const char*> arguments = { };
+        
+        if (g->is_static)
+        {
+            arguments.append("-static");
+        }
+
+        arguments.append("-o");
+        arguments.append(out_file);
+        arguments.append((const char*)buf_ptr(&outfile_o));
+
+        auto it = g->link_table.entry_iterator();
+        for (;;)
+        {
+            auto* entry = it.next();
+            if (!entry)
+            {
+                break;
+            }
+
+            Buffer* argument = buf_sprintf("-l%s", buf_ptr(entry->key));
+            arguments.append(buf_ptr(argument));
+        }
+        
+        // Implement linker call
+        RED_NOT_IMPLEMENTED;
+    }
 }
 
 void red_codegen_and_link(ASTNode* root_node, CodeGenConfig* config, Buffer* input_file, Buffer* output_file)
 {
-    CodeGen* g = new_elements(CodeGen, 1);
+    CodeGen* g = NEW<CodeGen>(1);
+    memset(g, 0, sizeof(CodeGen));
     g->root = root_node;
     g->fn_table.init(32);
     g->str_table.init(32);
@@ -351,5 +574,7 @@ void red_codegen_and_link(ASTNode* root_node, CodeGenConfig* config, Buffer* inp
         exit(1);
     }
 
-    // CODEGEN
+    codegen::gen_machine_code(g);
+
+    codegen::link(g, buf_ptr(output_file));
 }

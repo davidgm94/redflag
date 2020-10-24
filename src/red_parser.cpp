@@ -74,7 +74,7 @@ namespace AST
 
     static inline ASTNode* create_node_no_line_info(ParseContext* pc, NodeType type)
     {
-        ASTNode* node = new_elements(ASTNode, 1);
+        ASTNode* node = NEW<ASTNode>(1);
         node->type = type;
         node->owner = pc->owner;
         return node;
@@ -111,7 +111,10 @@ namespace AST
     static inline Token* consume_token(ParseContext* pc)
     {
         Token* token = get_token(pc);
+
+#if PARSER_VERBOSE
         PRINT_TOKEN_WITH_PREFIX("Consuming", token, symbol_name);
+#endif
         pc->current_token += 1;
         return token;
     }
@@ -152,9 +155,11 @@ namespace AST
         Token* wrong_token = get_token(pc);
         pc->current_token -= 1;
         Token* good_token = get_token(pc);
+#if PARSER_VERBOSE
         Buffer* wrong_symbol = wrong_token->id == TOKEN_ID_SYMBOL ? token_buffer(wrong_token) : nullptr;
         Buffer* good_symbol = good_token->id == TOKEN_ID_SYMBOL ? token_buffer(good_token) : nullptr;
         print("Current token #%zu: %s name: %s ******** Putting back token #%zu: %s name: %s\n", pc->current_token + 1, token_name(wrong_token->id), wrong_symbol ? wrong_symbol->items : "not a symbol", pc->current_token, token_name(good_token->id), good_symbol ? good_symbol->items : "not a symbol");
+#endif
     }
 
 
@@ -420,8 +425,10 @@ namespace AST
             consume_token(pc);
             Token* type = expect_token(pc, TOKEN_ID_SYMBOL);
             consume_token(pc);
+#if PARSER_VERBOSE
             print("Token name: %s\n", token_buffer(name)->items);
             print("Token type: %s\n", token_buffer(type)->items);
+#endif
             expect_and_consume_token(pc, TOKEN_ID_SEMICOLON);
 
             ASTNode* type_node = token_type_symbol(pc, type);
@@ -708,12 +715,16 @@ namespace AST
         Token* token = get_token(pc);
         if (is_container_keyword(token->id))
         {
+#if PARSER_VERBOSE
             print("[TOKEN PARSE END] Parsed container declaration\n");
+#endif
             return parse_container_declaration(pc);
         }
         else if (is_variable_keyword(token->id))
         {
+#if PARSER_VERBOSE
             print("[TOKEN PARSE END] Parsed variable declaration\n");
+#endif
             return parse_variable_declaration(pc);
         }
         else
@@ -721,25 +732,33 @@ namespace AST
             ASTNode* symbol_node = parse_struct_union_member(pc);
             if (symbol_node)
             {
+#if PARSER_VERBOSE
                 print("[TOKEN PARSE END] Parsed container field\n");
+#endif
                 return symbol_node;
             }
             
             symbol_node = parse_function_declaration(pc);
             if (symbol_node)
             {
+#if PARSER_VERBOSE
                 print("[TOKEN PARSE END] Parsed function declaration\n");
+#endif
                 return symbol_node;
             }
 
             symbol_node = parse_symbol_assignment(pc);
             if (symbol_node)
             {
+#if PARSER_VERBOSE
                 print("[TOKEN PARSE END] Parsed symbol assignment\n");
+#endif
                 return symbol_node;
             }
 
+#if PARSER_VERBOSE
             print("[TOKEN PARSE END] Failed to parse!\n");
+#endif
             return symbol_node;
         }
 
@@ -764,7 +783,9 @@ namespace AST
                 {
                     break;
                 }
+#if PARSER_VERBOSE
                 PRINT_TOKEN_WITH_PREFIX("[TOKEN PARSE START] Trying to parse", token, symbol_name);
+#endif
             }
             ASTNode* top_level_declaration = parse_top_level_declaration(pc);
             if (top_level_declaration)

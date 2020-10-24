@@ -7,7 +7,6 @@
 #include "file.h"
 #include "src_file.h"
 #include "os.h"
-#include "config.h"
 
 struct FileManager
 {
@@ -35,10 +34,12 @@ s32 main(s32 argc, char* argv[])
 #if TIMESTAMPS
     f64 start = timestamp();
 #endif
+    os_init(mem_init);
 
     FileManager fm = handle_main_arguments(argc, argv);
     if (fm.count == 0)
         return 0;
+
 
     for (size_t i = 0; i < fm.count; i++)
     {
@@ -50,7 +51,6 @@ s32 main(s32 argc, char* argv[])
 #if TIMESTAMPS
     f64 end = timestamp();
     print("\nTIME: %Lf ms.\n", end - start);
-    assert(0);
 #endif
     return 0;
 }
@@ -82,8 +82,8 @@ static FileManager handle_main_arguments(s32 argc, char* argv[])
     // TODO: check that file names are valid
 
     size_t file_count = argc - 1;
-    fm.buffers = new_elements(Buffer, file_count);
-    fm.filenames = new_elements(char*, file_count);
+    fm.buffers = NEW<Buffer>(file_count);
+    fm.filenames = NEW<char*>(file_count);
     if (fm.buffers)
     {
         fm.count = file_count;

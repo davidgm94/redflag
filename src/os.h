@@ -31,5 +31,9 @@
 #define RED_OS_SEP_CHAR '/'
 #endif
 
+void os_init(void(*mem_init)(void));
 Error os_get_cwd(Buffer* out_cwd);
-
+void* os_ask_virtual_memory_block(size_t block_bytes);
+void* os_ask_virtual_memory_block_with_address(void* target_address, size_t block_bytes);
+void* os_ask_heap_memory(size_t size);
+size_t os_get_page_size(void);

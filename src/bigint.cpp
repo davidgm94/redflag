@@ -3,7 +3,6 @@
 //
 
 #include "bigint.h"
-#include <string.h>
 
 static void BigInt_normalize(BigInt *dst)
 {
@@ -80,7 +79,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
         }
         size_t i = 1;
         u64 first_digit = dst->data.digit;
-        dst->data.digits = new_elements(u64, max(op1->digit_count, op2->digit_count));
+        dst->data.digits = NEW<u64>(max(op1->digit_count, op2->digit_count));
         dst->data.digits[0] = first_digit;
 
         for(;;)
@@ -162,7 +161,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
     }
 
     u64 first_digit = dst->data.digit;
-    dst->data.digits = new_elements(u64, bigger_op->digit_count);
+    dst->data.digits = NEW<u64>(bigger_op->digit_count);
     dst->data.digits[0] = first_digit;
     size_t i = 1;
 
@@ -218,7 +217,7 @@ void BigInt_init_bigint(BigInt *dst, const BigInt *src)
     }
     dst->is_negative = src->is_negative;
     dst->digit_count = src->digit_count;
-    dst->data.digits = new_elements(u64, dst->digit_count);
+    dst->data.digits = NEW<u64>(dst->digit_count);
 
     memcpy(dst->data.digits, src->data.digits, sizeof(u64) * dst->digit_count);
 }
