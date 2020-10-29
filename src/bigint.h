@@ -25,11 +25,11 @@ static inline const u64* bigint_ptr(const BigInt* big_int)
 {
     if (big_int->digit_count == 1)
     {
-        return &big_int->data.digit;
+        return &big_int->digit;
     }
     else
     {
-        return big_int->data.digits;
+        return big_int->digits;
     }
 }
 

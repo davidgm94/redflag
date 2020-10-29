@@ -26,7 +26,7 @@ static void BigInt_normalize(BigInt *dst)
         dst->digit_count = last_non_zero_digit + 1;
         if (last_non_zero_digit == 0)
         {
-            dst->data.digit = digits[0];
+            dst->digit = digits[0];
         }
     }
 }
@@ -39,7 +39,7 @@ void BigInt_init_unsigned(BigInt* dst, u64 x)
         dst->is_negative = false;
     }
     dst->digit_count = 1;
-    dst->data.digit = x;
+    dst->digit = x;
     dst->is_negative = false;
 }
 
@@ -70,7 +70,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
 
         const u64* op1_digits = bigint_ptr(op1);
         const u64* op2_digits = bigint_ptr(op2);
-        bool overflow = add_u64_overflow(op1_digits[0], op2_digits[0], &dst->data.digit);
+        bool overflow = add_u64_overflow(op1_digits[0], op2_digits[0], &dst->digit);
         if (overflow == 0 && op1->digit_count == 1 && op2->digit_count == 1)
         {
             dst->digit_count = 1;
@@ -78,9 +78,9 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
             return;
         }
         size_t i = 1;
-        u64 first_digit = dst->data.digit;
-        dst->data.digits = NEW<u64>(max(op1->digit_count, op2->digit_count));
-        dst->data.digits[0] = first_digit;
+        u64 first_digit = dst->digit;
+        dst->digits = NEW<u64>(max(op1->digit_count, op2->digit_count));
+        dst->digits[0] = first_digit;
 
         for(;;)
         {
@@ -102,7 +102,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
                 overflow += add_u64_overflow(x, digit, &x);
             }
 
-            dst->data.digits[i] = x;
+            dst->digits[i] = x;
             i+= 1;
 
             if (!found_digit)
@@ -152,7 +152,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
 
     const u64* bigger_op_digits = bigint_ptr(bigger_op);
     const u64* smaller_op_digits = bigint_ptr(smaller_op);
-    u64 overflow = sub_u64_overflow(bigger_op_digits[0], smaller_op_digits[0], &dst->data.digit);
+    u64 overflow = sub_u64_overflow(bigger_op_digits[0], smaller_op_digits[0], &dst->digit);
     if (overflow == 0 && bigger_op->digit_count == 1 && smaller_op->digit_count == 1)
     {
         dst->digit_count = 1;
@@ -160,9 +160,9 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
         return;
     }
 
-    u64 first_digit = dst->data.digit;
-    dst->data.digits = NEW<u64>(bigger_op->digit_count);
-    dst->data.digits[0] = first_digit;
+    u64 first_digit = dst->digit;
+    dst->digits = NEW<u64>(bigger_op->digit_count);
+    dst->digits[0] = first_digit;
     size_t i = 1;
 
     for (;;)
@@ -183,7 +183,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
             found_digit = true;
             overflow += 1;
         }
-        dst->data.digits[i] = x;
+        dst->digits[i] = x;
         i += 1;
 
         if (!found_digit || i >= bigger_op->digit_count)
@@ -191,7 +191,7 @@ void BigInt_add(BigInt *dst, const BigInt *op1, const BigInt *op2)
             break;
         }
     }
-    assert(overflow == 0);
+    redassert(overflow == 0);
     dst->digit_count = i;
     BigInt_normalize(dst);
 }
@@ -211,15 +211,15 @@ void BigInt_init_bigint(BigInt *dst, const BigInt *src)
     else if (src->digit_count == 1)
     {
         dst->digit_count = 1;
-        dst->data.digit = src->data.digit;
+        dst->digit = src->digit;
         dst->is_negative = src->is_negative;
         return;
     }
     dst->is_negative = src->is_negative;
     dst->digit_count = src->digit_count;
-    dst->data.digits = NEW<u64>(dst->digit_count);
+    dst->digits = NEW<u64>(dst->digit_count);
 
-    memcpy(dst->data.digits, src->data.digits, sizeof(u64) * dst->digit_count);
+    memcpy(dst->digits, src->digits, sizeof(u64) * dst->digit_count);
 }
 
 void BigInt_negate(BigInt *dst, const BigInt *op)

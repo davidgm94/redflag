@@ -12,14 +12,14 @@ Buffer *buf_vprintf(const char *format, va_list ap)
     va_copy(ap2, ap);
 
     int len1 = vsnprintf(nullptr, 0, format, ap);
-    assert(len1 >= 0);
+    redassert(len1 >= 0);
 
     size_t required_size = len1 + 1;
 
     Buffer* buf = buf_alloc_fixed(len1);
 
     int len2 = vsnprintf(buf_ptr(buf), required_size, format, ap2);
-    assert(len2 == len1);
+    redassert(len2 == len1);
 
     va_end(ap2);
 
@@ -35,13 +35,13 @@ Buffer* buf_sprintf(const char *format, ...) {
 }
 
 void buf_appendf(Buffer *buf, const char *format, ...) {
-    assert(buf->length);
+    redassert(buf->length);
     va_list ap, ap2;
     va_start(ap, format);
     va_copy(ap2, ap);
 
     int len1 = vsnprintf(nullptr, 0, format, ap);
-    assert(len1 >= 0);
+    redassert(len1 >= 0);
 
     size_t required_size = len1 + 1;
 
@@ -50,14 +50,14 @@ void buf_appendf(Buffer *buf, const char *format, ...) {
     buf_resize(buf, orig_len + len1);
 
     int len2 = vsnprintf(buf_ptr(buf) + orig_len, required_size, format, ap2);
-    assert(len2 == len1);
+    redassert(len2 == len1);
 
     va_end(ap2);
     va_end(ap);
 }
 
 bool buf_eql_str(Buffer* buf, const char* str) {
-    assert(buf->length);
+    redassert(buf->length);
     return buf_eql_mem(buf, str, strlen(str));
 }
 
@@ -67,7 +67,7 @@ bool buf_eql_buf(Buffer *buf, Buffer *other) {
 }
 
 uint32_t buf_hash(Buffer *buf) {
-    assert(buf->length);
+    redassert(buf->length);
     size_t interval = buf->length / 256;
     if (interval == 0)
         interval = 1;

@@ -95,6 +95,8 @@ enum LogType
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...);
 void os_abort();
 
+f64 os_timestamp();
+
 #define RED_NOT_IMPLEMENTED { red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak(); os_abort(); }
 #define RED_UNREACHABLE { red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak(); os_abort(); }
 #define RED_PANIC(...) {  red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__);  __debugbreak(); os_abort();}
@@ -105,7 +107,7 @@ void os_abort();
 #define GIGABYTE (KILOBYTE * 1024)
 
 #ifdef RED_DEBUG
-#define assert(_expr) if (!(_expr)) { RED_PANIC("Expression " #_expr " is false\n"); }
+#define redassert(_expr) if (!(_expr)) { RED_PANIC("Expression " #_expr " is false\n"); }
 #else
-#define assert(_expr)
+#define redassert(_expr)
 #endif

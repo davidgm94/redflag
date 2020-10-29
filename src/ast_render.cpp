@@ -2,6 +2,7 @@
 // Created by david on 10/16/20.
 //
 
+#if 0
 #include "ast_render.h"
 #include "compiler_types.h"
 #include "red_parser.h"
@@ -88,3 +89,4 @@ void ast_render(FILE* file, ASTNode* node, s32 indent_size)
 {
 
 }
+#endif

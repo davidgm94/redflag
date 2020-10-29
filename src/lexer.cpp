@@ -8,6 +8,7 @@
 #include "bigfloat.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include "os.h"
 
 #define WHITESPACE \
          ' ': \
@@ -124,6 +125,7 @@ static const struct RedKeyword red_keywords[] =
     { "const", TOKEN_ID_KEYWORD_CONST, },
     { "else", TOKEN_ID_KEYWORD_ELSE, },
     { "enum", TOKEN_ID_KEYWORD_ENUM, },
+    { "extern", TOKEN_ID_KEYWORD_EXTERN, },
     { "false", TOKEN_ID_KEYWORD_FALSE, },
     { "for", TOKEN_ID_KEYWORD_FOR, },
     { "if", TOKEN_ID_KEYWORD_IF, },
@@ -135,6 +137,7 @@ static const struct RedKeyword red_keywords[] =
     { "undefined", TOKEN_ID_KEYWORD_UNDEFINED, },
     { "union", TOKEN_ID_KEYWORD_UNION, },
     { "var", TOKEN_ID_KEYWORD_VAR, },
+    { "void", TOKEN_ID_KEYWORD_VOID, },
     { "while", TOKEN_ID_KEYWORD_WHILE, },
 };
 
@@ -239,6 +242,8 @@ static void lexer_error(Lexer* l, const char* format, ...)
     va_start(args, format);
     l->result.error = buf_vprintf(format, args);
     va_end(args);
+    print("Error: %s\n", l->result.error->items);
+    os_exit(1);
 }
 
 static void set_token_id(Lexer* l, Token* token, TokenID id)
@@ -246,23 +251,23 @@ static void set_token_id(Lexer* l, Token* token, TokenID id)
     token->id = id;
     if (id == TOKEN_ID_INT_LIT)
     {
-        BigInt_init_unsigned(&token->data.int_lit.big_int, 0);
+        BigInt_init_unsigned(&token->int_lit.big_int, 0);
     }
     else if (id == TOKEN_ID_FLOAT_LIT)
     {
-        BigFloat_init_32(&token->data.float_lit.big_float, 0.0f);
-        token->data.float_lit.overflow = false;
+        BigFloat_init_32(&token->float_lit.big_float, 0.0f);
+        token->float_lit.overflow = false;
     }
     else if (id == TOKEN_ID_STRING_LIT || id == TOKEN_ID_MULTILINE_STRING_LIT || id == TOKEN_ID_SYMBOL)
     {
-        memset(&token->data.str_lit.str, 0, sizeof(Buffer));
-        buf_resize(&token->data.str_lit.str, 0);
+        memset(&token->str_lit.str, 0, sizeof(Buffer));
+        buf_resize(&token->str_lit.str, 0);
     }
 }
 
 static void begin_token(Lexer* l, TokenID id)
 {
-    assert(!l->current_token);
+    redassert(!l->current_token);
     l->tokens.add_one();
     Token* token = &l->tokens.last();
     token->start_line = l->line;
@@ -273,26 +278,26 @@ static void begin_token(Lexer* l, TokenID id)
     l->current_token = token;
 }
 
-static void cancel_token(Lexer* l)
-{
-    l->tokens.pop();
-    l->current_token = nullptr;
-}
+//static void cancel_token(Lexer* l)
+//{
+//    l->tokens.pop();
+//    l->current_token = nullptr;
+//}
 
 static void end_float_token(Lexer* l)
 {
     u8* buffer_ptr = (u8*)buf_ptr(l->buffer) + l->current_token->start_position;
     size_t buffer_length = l->current_token->end_position - l->current_token->start_position;
-    if (BigFloat_init_buffer(&l->current_token->data.float_lit.big_float, buffer_ptr, buffer_length))
+    if (BigFloat_init_buffer(&l->current_token->float_lit.big_float, buffer_ptr, buffer_length))
     {
-        l->current_token->data.float_lit.overflow = true;
+        l->current_token->float_lit.overflow = true;
     }
 }
 
 static void end_token(Lexer* l)
 {
     Token* current_token = l->current_token;
-    assert(current_token);
+    redassert(current_token);
     current_token->end_position = l->position + 1;
 
     if (current_token->id == TOKEN_ID_FLOAT_LIT)
@@ -338,12 +343,12 @@ static void handle_string_escape(Lexer* l, u8 c)
 {
     if (l->current_token->id == TOKEN_ID_CHAR_LIT)
     {
-        l->current_token->data.char_lit.c = c;
+        l->current_token->char_lit.value = c;
         l->state = LEXER_STATE_CHAR_LITERAL_END;
     }
     else if (l->current_token->id == TOKEN_ID_STRING_LIT || l->current_token->id == TOKEN_ID_SYMBOL)
     {
-        buf_append_char(&l->current_token->data.str_lit.str, c);
+        buf_append_char(&l->current_token->str_lit.str, c);
         l->state = LEXER_STATE_STRING;
     }
     else
@@ -400,6 +405,7 @@ static void invalid_char_error(Lexer* l, u8 c)
 
 LexingResult lex(Buffer* buffer)
 {
+    ScopeTimer lexer_time("Lexer");
     Lexer l = {0};
     /* TODO: stack return may involve some kind of errors, check later */
     l.buffer = buffer;
@@ -415,7 +421,7 @@ LexingResult lex(Buffer* buffer)
     for (; l.position < buf_len(l.buffer); l.position += 1)
     {
         u8 c = buf_ptr(l.buffer)[l.position];
-
+        
         switch (l.state)
         {
             case LEXER_STATE_ERROR:
@@ -426,23 +432,22 @@ LexingResult lex(Buffer* buffer)
                 {
                     case WHITESPACE:
                         break;
-                    case ALPHA:
-                    /*case '_':*/
+                    case SYMBOL_START:
                         l.state = LEXER_STATE_SYMBOL;
                         begin_token(&l, TOKEN_ID_SYMBOL);
-                        buf_append_char(&l.current_token->data.str_lit.str, c);
+                        buf_append_char(&l.current_token->str_lit.str, c);
                         break;
                     case '0':
                         l.state = LEXER_STATE_ZERO;
                         begin_token(&l, TOKEN_ID_INT_LIT);
                         l.radix = 10;
-                        BigInt_init_unsigned(&l.current_token->data.int_lit.big_int, 0);
+                        BigInt_init_unsigned(&l.current_token->int_lit.big_int, 0);
                         break;
                     case DIGIT_NON_ZERO:
                         l.state = LEXER_STATE_NUMBER;
                         begin_token(&l, TOKEN_ID_INT_LIT);
                         l.radix = 10;
-                        BigInt_init_unsigned(&l.current_token->data.int_lit.big_int, get_digit_value(c));
+                        BigInt_init_unsigned(&l.current_token->int_lit.big_int, get_digit_value(c));
                         break;
                     case '"':
                         begin_token(&l, TOKEN_ID_STRING_LIT);
@@ -838,7 +843,7 @@ LexingResult lex(Buffer* buffer)
                         l.state = LEXER_STATE_LINE_STRING_END;
                         break;
                     default:
-                        buf_append_char(&l.current_token->data.str_lit.str, c);
+                        buf_append_char(&l.current_token->str_lit.str, c);
                         break;
 
                 }
@@ -867,7 +872,7 @@ LexingResult lex(Buffer* buffer)
                 {
                     case '\\':
                         l.state = LEXER_STATE_LINE_STRING;
-                        buf_append_char(&l.current_token->data.str_lit.str, '\n');
+                        buf_append_char(&l.current_token->str_lit.str, '\n');
                         break;
                     default:
                         invalid_char_error(&l, c);
@@ -888,7 +893,7 @@ LexingResult lex(Buffer* buffer)
                 switch (c)
                 {
                     case SYMBOL_CHAR:
-                        buf_append_char(&l.current_token->data.str_lit.str, c);
+                        buf_append_char(&l.current_token->str_lit.str, c);
                         break;
                     default:
                         l.position -= 1;
@@ -913,7 +918,7 @@ LexingResult lex(Buffer* buffer)
                         l.state = LEXER_STATE_STRING_ESCAPE;
                         break;
                     default:
-                        buf_append_char(&l.current_token->data.str_lit.str, c);
+                        buf_append_char(&l.current_token->str_lit.str, c);
                         break;
                 }
                 break;
@@ -990,7 +995,7 @@ LexingResult lex(Buffer* buffer)
                 }
                 else
                 {
-                    l.current_token->data.char_lit.c = c;
+                    l.current_token->char_lit.value = c;
                     l.state = LEXER_STATE_CHAR_LITERAL_END;
                 }
                 break;
@@ -1060,8 +1065,8 @@ LexingResult lex(Buffer* buffer)
                 BigInt radix_bi;
                 BigInt_init_unsigned(&radix_bi, l.radix);
                 BigInt multiplied;
-                BigInt_mul(&multiplied, &l.current_token->data.int_lit.big_int, &radix_bi);
-                BigInt_add(&l.current_token->data.int_lit.big_int, &multiplied, &digit_value_bi);
+                BigInt_mul(&multiplied, &l.current_token->int_lit.big_int, &radix_bi);
+                BigInt_add(&l.current_token->int_lit.big_int, &multiplied, &digit_value_bi);
                 break;
             }
             case LEXER_STATE_NUMBER_DOT:
@@ -1079,7 +1084,7 @@ LexingResult lex(Buffer* buffer)
                 }
                 l.position -= 1;
                 l.state = LEXER_STATE_FLOAT;
-                assert(l.current_token->id == TOKEN_ID_INT_LIT);
+                redassert(l.current_token->id == TOKEN_ID_INT_LIT);
                 set_token_id(&l, l.current_token, TOKEN_ID_FLOAT_LIT);
                 continue;
             }
@@ -1201,7 +1206,7 @@ LexingResult lex(Buffer* buffer)
         }
         begin_token(&l, TOKEN_ID_END_OF_FILE);
         end_token(&l);
-        assert(!l.current_token);
+        redassert(!l.current_token);
     }
 
     l.result.tokens = l.tokens;
@@ -1212,13 +1217,13 @@ const char *token_name(TokenID id)
 {
     switch (id)
     {
+        //case TOKEN_ID_BIT_AND: return "&";
         case TOKEN_ID_AMPERSAND: return "&";
         case TOKEN_ID_ARROW: return "->";
         case TOKEN_ID_AT: return "@";
         case TOKEN_ID_BANG: return "!";
         case TOKEN_ID_BIT_OR: return "|";
         case TOKEN_ID_BIT_XOR: return "^";
-        case TOKEN_ID_BIT_AND: return "&";
         case TOKEN_ID_BIT_SHL: return "<<";
         case TOKEN_ID_BIT_SHR: return ">>";
         case TOKEN_ID_BIT_XOR_EQ: return "^=";
@@ -1302,8 +1307,6 @@ const char *token_name(TokenID id)
         case TOKEN_ID_SYMBOL: return "Symbol";
         case TOKEN_ID_TILDE: return "~";
         case TOKEN_ID_TIMES_EQ: return "*=";
-        case TOKEN_ID_COUNT:
-            RED_UNREACHABLE;
         default:
             RED_NOT_IMPLEMENTED;
             break;

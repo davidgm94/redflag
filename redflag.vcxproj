@@ -20,25 +20,29 @@
     <ClCompile Include="src\error_message.cpp" />
     <ClCompile Include="src\file.cpp" />
     <ClCompile Include="src\lexer.cpp" />
+    <ClCompile Include="src\llvm_codegen.cpp" />
     <ClCompile Include="src\logger.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\os.cpp" />
     <ClCompile Include="src\panic.cpp" />
     <ClCompile Include="src\red_parser.cpp" />
     <ClCompile Include="src\src_file.cpp" />
+    <ClCompile Include="src\new_parser.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\codegen.h" />
-    <ClInclude Include="src\red_llvm.h" />
-    <ClInclude Include="src\config.h" />
     <ClInclude Include="src\ast_render.h" />
     <ClInclude Include="src\bigfloat.h" />
     <ClInclude Include="src\bigint.h" />
+    <ClInclude Include="src\codegen.h" />
     <ClInclude Include="src\compiler_types.h" />
+    <ClInclude Include="src\config.h" />
     <ClInclude Include="src\error_message.h" />
     <ClInclude Include="src\file.h" />
     <ClInclude Include="src\lexer.h" />
+    <ClInclude Include="src\llvm_codegen.h" />
+    <ClInclude Include="src\new_parser.h" />
     <ClInclude Include="src\os.h" />
+    <ClInclude Include="src\red_llvm.h" />
     <ClInclude Include="src\red_parser.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
@@ -91,7 +95,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RED_DEBUG;_ITERATOR_DEBUG_LEVEL=0;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>VC_EXTRALEAN;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;RED_DEBUG;_ITERATOR_DEBUG_LEVEL=0;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -115,7 +119,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>VC_EXTRALEAN;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

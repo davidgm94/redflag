@@ -5,6 +5,7 @@
 #include "types.h"
 #include <string.h>
 #include <ctype.h>
+#include <malloc.h>
 
 /* Forward declaration of structs */
 struct RedType;
@@ -104,15 +105,36 @@ enum Cmp
 
 enum TokenID
 {
-    TOKEN_ID_AMPERSAND,
+    TOKEN_ID_AMPERSAND = '&',
     TOKEN_ID_ARROW,
-    TOKEN_ID_AT,
-    TOKEN_ID_BANG,
-    TOKEN_ID_BIT_OR,
+    TOKEN_ID_AT = '@',
+    TOKEN_ID_BANG = '!',
+    TOKEN_ID_BIT_OR = '|',
+    TOKEN_ID_BIT_XOR = '^',
+    TOKEN_ID_BIT_AND = '&',
+    TOKEN_ID_CMP_GREATER = '>',
+    TOKEN_ID_CMP_LESS = '<',
+    TOKEN_ID_COLON = ':',
+    TOKEN_ID_COMMA = ',',
+    TOKEN_ID_DASH = '-',
+    TOKEN_ID_HASH = '#',
+    TOKEN_ID_EQ = '=',
+    TOKEN_ID_DOT = '.',
+    TOKEN_ID_LEFT_BRACE = '{',
+    TOKEN_ID_LEFT_BRACKET = '[',
+    TOKEN_ID_LEFT_PARENTHESIS = '(',
+    TOKEN_ID_QUESTION = '?',
+    TOKEN_ID_PERCENT = '%',
+    TOKEN_ID_PLUS = '+',
+    TOKEN_ID_RIGHT_BRACE = '}',
+    TOKEN_ID_RIGHT_BRACKET = ']',
+    TOKEN_ID_RIGHT_PARENTHESIS = ')',
+    TOKEN_ID_SEMICOLON = ';',
+    TOKEN_ID_SLASH = '/',
+    TOKEN_ID_STAR = '*',
+    TOKEN_ID_TILDE = '~',
     TOKEN_ID_BIT_OR_EQ,
-    TOKEN_ID_BIT_XOR,
     TOKEN_ID_BIT_XOR_EQ,
-    TOKEN_ID_BIT_AND,
     TOKEN_ID_BIT_AND_EQ,
     TOKEN_ID_BIT_SHL,
     TOKEN_ID_BIT_SHL_EQ,
@@ -121,21 +143,13 @@ enum TokenID
     TOKEN_ID_CHAR_LIT,
     TOKEN_ID_CMP_EQ,
     TOKEN_ID_CMP_GREATER_OR_EQ,
-    TOKEN_ID_CMP_GREATER,
     TOKEN_ID_CMP_LESS_OR_EQ,
-    TOKEN_ID_CMP_LESS,
     TOKEN_ID_CMP_NOT_EQ,
-    TOKEN_ID_COLON,
-    TOKEN_ID_COMMA,
-    TOKEN_ID_DASH,
     TOKEN_ID_DIV_EQ,
-    TOKEN_ID_DOT,
     TOKEN_ID_END_OF_FILE,
-    TOKEN_ID_EQ,
     TOKEN_ID_FAT_ARROW,
     TOKEN_ID_FLOAT_LIT,
     TOKEN_ID_INT_LIT,
-    TOKEN_ID_HASH,
     TOKEN_ID_KEYWORD_ALIGN,
     TOKEN_ID_KEYWORD_ALLOW_ZERO,
     TOKEN_ID_KEYWORD_AND,
@@ -171,31 +185,19 @@ enum TokenID
     TOKEN_ID_KEYWORD_TRUE,
     TOKEN_ID_KEYWORD_UNDEFINED,
     TOKEN_ID_KEYWORD_UNION,
+    TOKEN_ID_KEYWORD_UNREACHABLE,
     TOKEN_ID_KEYWORD_VAR,
+    TOKEN_ID_KEYWORD_VOID,
     TOKEN_ID_KEYWORD_VOLATILE,
     TOKEN_ID_KEYWORD_WHILE,
     // ...
-    TOKEN_ID_LEFT_BRACE,
-    TOKEN_ID_LEFT_BRACKET,
-    TOKEN_ID_LEFT_PARENTHESIS,
-    TOKEN_ID_QUESTION,
     TOKEN_ID_MINUS_EQ,
     TOKEN_ID_MOD_EQ,
-    TOKEN_ID_PERCENT,
-    TOKEN_ID_PLUS,
     TOKEN_ID_PLUS_EQ,
-    TOKEN_ID_RIGHT_BRACE,
-    TOKEN_ID_RIGHT_BRACKET,
-    TOKEN_ID_RIGHT_PARENTHESIS,
-    TOKEN_ID_SEMICOLON,
-    TOKEN_ID_SLASH,
-    TOKEN_ID_STAR,
+    TOKEN_ID_SYMBOL,
+    TOKEN_ID_TIMES_EQ,
     TOKEN_ID_STRING_LIT,
     TOKEN_ID_MULTILINE_STRING_LIT,
-    TOKEN_ID_SYMBOL,
-    TOKEN_ID_TILDE,
-    TOKEN_ID_TIMES_EQ,
-    TOKEN_ID_COUNT
 };
 
 enum RedTypeID
@@ -357,12 +359,27 @@ void logger(LogType log_type, const char *format, ...);
 template <typename T>
 static inline T* NEW(size_t element_count)
 {
+#if CUSTOM_ALLOCATOR
     return reinterpret_cast<T*>(allocate_chunk(element_count * sizeof(T)));
+#else
+    size_t byte_count = element_count * sizeof(T);
+    T* address = reinterpret_cast<T*>(malloc(byte_count));
+    u8* it = (u8*)address;
+    for (usize i = 0; i < byte_count; i++)
+    {
+        *it++ = 0;
+    }
+    return address;
+#endif
 }
 template <typename T>
 static inline T* RENEW(T* old_address, usize element_count)
 {
+#if CUSTOM_ALLOCATOR
     return reinterpret_cast<T*>(reallocate_chunk(old_address, element_count * sizeof(T)));
+#else
+    return reinterpret_cast<T*>(realloc(old_address, element_count * sizeof(T)));
+#endif
 }
 
 void* allocate_chunk(size_t size);
@@ -431,8 +448,8 @@ template<typename T>
 struct RedList
 {
     T* items;
-    size_t length;
-    size_t capacity;
+    usize length;
+    usize capacity;
 
     void deinit()
     {
@@ -451,19 +468,19 @@ struct RedList
 
     T& operator[](size_t index)
     {
-        assert(index >= 0);
-        assert(index < length);
+        redassert(index >= 0);
+        redassert(index < length);
         return items[index];
     }
     T& at(size_t index)
     {
-        assert(index != SIZE_MAX);
-        assert(index < length);
+        redassert(index != SIZE_MAX);
+        redassert(index < length);
         return items[index];
     }
     T pop()
     {
-        assert(length >= 1);
+        redassert(length >= 1);
         return items[--length];
     }
 
@@ -473,18 +490,18 @@ struct RedList
     }
     const T& last() const
     {
-        assert(length +1);
+        redassert(length +1);
         return items[length - 1];
     }
     T& last()
     {
-        assert(length +1);
+        redassert(length +1);
         return items[length - 1];
     }
 
     void resize(size_t new_length)
     {
-        assert(new_length >= 0);
+        redassert(new_length >= 0);
         ensure_capacity(new_length);
         length = new_length;
     }
@@ -503,8 +520,16 @@ struct RedList
         }
         if (better_capacity != capacity)
         {
+#if CUSTOM_ALLOCATOR
             items = RENEW(items, better_capacity);
             capacity = better_capacity;
+#else
+            usize m_capacity = this->capacity;
+            items = RENEW(items, better_capacity);
+            u8* to_be_initialized = (u8*)&items[m_capacity];
+            memset(to_be_initialized, 0, sizeof(T) * better_capacity - m_capacity);
+            capacity = better_capacity;
+#endif
         }
     }
 };
@@ -524,13 +549,13 @@ __attribute__ ((format (printf, 1, 2)));
 
 static inline int buf_len(Buffer *buf)
 {
-    assert(buf->length);
+    redassert(buf->length);
     return buf->length - 1;
 }
 
 static inline char *buf_ptr(Buffer *buf)
 {
-    assert(buf->length);
+    redassert(buf->length);
     return buf->items;
 }
 
@@ -540,17 +565,19 @@ static inline void buf_resize(Buffer *buf, int new_len)
     buf->at(buf_len(buf)) = 0;
 }
 
-static inline Buffer *buf_alloc(void)
-{
-    Buffer* buf = NEW<Buffer>(1);
-    return buf;
-}
 
 static inline Buffer *buf_alloc_fixed(int size)
 {
     Buffer *buf = NEW<Buffer>(1);
+    redassert(buf->length == 0);
+    redassert(buf->capacity == 0);
     buf_resize(buf, size);
     return buf;
+}
+
+static inline Buffer *buf_alloc(void)
+{
+    return buf_alloc_fixed(0);
 }
 
 static inline void buf_deinit(Buffer *buf)
@@ -560,7 +587,7 @@ static inline void buf_deinit(Buffer *buf)
 
 static inline void buf_init_from_mem(Buffer *buf, const char *ptr, int len)
 {
-    assert(len != SIZE_MAX);
+    redassert(len != SIZE_MAX);
     buf->resize(len + 1);
     memcpy(buf_ptr(buf), ptr, len);
     buf->at(buf_len(buf)) = 0;
@@ -588,11 +615,11 @@ static inline Buffer *buf_create_from_str(const char *str) {
 }
 
 static inline Buffer *buf_slice(Buffer *in_buf, int start, int end) {
-    assert(in_buf->length);
-    assert(start >= 0);
-    assert(end >= 0);
-    assert(start < buf_len(in_buf));
-    assert(end <= buf_len(in_buf));
+    redassert(in_buf->length);
+    redassert(start >= 0);
+    redassert(end >= 0);
+    redassert(start < buf_len(in_buf));
+    redassert(end <= buf_len(in_buf));
     Buffer* out_buf = NEW<Buffer>(1);
     out_buf->resize(end - start + 1);
     memcpy(buf_ptr(out_buf), buf_ptr(in_buf) + start, end - start);
@@ -601,8 +628,8 @@ static inline Buffer *buf_slice(Buffer *in_buf, int start, int end) {
 }
 
 static inline void buf_append_mem(Buffer *buf, const char *mem, int mem_len) {
-    assert(buf->length);
-    assert(mem_len >= 0);
+    redassert(buf->length);
+    redassert(mem_len >= 0);
     int old_len = buf_len(buf);
     buf_resize(buf, old_len + mem_len);
     memcpy(buf_ptr(buf) + old_len, mem, mem_len);
@@ -610,17 +637,17 @@ static inline void buf_append_mem(Buffer *buf, const char *mem, int mem_len) {
 }
 
 static inline void buf_append_str(Buffer *buf, const char *str) {
-    assert(buf->length);
+    redassert(buf->length);
     buf_append_mem(buf, str, strlen(str));
 }
 
 static inline void buf_append_buf(Buffer *buf, Buffer *append_buf) {
-    assert(buf->length);
+    redassert(buf->length);
     buf_append_mem(buf, buf_ptr(append_buf), buf_len(append_buf));
 }
 
 static inline void buf_append_char(Buffer *buf, uint8_t c) {
-    assert(buf->length);
+    redassert(buf->length);
     buf_append_mem(buf, (const char *)&c, 1);
 }
 
@@ -628,7 +655,7 @@ void buf_appendf(Buffer *buf, const char *format, ...)
 __attribute__ ((format (printf, 2, 3)));
 
 static inline bool buf_eql_mem(Buffer *buf, const char *mem, int mem_len) {
-    assert(buf->length);
+    redassert(buf->length);
     if (buf_len(buf) != mem_len)
         return false;
     return memcmp(buf_ptr(buf), mem, mem_len) == 0;
@@ -709,7 +736,11 @@ public:
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes the bytes, setting them all empty.
             //_index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+#if CUSTOM_ALLOCATOR
             _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
+#else
+            _index_bytes = (u8*)malloc(_indexes_len * sz);
+#endif
             _max_distance_from_start_index = 0;
             for (size_t i = 0; i < _entries.length; i += 1) {
                 Entry *entry = &_entries.items[i];
@@ -840,7 +871,11 @@ private:
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes _index_bytes which sets them all to empty.
             // _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
+#if CUSTOM_ALLOCATOR
             _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
+#else
+            _index_bytes = (u8*)malloc(_indexes_len * sz);
+#endif
         } else {
             _index_bytes = nullptr;
         }
@@ -1062,13 +1097,13 @@ struct Slice {
     size_t len;
 
     inline T &at(size_t i) {
-        assert(i < len);
+        redassert(i < len);
         return ptr[i];
     }
 
     inline Slice<T> slice(size_t start, size_t end) {
-        assert(end <= len);
-        assert(end >= start);
+        redassert(end <= len);
+        redassert(end >= start);
         return {
                 ptr + start,
                 end - start,
@@ -1076,7 +1111,7 @@ struct Slice {
     }
 
     inline Slice<T> sliceFrom(size_t start) {
-        assert(start <= len);
+        redassert(start <= len);
         return {
                 ptr + start,
                 len - start,
@@ -1112,7 +1147,7 @@ struct BigInt
     {
         u64 digit;
         u64* digits; // least significant digit first
-    } data;
+    };
     bool is_negative;
 };
 
@@ -1136,7 +1171,7 @@ struct TokenStrLit
 struct TokenCharLit
 {
     // TODO: we are only supporting 1-byte characters for now
-    char c;
+    char value;
 };
 
 struct Token
@@ -1153,7 +1188,7 @@ struct Token
         TokenFloatLit float_lit;
         TokenStrLit str_lit;
         TokenCharLit char_lit;
-    } data;
+    };
 };
 
 struct Scope
@@ -1169,6 +1204,7 @@ struct ASTNodeFunctionPrototype
     List<ASTNode*> parameters;
     ASTNode* return_type;
     ASTNode* function_definition_node;
+    bool external_linkage;
 };
 
 struct ASTNodeFunctionDefinition
@@ -1214,8 +1250,9 @@ struct ASTNodeBinaryOpExpression
 
 struct ASTNodeFunctionCallExpression
 {
-    ASTNode* function;
     List<ASTNode*> parameters;
+    Buffer* name;
+    ASTNode* scope_function;
     // ?? bool seen;
 };
 
@@ -1364,6 +1401,7 @@ struct ASTNodeSymbolExpression
 struct ASTNodeType
 {
     Buffer* type;
+    bool is_void;
 };
 
 struct ASTNodeBoolLiteral
@@ -1411,7 +1449,7 @@ struct RedValue
     union
     {
         int value;
-    } data;
+    };
 };
 
 struct RedTypePointer
@@ -1519,7 +1557,7 @@ struct RedType
         RedTypeEnum enumeration;
         RedTypeUnion union_;
         RedTypeFunction function;
-    } data;
+    };
 };
 
 struct CodeGenConfig
@@ -1560,7 +1598,7 @@ struct CodeGenNode
     union
     {
         TypeNode type_node;
-    } data;
+    };
 };
 
 struct ASTNode
@@ -1603,12 +1641,182 @@ struct ASTNode
         ASTNodeUndefinedLiteral undefined_literal;
         ASTNodeThisLiteral this_literal;
         ASTNodeSymbolExpression symbol_expr;
-        ASTNodeType type;
+        ASTNodeType type_expr;
         ASTNodeBoolLiteral bool_literal;
         ASTNodeBreakExpression break_expr;
         ASTNodeContinueExpression continue_expr;
         ASTNodeUnreachableExpression unreachable_expr;
         ASTNodeArrayType array_type;
         ASTNodeEnumLiteral enum_literal;
-    } data;
+    };
 };
+
+#if NEW_PARSER
+#include <vector>
+namespace RedAST
+{
+    static inline Buffer* token_buffer(Token* token)
+    {
+        if (token == nullptr)
+        {
+            return nullptr;
+        }
+        redassert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL);
+        return &token->str_lit.str;
+    }
+
+    static inline BigInt* token_bigint(Token* token)
+    {
+        if (token == nullptr)
+        {
+            return nullptr;
+        }
+        redassert(token->id == TOKEN_ID_INT_LIT);
+        return &token->int_lit.big_int;
+    }
+
+    static inline BigFloat* token_bigfloat(Token* token)
+    {
+        if (token == nullptr)
+        {
+            return nullptr;
+        }
+        redassert(token->id == TOKEN_ID_FLOAT_LIT);
+        return &token->float_lit.big_float;
+    }
+    struct Expression
+    {
+        usize line;
+        usize column;
+
+        Expression(Token* token)
+        {
+            line = token->start_line;
+            column = token->start_column;
+        }
+        Expression(usize line, usize column)
+        {
+            this->line = line;
+            this->column = column;
+        }
+    };
+
+    struct IntExpr: public Expression
+    {
+        BigInt* bigint;
+        IntExpr(Token* token)
+            :  Expression(token), bigint(token_bigint(token))
+        {}
+    };
+
+    struct FloatExpr : public Expression
+    {
+        BigFloat* bigfloat;
+        FloatExpr(Token* token)
+            :  Expression(token), bigfloat(token_bigfloat(token))
+        {}
+    };
+
+    struct SymbolExpr : public Expression
+    {
+        Buffer* name;
+        SymbolExpr(Token* name_token)
+            : Expression(name_token), name(token_buffer(name_token))
+        {}
+    };
+
+    struct VariableExpr : public Expression
+    {
+        Buffer* name;
+        Buffer* type;
+
+        VariableExpr(Token* name_token, Token* type_token)
+            : Expression(name_token), name(token_buffer(name_token)), type(token_buffer(type_token))
+        { }
+    };
+
+    struct BinaryExpr : public Expression
+    {
+        u8 op;
+        Expression* left;
+        Expression* right;
+
+        BinaryExpr(Token* bin_op_token, Expression* left, Expression* right)
+            : Expression(bin_op_token), op(bin_op_token->id), left(left), right(right)
+        { }
+    };
+
+    struct ReturnExpr : public Expression
+    {
+        Expression* return_expr;
+
+        ReturnExpr(Token* ret_keyword_tok, Expression* ret_expr)
+            : Expression(ret_keyword_tok), return_expr(ret_expr)
+        { }
+    };
+
+    struct CallExpr : public Expression
+    {
+        Buffer* callee;
+        std::vector<Expression*> args;
+    };
+
+    struct Prototype
+    {
+        Buffer* name;
+        std::vector<Expression*> args;
+        Buffer* return_type;
+
+        Prototype(Token* name_token, std::vector<Expression*> args, Token* return_type_token)
+            : name(token_buffer(name_token)), args(args), return_type(token_buffer(return_type_token))
+        { }
+    };
+
+    struct Function
+    {
+        Prototype* proto;
+        Expression* body;
+
+        Function(Prototype* proto, Expression* body)
+            : proto(proto), body(body)
+        {}
+    };
+
+    template <typename T>
+    struct LLVMMap
+    {
+        Buffer* keys[10000];
+        T* values[10000];
+        size_t count;
+
+        T* find_value(Buffer* key)
+        {
+            for (usize i = 0; i < count; i++)
+            {
+                bool found = buf_eql_buf(key, keys[i]);
+                if (found)
+                {
+                    return values[i];
+                }
+            }
+
+            return nullptr;
+        }
+
+        void append(Buffer* key, T* value)
+        {
+            redassert(count + 1 != 10000);
+            keys[count] = key;
+            values[count] = value;
+            count++;
+        }
+
+        void clear()
+        {
+            memset(keys, 0, sizeof(Buffer*) * count);
+            memset(values, 0, sizeof(T*) * count);
+            count = 0;
+        }
+    };
+}
+#endif

@@ -44,18 +44,18 @@ void mem_init(void)
 }
 
 // @NOT_USED
-static inline usize round_up_to_next_page(usize size, usize page_size)
-{
-    usize remainder = size % page_size;
-    usize to_add = page_size - remainder;
-    return size + to_add;
-}
+//static inline usize round_up_to_next_page(usize size, usize page_size)
+//{
+//    usize remainder = size % page_size;
+//    usize to_add = page_size - remainder;
+//    return size + to_add;
+//}
 
 static inline void* align_address(void* address, usize align)
 {
     const size_t mask = align - 1;
     uptr p = (uptr)address;
-    assert((align & mask) == 0);
+    redassert((align & mask) == 0);
 
     return (void*)((p + mask) & ~mask);
 }
@@ -73,25 +73,25 @@ static inline Allocation* find_allocation_metadata(void* visible_address)
 {
     u8* it = (u8*)((uptr)visible_address - sizeof(Allocation));
     u32* alignment_ptr = (u32*)it;
-    assert(*alignment_ptr == 16);
-    assert(it < (u8*)visible_address);
+    redassert(*alignment_ptr == 16);
+    redassert(it < (u8*)visible_address);
     return (Allocation*)it;
 }
 
-static inline void buffer_zero_check(void* address, size_t size)
-{
-    if (address)
-    {
-        u8* it = (u8*)address;
-        for (usize i = 0; i < size; i++)
-        {
-            if (it[i] != 0)
-            {
-                assert(it[i] == 0);
-            }
-        }
-    }
-}
+//static inline void buffer_zero_check(void* address, size_t size)
+//{
+//    if (address)
+//    {
+//        u8* it = (u8*)address;
+//        for (usize i = 0; i < size; i++)
+//        {
+//            if (it[i] != 0)
+//            {
+//                redassert(it[i] == 0);
+//            }
+//        }
+//    }
+//}
 
 static inline void allocate_new_block()
 {
@@ -102,10 +102,10 @@ static inline void allocate_new_block()
         target_address = (void*)((uptr)original_address * (m_page_allocator.allocation_count + 1));
     }
     void* address = os_ask_virtual_memory_block_with_address(target_address, block_size);
-    assert(address != nullptr);
+    redassert(address != nullptr);
     if (target_address)
     {
-        assert(address == target_address);
+        redassert(address == target_address);
     }
 
 #if BUFFER_MEM_CHECK
@@ -115,11 +115,11 @@ static inline void allocate_new_block()
     if (address)
     {
         void* aligned_address = align_address(address, block_alignment);
-        assert(aligned_address == address);
+        redassert(aligned_address == address);
         usize lost_memory = (uptr)aligned_address - (uptr)address;
-        assert(lost_memory == 0);
+        redassert(lost_memory == 0);
         usize aligned_size = block_size - lost_memory;
-        assert(aligned_size == block_size);
+        redassert(aligned_size == block_size);
         if (target_address == nullptr)
         {
             m_page_allocator.blob = address;
@@ -148,10 +148,10 @@ void* allocate_chunk(usize size)
 #if BUFFER_MEM_CHECK
     buffer_zero_check(m_page_allocator.available_address, (uptr)m_page_allocator.blob +  block_size - (uptr)m_page_allocator.available_address);
 #endif
-    assert(m_page_allocator.allocated_block_count <= max_allocated_block_count);
+    redassert(m_page_allocator.allocated_block_count <= max_allocated_block_count);
     // TODO:
     usize max_required_size = size + default_alignment;
-    assert(sizeof(Allocation) < default_alignment);
+    redassert(sizeof(Allocation) < default_alignment);
 
     bool first_allocation = m_page_allocator.allocated_block_count == 0;
     bool can_allocate_in_current_block = !first_allocation;
@@ -178,12 +178,12 @@ void* allocate_chunk(usize size)
     usize pointer_displacement = (uptr)aligned_address - (uptr)address + size;
     uptr new_available_address_number = (uptr)address + pointer_displacement;
     void* new_available_address = (void*)new_available_address_number;
-    assert(new_available_address_number < top_address());
+    redassert(new_available_address_number < top_address());
     Allocation* allocation = (Allocation*)((uptr)aligned_address - sizeof(Allocation));
     static_assert(sizeof(Allocation) == (sizeof(u32) * 2), "Wrong allocation packing");
     allocation->alignment = default_alignment;
     allocation->size = pointer_displacement;
-    assert(allocation->size != 0);
+    redassert(allocation->size != 0);
     m_page_allocator.available_address = new_available_address;
     m_page_allocator.allocation_count++;
 
@@ -193,7 +193,7 @@ void* allocate_chunk(usize size)
 #if ALLOCATION_VERBOSE
     print("[ALLOCATOR] (#%zu) Allocating %zu bytes at address 0x%p. Total allocated: %zu\n", m_page_allocator.allocation_count, allocation->size, address, (usize)((uptr)m_page_allocator.available_address - (uptr)m_page_allocator.blob));
 #endif
-    assert(new_available_address != address);
+    redassert(new_available_address != address);
 
 #if BUFFER_MEM_CHECK
     buffer_zero_check(m_page_allocator.available_address, (uptr)m_page_allocator.blob +  block_size - (uptr)m_page_allocator.available_address);
@@ -202,27 +202,27 @@ void* allocate_chunk(usize size)
 }
 
 // TODO: don't overload new for now
-//void* operator new(size_t size)
-//{
-//    void* address;
-//    //if (m_page_allocator.page_size)
-//    //{
-//    //    address = NEW<char>(size);
-//    //}
-//    //else
-//    {
-//        address = os_ask_heap_memory(size);
-//    }
-//#if ALLOCATION_VERBOSE
-//    logger(LOG_TYPE_INFO, "Allocation made through operator new: %zu bytes at address 0x%p\n", size, address);
-//#endif
-//    return address;
-//}
+// void* operator new(size_t size)
+// {
+//     void* address;
+//     if (m_page_allocator.page_size)
+//     {
+//         address = NEW<u8>(size);
+//     }
+//     else
+//     {
+//         address = os_ask_heap_memory(size);
+//     }
+// #if ALLOCATION_VERBOSE
+//     logger(LOG_TYPE_INFO, "Allocation made through operator new: %zu bytes at address 0x%p\n", size, address);
+// #endif
+//     return address;
+// }
 
 void* reallocate_chunk(void* allocated_address, usize size)
 {
-    assert(size > 0);
-    assert(size < UINT32_MAX);
+    redassert(size > 0);
+    redassert(size < UINT32_MAX);
     if (!allocated_address)
     {
         return allocate_chunk(size);
@@ -231,7 +231,7 @@ void* reallocate_chunk(void* allocated_address, usize size)
     Allocation* allocation_metadata = find_allocation_metadata(allocated_address);
     usize difference = (uptr)allocated_address - (uptr)allocation_metadata;
     usize real_size = allocation_metadata->size - difference;
-    assert(real_size < size);
+    redassert(real_size < size);
     void* new_address = allocate_chunk(size);
     memcpy(new_address, allocated_address, real_size);
 

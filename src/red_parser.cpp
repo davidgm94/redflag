@@ -2,6 +2,8 @@
 // Created by david on 10/18/20.
 //
 
+#if 0
+
 #include "red_parser.h"
 #include "compiler_types.h"
 #include "lexer.h"
@@ -41,16 +43,27 @@ void red_parser_visit_node_children(ASTNode* node, void (*visit)(ASTNode**, void
 
 }
 
-namespace AST
+namespace RedAST
 {
+    static inline Buffer* token_void_buffer()
+    {
+        static Buffer* void_buffer;
+        if (!void_buffer)
+        {
+            void_buffer = buf_alloc();
+            buf_init_from_str(void_buffer, "void");
+        }
+        return void_buffer;
+    }
+
     static inline Buffer* token_buffer(Token* token)
     {
         if (token == nullptr)
         {
             return nullptr;
         }
-        assert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL);
-        return &token->data.str_lit.str;
+        redassert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL);
+        return &token->str_lit.str;
     }
 
     static void error(ParseContext* pc, Token* token, const char* format, ...)
@@ -60,7 +73,7 @@ namespace AST
         Buffer* message = buf_vprintf(format, args);
         va_end(args);
 
-        ErrorMessage* error = ErrorMessage_create_with_line(pc->owner->data.structure.root_struct->path, token->start_line, token->start_column, pc->owner->data.structure.root_struct->src_code, pc->owner->data.structure.root_struct->line_offsets, message);
+        ErrorMessage* error = ErrorMessage_create_with_line(pc->owner->structure.root_struct->path, token->start_line, token->start_column, pc->owner->structure.root_struct->src_code, pc->owner->structure.root_struct->line_offsets, message);
         error->line_start = token->start_line;
         error->column_start = token->start_column;
 
@@ -82,7 +95,7 @@ namespace AST
 
     static ASTNode* create_node(ParseContext* pc, NodeType type, Token* first_token)
     {
-        assert(first_token);
+        redassert(first_token);
         ASTNode* node = create_node_no_line_info(pc, type);
         node->line = first_token->start_line;
         node->column = first_token->start_column;
@@ -91,7 +104,7 @@ namespace AST
 
     static ASTNode* create_node_copy_line_info(ParseContext* pc, NodeType type, ASTNode* from)
     {
-        assert(from);
+        redassert(from);
         ASTNode* node = create_node_no_line_info(pc, type);
         node->line = from->line;
         node->column = from->column;
@@ -162,30 +175,39 @@ namespace AST
 #endif
     }
 
-
     static inline BigInt* token_bigint(Token* token)
     {
         if (token == nullptr)
         {
             return nullptr;
         }
-        assert(token->id == TOKEN_ID_INT_LIT);
-        return &token->data.int_lit.big_int;
+        redassert(token->id == TOKEN_ID_INT_LIT);
+        return &token->int_lit.big_int;
+    }
+
+    static inline BigFloat* token_bigfloat(Token* token)
+    {
+        if (token == nullptr)
+        {
+            return nullptr;
+        }
+        redassert(token->id == TOKEN_ID_FLOAT_LIT);
+        return &token->float_lit.big_float;
     }
     
     static inline ASTNode* token_type_symbol(ParseContext* pc, Token* token)
     {
-        assert(token->id == TOKEN_ID_SYMBOL);
+        redassert(token->id == TOKEN_ID_SYMBOL);
         ASTNode* node = create_node(pc, NODE_TYPE_TYPE, token);
-        node->data.type.type = token_buffer(token);
+        node->type_expr.type = token_buffer(token);
         return node;
     }
 
     static inline ASTNode* token_symbol(ParseContext* pc, Token* token)
     {
-        assert(token->id == TOKEN_ID_SYMBOL);
+        redassert(token->id == TOKEN_ID_SYMBOL);
         ASTNode* node = create_node(pc, NODE_TYPE_SYMBOL, token);
-        node->data.symbol_expr.symbol = token_buffer(token);
+        node->symbol_expr.symbol = token_buffer(token);
         return node;
     }
 
@@ -213,117 +235,117 @@ namespace AST
     static ASTNodeContainerDeclaration parse_container_members(ParseContext* pc);
 
 
-    static inline ASTNode* parse_assign_op(ParseContext* pc)
-    {
-        BinaryOpType table[TOKEN_ID_COUNT] = {};
-        table[TOKEN_ID_BIT_AND_EQ] = BIN_OP_TYPE_ASSIGN_BIT_AND;
-        table[TOKEN_ID_BIT_OR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_OR;
-        table[TOKEN_ID_BIT_SHL_EQ] = BIN_OP_TYPE_ASSIGN_BIT_SHIFT_LEFT;
-        table[TOKEN_ID_BIT_SHR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_SHIFT_RIGHT;
-        table[TOKEN_ID_BIT_XOR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_XOR;
-        table[TOKEN_ID_DIV_EQ] = BIN_OP_TYPE_ASSIGN_DIV;
-        table[TOKEN_ID_EQ] = BIN_OP_TYPE_ASSIGN;
-        table[TOKEN_ID_MINUS_EQ] = BIN_OP_TYPE_ASSIGN_MINUS;
-        table[TOKEN_ID_MOD_EQ] = BIN_OP_TYPE_ASSIGN_MOD;
-        table[TOKEN_ID_PLUS_EQ] = BIN_OP_TYPE_ASSIGN_PLUS;
-        table[TOKEN_ID_TIMES_EQ] = BIN_OP_TYPE_ASSIGN_TIMES;
+    //static inline ASTNode* parse_assign_op(ParseContext* pc)
+    //{
+    //    BinaryOpType table[256] = {};
+    //    table[TOKEN_ID_BIT_AND_EQ] = BIN_OP_TYPE_ASSIGN_BIT_AND;
+    //    table[TOKEN_ID_BIT_OR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_OR;
+    //    table[TOKEN_ID_BIT_SHL_EQ] = BIN_OP_TYPE_ASSIGN_BIT_SHIFT_LEFT;
+    //    table[TOKEN_ID_BIT_SHR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_SHIFT_RIGHT;
+    //    table[TOKEN_ID_BIT_XOR_EQ] = BIN_OP_TYPE_ASSIGN_BIT_XOR;
+    //    table[TOKEN_ID_DIV_EQ] = BIN_OP_TYPE_ASSIGN_DIV;
+    //    table[TOKEN_ID_EQ] = BIN_OP_TYPE_ASSIGN;
+    //    table[TOKEN_ID_MINUS_EQ] = BIN_OP_TYPE_ASSIGN_MINUS;
+    //    table[TOKEN_ID_MOD_EQ] = BIN_OP_TYPE_ASSIGN_MOD;
+    //    table[TOKEN_ID_PLUS_EQ] = BIN_OP_TYPE_ASSIGN_PLUS;
+    //    table[TOKEN_ID_TIMES_EQ] = BIN_OP_TYPE_ASSIGN_TIMES;
 
-        BinaryOpType op = table[get_token(pc)->id];
-        if (op != BIN_OP_TYPE_INVALID)
-        {
-            Token* op_token = consume_token(pc);
-            ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
-            result->data.bin_op_expr.op = op;
-            
-            return result;
-        }
+    //    BinaryOpType op = table[get_token(pc)->id];
+    //    if (op != BIN_OP_TYPE_INVALID)
+    //    {
+    //        Token* op_token = consume_token(pc);
+    //        ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
+    //        result->bin_op_expr.op = op;
+    //        
+    //        return result;
+    //    }
 
-        return nullptr;
-    }
+    //    return nullptr;
+    //}
 
-    static inline ASTNode* parse_bin_op_expression(ParseContext* pc, BinaryOpChain chain, ASTNode* (*op_parse)(ParseContext*), ASTNode* (*child_parse)(ParseContext*))
-    {
-        ASTNode* result = child_parse(pc);
+    //static inline ASTNode* parse_bin_op_expression(ParseContext* pc, BinaryOpChain chain, ASTNode* (*op_parse)(ParseContext*), ASTNode* (*child_parse)(ParseContext*))
+    //{
+    //    ASTNode* result = child_parse(pc);
 
-        if (!result)
-        {
-            return nullptr;
-        }
+    //    if (!result)
+    //    {
+    //        return nullptr;
+    //    }
 
-        do
-        {
-            ASTNode* op = op_parse(pc);
-            if (!op)
-            {
-                return nullptr;
-            }
+    //    do
+    //    {
+    //        ASTNode* op = op_parse(pc);
+    //        if (!op)
+    //        {
+    //            return nullptr;
+    //        }
 
-            ASTNode* left = result;
-            ASTNode* right = expect(pc, child_parse);
-            result = op;
+    //        ASTNode* left = result;
+    //        ASTNode* right = expect(pc, child_parse);
+    //        result = op;
 
-            switch (op->type)
-            {
-                case NODE_TYPE_BIN_OP_EXPR:
-                    op->data.bin_op_expr.op1 = left;
-                    op->data.bin_op_expr.op2 = right;
-                    break;
-                default:
-                    RED_UNREACHABLE;
-            }
-        } while (chain == BINARY_OP_CHAIN_INFINITE);
+    //        switch (op->type)
+    //        {
+    //            case NODE_TYPE_BIN_OP_EXPR:
+    //                op->bin_op_expr.op1 = left;
+    //                op->bin_op_expr.op2 = right;
+    //                break;
+    //            default:
+    //                RED_UNREACHABLE;
+    //        }
+    //    } while (chain == BINARY_OP_CHAIN_INFINITE);
 
-        return result;
-    }
+    //    return result;
+    //}
 
-    static inline ASTNode* parse_compare_op(ParseContext* pc)
-    {
-        BinaryOpType table[TOKEN_ID_COUNT];
-        table[TOKEN_ID_CMP_EQ] = BIN_OP_TYPE_CMP_EQ;
-        table[TOKEN_ID_CMP_NOT_EQ] = BIN_OP_TYPE_CMP_NOT_EQ;
-        table[TOKEN_ID_CMP_LESS] = BIN_OP_TYPE_CMP_LESS;
-        table[TOKEN_ID_CMP_GREATER] = BIN_OP_TYPE_CMP_GREATER;
-        table[TOKEN_ID_CMP_LESS_OR_EQ] = BIN_OP_TYPE_CMP_LESS_OR_EQ;
-        table[TOKEN_ID_CMP_GREATER_OR_EQ] = BIN_OP_TYPE_CMP_GREATER_OR_EQ;
+    //static inline ASTNode* parse_compare_op(ParseContext* pc)
+    //{
+    //    BinaryOpType table[256];
+    //    table[TOKEN_ID_CMP_EQ] = BIN_OP_TYPE_CMP_EQ;
+    //    table[TOKEN_ID_CMP_NOT_EQ] = BIN_OP_TYPE_CMP_NOT_EQ;
+    //    table[TOKEN_ID_CMP_LESS] = BIN_OP_TYPE_CMP_LESS;
+    //    table[TOKEN_ID_CMP_GREATER] = BIN_OP_TYPE_CMP_GREATER;
+    //    table[TOKEN_ID_CMP_LESS_OR_EQ] = BIN_OP_TYPE_CMP_LESS_OR_EQ;
+    //    table[TOKEN_ID_CMP_GREATER_OR_EQ] = BIN_OP_TYPE_CMP_GREATER_OR_EQ;
 
-        BinaryOpType op = table[get_token(pc)->id];
-        if (op != BIN_OP_TYPE_INVALID)
-        {
-            Token* op_token = consume_token(pc);
-            ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
-            result->data.bin_op_expr.op = op;
+    //    BinaryOpType op = table[get_token(pc)->id];
+    //    if (op != BIN_OP_TYPE_INVALID)
+    //    {
+    //        Token* op_token = consume_token(pc);
+    //        ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
+    //        result->bin_op_expr.op = op;
 
-            return result;
-        }
+    //        return result;
+    //    }
 
-        return nullptr;
-    }
+    //    return nullptr;
+    //}
 
-    static inline ASTNode* parse_bitwise_expression(ParseContext* pc)
-    {
-        BinaryOpType table[TOKEN_ID_COUNT];
-        table[TOKEN_ID_AMPERSAND] = BIN_OP_TYPE_BIN_AND;
-        table[TOKEN_ID_BIT_XOR] = BIN_OP_TYPE_BIN_XOR;
-        table[TOKEN_ID_BIT_OR] = BIN_OP_TYPE_BIN_OR;
+    //static inline ASTNode* parse_bitwise_expression(ParseContext* pc)
+    //{
+    //    BinaryOpType table[256];
+    //    table[TOKEN_ID_AMPERSAND] = BIN_OP_TYPE_BIN_AND;
+    //    table[TOKEN_ID_BIT_XOR] = BIN_OP_TYPE_BIN_XOR;
+    //    table[TOKEN_ID_BIT_OR] = BIN_OP_TYPE_BIN_OR;
 
-        BinaryOpType op = table[get_token(pc)->id];
+    //    BinaryOpType op = table[get_token(pc)->id];
 
-        if (op != BIN_OP_TYPE_INVALID)
-        {
-            Token* op_token = consume_token(pc);
-            ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
-            result->data.bin_op_expr.op = op;
+    //    if (op != BIN_OP_TYPE_INVALID)
+    //    {
+    //        Token* op_token = consume_token(pc);
+    //        ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, op_token);
+    //        result->bin_op_expr.op = op;
 
-            return result;
-        }
+    //        return result;
+    //    }
 
-        return nullptr;
-    }
+    //    return nullptr;
+    //}
 
-    static inline ASTNode* parse_compare_expression(ParseContext* pc)
-    {
-        return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE, parse_compare_op, parse_bitwise_expression);
-    }
+    //static inline ASTNode* parse_compare_expression(ParseContext* pc)
+    //{
+    //    return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE, parse_compare_op, parse_bitwise_expression);
+    //}
 
     template <TokenID id, BinaryOpType op>
     static inline ASTNode* parse_bin_op_simple(ParseContext* pc)
@@ -335,17 +357,17 @@ namespace AST
         }
 
         ASTNode* result = create_node(pc, NODE_TYPE_BIN_OP_EXPR, token);
-        result->data.bin_op_expr.op = op;
+        result->bin_op_expr.op = op;
 
         return result;
     }
 
-    static inline ASTNode* parse_bool_and_expression(ParseContext* pc)
-    {
-        return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE,
-            parse_bin_op_simple<TOKEN_ID_KEYWORD_AND, BIN_OP_TYPE_BOOL_AND>,
-            parse_compare_expression);
-    }
+    //static inline ASTNode* parse_bool_and_expression(ParseContext* pc)
+    //{
+    //    return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE,
+    //        parse_bin_op_simple<TOKEN_ID_KEYWORD_AND, BIN_OP_TYPE_BOOL_AND>,
+    //        parse_compare_expression);
+    //}
 
     //static inline ASTNode* parse_primary_type_expression(ParseContext* pc)
     //{
@@ -357,12 +379,12 @@ namespace AST
     //    return expect(pc, parse_primary_type_expression);
     //}
 
-    static inline ASTNode* parse_expression(ParseContext* pc)
-    {
-        return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE,
-            parse_bin_op_simple<TOKEN_ID_KEYWORD_OR, BIN_OP_TYPE_BOOL_OR>,
-            parse_bool_and_expression);
-    }
+    //static inline ASTNode* parse_expression(ParseContext* pc)
+    //{
+    //    return parse_bin_op_expression(pc, BINARY_OP_CHAIN_INFINITE,
+    //        parse_bin_op_simple<TOKEN_ID_KEYWORD_OR, BIN_OP_TYPE_BOOL_OR>,
+    //        parse_bool_and_expression);
+    //}
 
     static inline ASTNode* parse_container_declaration(ParseContext* pc)
     {
@@ -391,12 +413,12 @@ namespace AST
         return nullptr;
     start:
         ASTNode* container_node = create_node(pc, NODE_TYPE_CONTAINER_DECL, container_type_token);
-        container_node->data.container_decl.type_kind = type_kind;
+        container_node->container_decl.type_kind = type_kind;
 
         Token* token = expect_token(pc, TOKEN_ID_SYMBOL);
         consume_token(pc);
         ASTNode* type_node = token_type_symbol(pc, token);
-        container_node->data.container_decl.type_node = type_node;
+        container_node->container_decl.type_node = type_node;
 
         expect_and_consume_token(pc, TOKEN_ID_LEFT_BRACE);
         ASTNodeContainerDeclaration members = parse_container_members(pc);
@@ -406,8 +428,8 @@ namespace AST
         //}
         expect_and_consume_token(pc, TOKEN_ID_RIGHT_BRACE);
 
-        container_node->data.container_decl.fields = members.fields;
-        container_node->data.container_decl.declarations = members.declarations;
+        container_node->container_decl.fields = members.fields;
+        container_node->container_decl.declarations = members.declarations;
 
         return container_node;
     }
@@ -434,10 +456,10 @@ namespace AST
             ASTNode* type_node = token_type_symbol(pc, type);
 
             ASTNode* variable_node = create_node(pc, NODE_TYPE_VARIABLE_DECLARATION, name);
-            variable_node->data.variable_declaration.type = type_node;
-            variable_node->data.variable_declaration.expression = nullptr;
-            variable_node->data.variable_declaration.symbol = token_buffer(name);
-            variable_node->data.variable_declaration.is_mutable = mutable_token->id == TOKEN_ID_KEYWORD_VAR;
+            variable_node->variable_declaration.type = type_node;
+            variable_node->variable_declaration.expression = nullptr;
+            variable_node->variable_declaration.symbol = token_buffer(name);
+            variable_node->variable_declaration.is_mutable = mutable_token->id == TOKEN_ID_KEYWORD_VAR;
 
             return variable_node;
         }
@@ -461,9 +483,9 @@ namespace AST
         expect_and_consume_token(pc, TOKEN_ID_SEMICOLON);
 
         ASTNode* result = create_node(pc, NODE_TYPE_STRUCT_FIELD, member_name);
-        result->data.struct_field.name = token_buffer(member_name);
-        result->data.struct_field.type = token_type_symbol(pc, type_token);
-        result->data.struct_field.value = nullptr;
+        result->struct_field.name = token_buffer(member_name);
+        result->struct_field.type = token_type_symbol(pc, type_token);
+        result->struct_field.value = nullptr;
 
         return result;
     }
@@ -480,7 +502,7 @@ namespace AST
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_CHAR_LITERAL, value);
-            result->data.char_literal.value = value->data.char_lit.c;
+            result->char_literal.value = value->char_lit.value;
 
             return result;
         }
@@ -489,8 +511,8 @@ namespace AST
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_FLOAT_LITERAL, value);
-            result->data.float_literal.big_float = &value->data.float_lit.big_float;
-            result->data.float_literal.overflow = value->data.float_lit.overflow;
+            result->float_literal.big_float = &value->float_lit.big_float;
+            result->float_literal.overflow = value->float_lit.overflow;
 
             return result;
         }
@@ -499,7 +521,7 @@ namespace AST
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_INT_LITERAL, value);
-            result->data.int_literal.big_int = &value->data.int_lit.big_int;
+            result->int_literal.big_int = &value->int_lit.big_int;
 
             return result;
         }
@@ -508,14 +530,14 @@ namespace AST
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_BOOL_LITERAL, value);
-            result->data.bool_literal.value = true;
+            result->bool_literal.value = true;
         }
 
         value = consume_token_if(pc, TOKEN_ID_KEYWORD_FALSE);
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_BOOL_LITERAL, value);
-            result->data.bool_literal.value = false;
+            result->bool_literal.value = false;
         }
 
         value = consume_token_if(pc, TOKEN_ID_KEYWORD_NULL);
@@ -536,7 +558,7 @@ namespace AST
         if (value)
         {
             ASTNode* result = create_node(pc, NODE_TYPE_STRING_LITERAL, value);
-            result->data.string_literal.buffer = token_buffer(value);
+            result->string_literal.buffer = token_buffer(value);
 
             return result;
         }
@@ -559,9 +581,9 @@ namespace AST
         expect_and_consume_token(pc, TOKEN_ID_SEMICOLON);
 
         ASTNode* result = create_node(pc, NODE_TYPE_VARIABLE_DECLARATION, symbol_name);
-        result->data.bin_op_expr.op = BIN_OP_TYPE_ASSIGN;
-        result->data.bin_op_expr.op1 = token_symbol(pc, symbol_name);
-        result->data.bin_op_expr.op2 = right_value;
+        result->bin_op_expr.op = BIN_OP_TYPE_ASSIGN;
+        result->bin_op_expr.op1 = token_symbol(pc, symbol_name);
+        result->bin_op_expr.op2 = right_value;
         
         return result;
 #else
@@ -569,7 +591,7 @@ namespace AST
 #endif
     }
 
-    static inline List<ASTNode*> parse_parameter_list(ParseContext* pc, TokenID separation_token, TokenID end_token)
+    static inline List<ASTNode*> parse_parameter_declaration_list(ParseContext* pc, TokenID separation_token, TokenID end_token)
     {
         List<ASTNode*> result = {};
         Token* token = nullptr;
@@ -582,8 +604,8 @@ namespace AST
             consume_token(pc);
 
             ASTNode* param = create_node(pc, NODE_TYPE_PARAM_DECL, name);
-            param->data.param_decl.name = token_buffer(name);
-            param->data.param_decl.type = token_type_symbol(pc, type_token);
+            param->param_decl.name = token_buffer(name);
+            param->param_decl.type = token_type_symbol(pc, type_token);
             result.append(param);
 
             token = get_token(pc);
@@ -594,7 +616,80 @@ namespace AST
                 expect_token(pc, TOKEN_ID_SYMBOL);
             }
         }
-        assert(token->id == end_token);
+        redassert(token->id == end_token);
+        consume_token(pc);
+
+        return result;
+    }
+    static inline ASTNode* parse_parameter(ParseContext* pc)
+    {
+        /*
+        Value possibilities:
+        - float literal
+        - int literal
+        - string literal
+        - char literal
+        - symbol
+        */
+        Token* token = consume_token_if(pc, TOKEN_ID_INT_LIT);
+        if (token)
+        {
+            ASTNode* node = create_node(pc, NODE_TYPE_INT_LITERAL, token);
+            node->int_literal.big_int = token_bigint(token);
+            return node;
+        }
+
+        token = consume_token_if(pc, TOKEN_ID_FLOAT_LIT);
+        if (token)
+        {
+            ASTNode* node = create_node(pc, NODE_TYPE_INT_LITERAL, token);
+            node->float_literal.big_float = token_bigfloat(token);
+            node->float_literal.overflow = token->float_lit.overflow;
+            return node;
+        }
+
+        token = consume_token_if(pc, TOKEN_ID_STRING_LIT);
+        if (token)
+        {
+            ASTNode* node = create_node(pc, NODE_TYPE_STRING_LITERAL, token);
+            node->string_literal.buffer = &token->str_lit.str;
+            return node;
+        }
+
+        token = consume_token_if(pc, TOKEN_ID_CHAR_LIT);
+        if (token)
+        {
+            ASTNode* node = create_node(pc, NODE_TYPE_CHAR_LITERAL, token);
+            node->char_literal.value = token->char_lit.value;
+            return node;
+        }
+
+        token = consume_token_if(pc, TOKEN_ID_SYMBOL);
+        if (token)
+        {
+            return token_symbol(pc, token);
+        }
+
+        return nullptr;
+    }
+    static inline List<ASTNode*> parse_parameter_list(ParseContext* pc, TokenID separation_token, TokenID end_token)
+    {
+        List<ASTNode*> result = {};
+        Token* token = nullptr;
+        // TODO: messy
+        while (((token = get_token(pc))->id) != end_token)
+        {
+            ASTNode* parameter = parse_parameter(pc);
+            if (parameter)
+            {
+                result.append(parameter);
+            }
+            else
+            {
+                error(pc, get_token(pc), "Error parsing parameter: 0x%p\n", token);
+            }
+        }
+        redassert(token->id == end_token)
         consume_token(pc);
 
         return result;
@@ -602,9 +697,23 @@ namespace AST
 
     static inline ASTNode* parse_return_type(ParseContext* pc)
     {
-        Token* return_type_token = expect_token(pc, TOKEN_ID_SYMBOL);
-        consume_token(pc);
-        return token_symbol(pc, return_type_token);
+        Token* token = get_token(pc);
+        redassert(token);
+        switch (token->id)
+        {
+            case TOKEN_ID_SEMICOLON:
+            {
+                ASTNode* node = create_node(pc, NODE_TYPE_TYPE, token);
+                node->type_expr.is_void = true;
+                node->type_expr.type = token_void_buffer();
+                return node;
+            }
+            case TOKEN_ID_SYMBOL:
+                consume_token(pc);
+                return token_type_symbol(pc, token);
+        }
+        RED_NOT_IMPLEMENTED;
+        return nullptr;
     }
 
     static inline ASTNode* parse_function_prototype(ParseContext* pc)
@@ -629,9 +738,10 @@ namespace AST
         expect_and_consume_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
 
         ASTNode* result = create_node(pc, NODE_TYPE_FN_PROTO, symbol_token);
-        result->data.fn_prototype.name = token_buffer(symbol_token);
-        result->data.fn_prototype.parameters = parse_parameter_list(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_PARENTHESIS);
-        result->data.fn_prototype.return_type = parse_return_type(pc);
+        result->fn_prototype.name = token_buffer(symbol_token);
+        result->fn_prototype.parameters = parse_parameter_declaration_list(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_PARENTHESIS);
+        result->fn_prototype.return_type = parse_return_type(pc);
+        result->fn_prototype.external_linkage = false;
 
         return result;
     }
@@ -651,13 +761,38 @@ namespace AST
         expect_token(pc, TOKEN_ID_SEMICOLON);
         consume_token(pc);
         ASTNode* return_expr = create_node(pc, NODE_TYPE_RETURN_EXPR, first);
-        return_expr->data.return_expr.expression = return_value;
+        return_expr->return_expr.expression = return_value;
 
         return return_expr;
     }
 
+    static inline ASTNode* parse_function_call(ParseContext* pc)
+    {
+        Token* token = get_token(pc);
+        if (token->id == TOKEN_ID_SYMBOL && get_token_i(pc, 1)->id == TOKEN_ID_LEFT_PARENTHESIS)
+        {
+            consume_token(pc);
+            consume_token(pc);
+            
+            ASTNode* fn_call_node = create_node(pc, NODE_TYPE_FN_CALL_EXPR, token);
+            fn_call_node->fn_call_expr.name = token_buffer(token);
+            fn_call_node->fn_call_expr.scope_function = nullptr;
+            fn_call_node->fn_call_expr.parameters = parse_parameter_list(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_PARENTHESIS);
+            redassert(get_token(pc)->id == TOKEN_ID_SEMICOLON);
+            consume_token(pc);
+
+            return fn_call_node;
+        }
+        return nullptr;
+    }
     static inline ASTNode* parse_statement(ParseContext* pc)
     {
+        ASTNode* fn_call_expr = parse_function_call(pc);
+        if (fn_call_expr)
+        {
+            return fn_call_expr;
+        }
+
         ASTNode* return_expr = parse_return_expression(pc);
         if (return_expr)
         {
@@ -683,14 +818,31 @@ namespace AST
         consume_token(pc);
 
         ASTNode* fn_body = create_node(pc, NODE_TYPE_BLOCK, first);
-        fn_body->data.block.statements = statements;
+        fn_body->block.statements = statements;
 
         return fn_body;
     }
 
+    static inline ASTNode* parse_extern_function(ParseContext* pc)
+    {
+        Token* first = consume_token_if(pc, TOKEN_ID_KEYWORD_EXTERN);
+        if (first)
+        {
+            ASTNode* fn_proto = parse_function_prototype(pc);
+            if (fn_proto)
+            {
+                expect_and_consume_token(pc, TOKEN_ID_SEMICOLON);
+                fn_proto->fn_prototype.external_linkage = true;
+                return fn_proto;
+            }
+        }
+        return nullptr;
+    }
+
     static inline ASTNode* parse_function_declaration(ParseContext* pc)
     {
-        Token* first = get_token(pc);
+        //@unused
+        //Token* first = get_token(pc);
         ASTNode* fn_prototype = parse_function_prototype(pc);
         if (!fn_prototype)
         {
@@ -703,9 +855,9 @@ namespace AST
         }
 
         ASTNode* fn_declaration = create_node_copy_line_info(pc, NODE_TYPE_FN_DEF, fn_prototype);
-        fn_prototype->data.fn_prototype.function_definition_node = fn_declaration;
-        fn_declaration->data.fn_definition.function_prototype = fn_prototype;
-        fn_declaration->data.fn_definition.body = fn_body;
+        fn_prototype->fn_prototype.function_definition_node = fn_declaration;
+        fn_declaration->fn_definition.function_prototype = fn_prototype;
+        fn_declaration->fn_definition.body = fn_body;
         
         return fn_declaration;
     }
@@ -734,6 +886,15 @@ namespace AST
             {
 #if PARSER_VERBOSE
                 print("[TOKEN PARSE END] Parsed container field\n");
+#endif
+                return symbol_node;
+            }
+
+            symbol_node = parse_extern_function(pc);
+            if (symbol_node)
+            {
+#if PARSER_VERBOSE
+                print("[TOKEN PARSE END] Parsed extern function prototype\n");
 #endif
                 return symbol_node;
             }
@@ -816,14 +977,14 @@ namespace AST
 
 
         ASTNode* root_node_type = create_node(pc, NODE_TYPE_TYPE, first);
-        root_node_type->data.type.type = buf_alloc();
-        buf_init_from_str(root_node_type->data.type.type, "ROOT");
+        root_node_type->type_expr.type = buf_alloc();
+        buf_init_from_str(root_node_type->type_expr.type, "ROOT");
 
         ASTNode* root_node = create_node(pc, NODE_TYPE_CONTAINER_DECL, first);
-        root_node->data.container_decl.is_root = true;
-        root_node->data.container_decl.declarations = root_members.declarations;
-        root_node->data.container_decl.fields = root_members.fields;
-        root_node->data.container_decl.type_node = root_node_type;
+        root_node->container_decl.is_root = true;
+        root_node->container_decl.declarations = root_members.declarations;
+        root_node->container_decl.fields = root_members.fields;
+        root_node->container_decl.type_node = root_node_type;
 
         return root_node;
     }
@@ -835,6 +996,6 @@ ASTNode* red_parse(Buffer*buffer, List<Token>*tokens, RedType*owner)
     pc.tokens = tokens;
     pc.buffer = buffer;
     pc.owner = owner;
-    return AST::parse_root(&pc);
+    return RedAST::parse_root(&pc);
 }
-
+#endif

@@ -27,7 +27,7 @@ Error BigFloat_init_buffer(BigFloat *dst, const u8 *buffer, size_t buffer_length
         return ERROR_OVERFLOW;
     }
 
-    assert(str_end <= ((char*)buffer) + buffer_length);
+    redassert(str_end <= ((char*)buffer) + buffer_length);
     return ERROR_NONE;
 }
 
