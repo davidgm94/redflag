@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include "os.h"
 
-#if NEW_PARSER
+#if RED_NEW_PARSER
 namespace RedAST
 {
     struct ParseContext
@@ -44,7 +44,7 @@ namespace RedAST
     {
         Token* token = get_token(pc);
 
-#if PARSER_VERBOSE
+#if RED_PARSER_VERBOSE
         PRINT_TOKEN_WITH_PREFIX("Consuming", token, symbol_name);
 #endif
         pc->current_token += 1;
@@ -77,7 +77,7 @@ namespace RedAST
         Token* wrong_token = get_token(pc);
         pc->current_token -= 1;
         Token* good_token = get_token(pc);
-#if PARSER_VERBOSE
+#if RED_PARSER_VERBOSE
         Buffer* wrong_symbol = wrong_token->id == TOKEN_ID_SYMBOL ? token_buffer(wrong_token) : nullptr;
         Buffer* good_symbol = good_token->id == TOKEN_ID_SYMBOL ? token_buffer(good_token) : nullptr;
         print("Current token #%zu: %s name: %s ******** Putting back token #%zu: %s name: %s\n", pc->current_token + 1, token_name(wrong_token->id), wrong_symbol ? wrong_symbol->items : "not a symbol", pc->current_token, token_name(good_token->id), good_symbol ? good_symbol->items : "not a symbol");

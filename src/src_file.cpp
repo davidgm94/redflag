@@ -30,11 +30,11 @@ void add_source_file(Buffer* src_buffer, const char* path)
         os_abort();
     }
 
-#if LEXER_VERBOSE
+#if RED_LEXER_VERBOSE
     print_tokens(source_code, &lexing_result.tokens);
 #endif
 
-#if NEW_PARSER // Parser and codegen
+#if RED_NEW_PARSER // Parser and codegen
     List<RedAST::Function*> fn_list = new_parse(src_buffer, &lexing_result.tokens);
     llvm_codegen(&fn_list);
 #else // Parser and codegen

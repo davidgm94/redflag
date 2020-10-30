@@ -106,7 +106,7 @@ void print_token(Buffer* buffer, Token* token)
 
 void print_tokens(Buffer *buffer, List<Token> *tokens)
 {
-#if LEXER_VERBOSE
+#if RED_LEXER_VERBOSE
     for (size_t i = 0; i < tokens->length; i++)
     {
         Token* token = &(*tokens)[i];

@@ -94,12 +94,11 @@ enum LogType
 
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...);
 void os_abort();
+void os_exit(s32 code);
 
-f64 os_timestamp();
-
-#define RED_NOT_IMPLEMENTED { red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak(); os_abort(); }
-#define RED_UNREACHABLE { red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak(); os_abort(); }
-#define RED_PANIC(...) {  red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__);  __debugbreak(); os_abort();}
+#define RED_NOT_IMPLEMENTED { red_panic(__FILE__, __LINE__, __func__, "Not implemented"); __debugbreak(); os_exit(1); }
+#define RED_UNREACHABLE { red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak(); os_exit(1); }
+#define RED_PANIC(...) {  red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__);  __debugbreak(); os_exit(1);}
 
 #define A_BYTE 1ULL
 #define KILOBYTE (A_BYTE * 1024)

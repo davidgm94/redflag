@@ -261,5 +261,5 @@ void* os_load_procedure_from_dynamic_library(s32 dyn_lib_index, const char* proc
         exit(1);
     }
 
-    return fn_ptr;
+    return (void*)fn_ptr;
 }

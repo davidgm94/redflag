@@ -359,7 +359,7 @@ void logger(LogType log_type, const char *format, ...);
 template <typename T>
 static inline T* NEW(size_t element_count)
 {
-#if CUSTOM_ALLOCATOR
+#if RED_CUSTOM_ALLOCATOR
     return reinterpret_cast<T*>(allocate_chunk(element_count * sizeof(T)));
 #else
     size_t byte_count = element_count * sizeof(T);
@@ -375,7 +375,7 @@ static inline T* NEW(size_t element_count)
 template <typename T>
 static inline T* RENEW(T* old_address, usize element_count)
 {
-#if CUSTOM_ALLOCATOR
+#if RED_CUSTOM_ALLOCATOR
     return reinterpret_cast<T*>(reallocate_chunk(old_address, element_count * sizeof(T)));
 #else
     return reinterpret_cast<T*>(realloc(old_address, element_count * sizeof(T)));
@@ -520,7 +520,7 @@ struct RedList
         }
         if (better_capacity != capacity)
         {
-#if CUSTOM_ALLOCATOR
+#if RED_CUSTOM_ALLOCATOR
             items = RENEW(items, better_capacity);
             capacity = better_capacity;
 #else
@@ -736,7 +736,7 @@ public:
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes the bytes, setting them all empty.
             //_index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
-#if CUSTOM_ALLOCATOR
+#if RED_CUSTOM_ALLOCATOR
             _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
 #else
             _index_bytes = (u8*)malloc(_indexes_len * sz);
@@ -871,7 +871,7 @@ private:
             size_t sz = capacity_index_size(_indexes_len);
             // This zero initializes _index_bytes which sets them all to empty.
             // _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
-#if CUSTOM_ALLOCATOR
+#if RED_CUSTOM_ALLOCATOR
             _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
 #else
             _index_bytes = (u8*)malloc(_indexes_len * sz);
@@ -1651,7 +1651,7 @@ struct ASTNode
     };
 };
 
-#if NEW_PARSER
+#if RED_NEW_PARSER
 #include <vector>
 namespace RedAST
 {
@@ -1805,7 +1805,7 @@ namespace RedAST
 
         void append(Buffer* key, T* value)
         {
-            redassert(count + 1 != 10000);
+            redassert(count + 1 < 10000);
             keys[count] = key;
             values[count] = value;
             count++;

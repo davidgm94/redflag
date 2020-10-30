@@ -19,7 +19,7 @@ struct FileManager
 static FileManager handle_main_arguments(s32 argc, char* argv[]);
 static void FileManager_cleanup(FileManager* fm);
 
-#if TIMESTAMPS
+#if RED_TIMESTAMPS
 #endif
 
 s32 main(s32 argc, char* argv[])
@@ -55,7 +55,7 @@ static FileManager handle_main_arguments(s32 argc, char* argv[])
 {
     Buffer* cwd = buf_alloc();
     os_get_cwd(cwd);
-#if CWD_VERBOSE
+#if RED_CWD_VERBOSE
     print("CWD: %s\n", buf_ptr(cwd));
 #endif
     FileManager fm = {0};

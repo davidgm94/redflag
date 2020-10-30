@@ -25,6 +25,26 @@ using TypeMap = LLVMMap<llvm::Type>;
 static LLVMContext* context;
 namespace RedIR
 {
+    struct Context
+    {
+        Module* module;
+        IRBuilder<>* builder;
+        FnMap function_map;
+        ValueMap value_map;
+        TypeMap type_map;
+
+        Context(const char* module_name)
+            //: function_map({}), type_map({}), value_map({})
+        {
+            context = new LLVMContext();
+            module = new Module(module_name, *context);
+            builder = new IRBuilder<>(*context);
+            function_map.count = 0;
+            value_map.count = 0;
+            type_map.count = 0;
+        }
+    };
+
     Value* int_expr(IntExpr* node)
     {
         ConstantInt* integer = nullptr;
@@ -83,7 +103,7 @@ namespace RedIR
     //    return builder->CreateCall(callee_function, args, "calltmp");
     //}
 
-    llvm::Function* fn_prototype(RedAST::Prototype* node, LLVMMap<Type> type_map, Module* module)
+    llvm::Function* fn_prototype(RedAST::Prototype* node, TypeMap type_map, Module* module)
     {
         Buffer* return_type_name = node->return_type;
         Type* return_type = type_map.find_value(return_type_name);
@@ -149,7 +169,7 @@ namespace RedIR
     }
     
 
-    llvm::Function* fn_definition(RedAST::Function* node, LLVMMap<llvm::Function>& function_map, LLVMMap<Type>& type_map, LLVMMap<Value>& value_map, Module* module, IRBuilder<>* builder)
+    llvm::Function* fn_definition(RedAST::Function* node, FnMap& function_map, LLVMMap<Type>& type_map, LLVMMap<Value>& value_map, Module* module, IRBuilder<>* builder)
     {
         Buffer* name = node->proto->name;
         llvm::Function* search_result = function_map.find_value(name);
@@ -293,25 +313,16 @@ namespace RedMachineCodeGen
 void llvm_codegen(List<RedAST::Function*>* fn_list)
 {
     ScopeTimer ir_plus_codegen("IR+CG");
-    ExplicitTimer llvm_ir_init("IniLL");
-    context = new LLVMContext();
-    Module* module = new Module("red_module", *context);
-    IRBuilder<>* builder = new IRBuilder<>(*context);
-
-    LLVMMap<llvm::Function> function_map = {};
-    LLVMMap<Type> type_map = {};
-    LLVMMap<Value> value_map = {};
-
-    RedIR::register_types(type_map);
+    RedIR::Context context("red_module");
     
-    llvm_ir_init.end();
+    RedIR::register_types(context.type_map);
     ExplicitTimer llvm_ir_generation("IRLLV");
     for (u32 i = 0; i < fn_list->length; i++)
     {
         RedAST::Function* ast_fn = fn_list->at(i);
-        llvm::Function* ir_fn = RedIR::fn_definition(ast_fn, function_map, type_map, value_map, module, builder);
+        llvm::Function* ir_fn = RedIR::fn_definition(ast_fn, context.function_map, context.type_map, context.value_map, context.module, context.builder);
     }
     llvm_ir_generation.end();
 
-    RedMachineCodeGen::output_obj_file(module);
+    RedMachineCodeGen::output_obj_file(context.module);
 }

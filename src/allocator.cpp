@@ -108,7 +108,7 @@ static inline void allocate_new_block()
         redassert(address == target_address);
     }
 
-#if BUFFER_MEM_CHECK
+#if RED_BUFFER_MEM_CHECK
     buffer_zero_check(address, block_size);
 #endif
 
@@ -145,7 +145,7 @@ static inline uptr top_address(void)
 
 void* allocate_chunk(usize size)
 {
-#if BUFFER_MEM_CHECK
+#if RED_BUFFER_MEM_CHECK
     buffer_zero_check(m_page_allocator.available_address, (uptr)m_page_allocator.blob +  block_size - (uptr)m_page_allocator.available_address);
 #endif
     redassert(m_page_allocator.allocated_block_count <= max_allocated_block_count);
@@ -187,15 +187,15 @@ void* allocate_chunk(usize size)
     m_page_allocator.available_address = new_available_address;
     m_page_allocator.allocation_count++;
 
-#if BUFFER_MEM_CHECK
+#if RED_BUFFER_MEM_CHECK
     buffer_zero_check(aligned_address, size);
 #endif
-#if ALLOCATION_VERBOSE
+#if RED_ALLOCATION_VERBOSE
     print("[ALLOCATOR] (#%zu) Allocating %zu bytes at address 0x%p. Total allocated: %zu\n", m_page_allocator.allocation_count, allocation->size, address, (usize)((uptr)m_page_allocator.available_address - (uptr)m_page_allocator.blob));
 #endif
     redassert(new_available_address != address);
 
-#if BUFFER_MEM_CHECK
+#if RED_BUFFER_MEM_CHECK
     buffer_zero_check(m_page_allocator.available_address, (uptr)m_page_allocator.blob +  block_size - (uptr)m_page_allocator.available_address);
 #endif
     return (void*)aligned_address;
