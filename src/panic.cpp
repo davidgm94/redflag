@@ -9,6 +9,7 @@
 
 #include <Windows.h>
 
+// TODO: move to OS
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...)
 {
     char buffer[10 * 1024];

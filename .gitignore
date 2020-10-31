@@ -4,3 +4,4 @@ out/
 .vs/
 x64/
 VTune Profiler Results/
+output.*

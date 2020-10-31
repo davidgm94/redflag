@@ -204,9 +204,6 @@ enum LexerState
     LEXER_STATE_LESS_THAN_LESS_THAN,
     LEXER_STATE_GREATER_THAN,
     LEXER_STATE_GREATER_THAN_GREATER_THAN,
-    LEXER_STATE_DOT,
-    LEXER_STATE_DOT_DOT,
-    LEXER_STATE_AT,
     LEXER_STATE_CHAR_CODE,
     LEXER_STATE_PLUS,
     LEXER_STATE_LINE_STRING,
@@ -1179,12 +1176,9 @@ LexingResult lex(Buffer* buffer)
         case LEXER_STATE_LESS_THAN_LESS_THAN:
         case LEXER_STATE_GREATER_THAN_GREATER_THAN:
         case LEXER_STATE_GREATER_THAN:
-        case LEXER_STATE_DOT:
-        case LEXER_STATE_AT:
         case LEXER_STATE_LINE_STRING_END:
         case LEXER_STATE_LINE_STRING:
             end_token(&l);
-        case LEXER_STATE_DOT_DOT:
         case LEXER_STATE_BACKSLASH:
         case LEXER_STATE_LINE_STRING_CONTINUE:
             lexer_error(&l, "Unexpected EOF");

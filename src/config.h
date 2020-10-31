@@ -2,7 +2,6 @@
 
 #define RED_VERSION_STRING "0.0.1"
 
-#define RED_NEW_PARSER 1
 // Choose one of the three
 #define RED_C_BACKEND 0
 #define RED_LLVM_BACKEND 1

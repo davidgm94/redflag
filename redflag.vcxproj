@@ -12,12 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\allocator.cpp" />
-    <ClCompile Include="src\ast_render.cpp" />
     <ClCompile Include="src\bigfloat.cpp" />
     <ClCompile Include="src\bigint.cpp" />
     <ClCompile Include="src\buffer.cpp" />
-    <ClCompile Include="src\codegen.cpp" />
-    <ClCompile Include="src\error_message.cpp" />
     <ClCompile Include="src\file.cpp" />
     <ClCompile Include="src\lexer.cpp" />
     <ClCompile Include="src\llvm_codegen.cpp" />
@@ -25,25 +22,20 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\os.cpp" />
     <ClCompile Include="src\panic.cpp" />
-    <ClCompile Include="src\red_parser.cpp" />
     <ClCompile Include="src\src_file.cpp" />
-    <ClCompile Include="src\new_parser.cpp" />
+    <ClCompile Include="src\parser.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ast_render.h" />
+    <ClInclude Include="src\ast_types.h" />
     <ClInclude Include="src\bigfloat.h" />
     <ClInclude Include="src\bigint.h" />
-    <ClInclude Include="src\codegen.h" />
     <ClInclude Include="src\compiler_types.h" />
     <ClInclude Include="src\config.h" />
-    <ClInclude Include="src\error_message.h" />
     <ClInclude Include="src\file.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\llvm_codegen.h" />
-    <ClInclude Include="src\new_parser.h" />
+    <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\os.h" />
-    <ClInclude Include="src\red_llvm.h" />
-    <ClInclude Include="src\red_parser.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
   </ItemGroup>

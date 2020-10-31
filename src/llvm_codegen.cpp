@@ -34,7 +34,6 @@ namespace RedIR
         TypeMap type_map;
 
         Context(const char* module_name)
-            //: function_map({}), type_map({}), value_map({})
         {
             context = new LLVMContext();
             module = new Module(module_name, *context);
@@ -44,186 +43,251 @@ namespace RedIR
             type_map.count = 0;
         }
     };
+}
 
-    Value* int_expr(IntExpr* node)
+using namespace RedIR;
+
+Value* VariableExpr::codegen(Context* ctx)
+{
+    RED_NOT_IMPLEMENTED;
+    return nullptr;
+}
+
+Value* FloatExpr::codegen(Context* ctx)
+{
+    RED_NOT_IMPLEMENTED;
+    return nullptr;
+}
+
+Value* BoolExpr::codegen(Context* ctx)
+{
+    RED_NOT_IMPLEMENTED;
+    return nullptr;
+}
+
+Value* BlockExpr::codegen(Context* ctx)
+{
+    auto* statements = this->expressions_in_block;
+    assert(statements->size() == 1);
+    Value* value = statements->at(0)->codegen(ctx);
+    return value;
+}
+
+Value* IntExpr::codegen(Context* ctx)
+{
+    ConstantInt* integer = nullptr;
+    if (this->bigint->digit_count > 1)
     {
-        ConstantInt* integer = nullptr;
-        if (node->bigint->digit_count > 1)
-        {
-            RED_NOT_IMPLEMENTED;
-        }
-        else
-        {
-            assert(node->bigint->digit_count == 1);
-            integer = ConstantInt::get(*context, APInt(32, node->bigint->digit, false));
-        }
-        return integer;
+        RED_NOT_IMPLEMENTED;
     }
-
-    //Value* symbol_expr(SymbolExpr* node, LLVMMap<Value> value_map)
-    //{
-    //    /* Posible values
-    //    - Function
-    //    - Variable
-    //    */
-    //    Value* value = value_map.find_value(node->name);
-    //    if (!value)
-    //    {
-    //        log_error("unknown variable name");
-    //    }
-    //    return value;
-    //}
-
-    //// TODO: continue
-    //Value* call_expr(Expression* node, Module* module, IRBuilder<>* builder)
-    //{
-    //    redassert(node->type == NODE_TYPE_FN_CALL_EXPR);
-    //    Function* callee_function = module->getFunction(buf_ptr(node->fn_call_expr.name));
-    //    if (!callee_function)
-    //    {
-    //        log_error("unknown referenced function");
-    //        return nullptr;
-    //    }
-
-    //    usize expected_arg_count = callee_function->arg_size();
-    //    usize actual_arg_count = node->fn_call_expr.parameters.length;
-    //    if (expected_arg_count != actual_arg_count)
-    //    {
-    //        log_error("expected %zu arguments, have %zu", expected_arg_count, actual_arg_count);
-    //        return nullptr;
-    //    }
-
-    //    std::vector<Value*> args;
-    //    //List<Expression*>* actual_args = &node->fn_call_expr.parameters;
-    //    //for (usize i = 0; i != actual_args->length; i++)
-    //    //{
-    //    //    args.append()
-    //    //}
-    //    
-    //    return builder->CreateCall(callee_function, args, "calltmp");
-    //}
-
-    llvm::Function* fn_prototype(RedAST::Prototype* node, TypeMap type_map, Module* module)
+    else
     {
-        Buffer* return_type_name = node->return_type;
-        Type* return_type = type_map.find_value(return_type_name);
-        if (!return_type)
-        {
-            log_error("return type %s not found", buf_ptr(return_type_name));
-            return nullptr;
-        }
-
-        Buffer* fn_name = node->name;
-
-        std::vector<Expression*>* parameters = &node->args;
-        std::vector<Type*> llvm_args;
-        FunctionType* fn_type;
-
-        if (!parameters->empty())
-        {
-            for (usize i = 0; i < parameters->size(); i++)
-            {
-                VariableExpr* parameter = static_cast<VariableExpr*>(parameters->at(i));
-                Buffer* type = parameter->type;
-                Type* llvm_type = type_map.find_value(type);
-                if (!llvm_type)
-                {
-                    log_error("type %s not found", buf_ptr(type));
-                    return nullptr;
-                }
-            }
-            fn_type = FunctionType::get(return_type, llvm_args, false); // varargs always false
-        }
-        else
-        {
-            fn_type = FunctionType::get(return_type, false);
-        }
-
-        llvm::Function* function = llvm::Function::Create(fn_type, llvm::Function::ExternalLinkage, buf_ptr(fn_name), module);
-
-        if (!parameters->empty())
-        {
-            auto args = function->args();
-            usize i = 0;
-            for (auto& arg : args)
-            {
-                VariableExpr* parameter = static_cast<VariableExpr*>(parameters->at(i));
-                arg.setName(buf_ptr(parameter->name));
-                i++;
-            }
-        }
-
-        /* TODO: register fn */
-        return function;
+        assert(this->bigint->digit_count == 1);
+        integer = ConstantInt::get(*context, APInt(32, this->bigint->digit, false));
     }
+    return integer;
+}
 
-    static inline llvm::Value* fn_return_expr(RedAST::ReturnExpr* return_expr)
+Value* BinaryExpr::codegen(Context* ctx)
+{
+    Value* left = this->left->codegen(ctx);
+    Value* right = this->right->codegen(ctx);
+    if (!left || !right)
     {
-        redassert(return_expr->return_expr);
-        // TODO: fix
-        IntExpr* return_value = static_cast<IntExpr*>(return_expr->return_expr);
-        redassert(return_value->bigint->digit_count == 1);
-        llvm::Value* value = int_expr(return_value);
-
-        return value;
-    }
-    
-
-    llvm::Function* fn_definition(RedAST::Function* node, FnMap& function_map, LLVMMap<Type>& type_map, LLVMMap<Value>& value_map, Module* module, IRBuilder<>* builder)
-    {
-        Buffer* name = node->proto->name;
-        llvm::Function* search_result = function_map.find_value(name);
-        redassert(!search_result);
-
-        llvm::Function* function = module->getFunction(buf_ptr(name));
-        if (!function)
-        {
-            function = fn_prototype(node->proto, type_map, module);
-        }
-
-        if (!function)
-        {
-            log_error("could not generate function %s prototype", buf_ptr(name));
-            return nullptr;
-        }
-
-        if (!function->empty())
-        {
-            log_error("function %s cannot be redefined", buf_ptr(name));
-            return nullptr;
-        }
-
-        BasicBlock* bb = BasicBlock::Create(*context, "entry", function);
-        builder->SetInsertPoint(bb);
-
-        value_map.clear();
-        auto args = function->args();
-        for (const Argument& arg : args)
-        {
-            Buffer bf = {};
-            buf_init_from_str(&bf, arg.getName().data());
-            value_map.append(&bf, (Value*)&arg);
-        }
-
-        ReturnExpr* return_expr = static_cast<ReturnExpr*>(node->body);
-        assert(return_expr);
-        llvm::Value* return_value = fn_return_expr(return_expr);
-        redassert(return_value);
-        if (return_value)
-        {
-            ReturnInst* ret_inst = builder->CreateRet(return_value);
-            bool errors = verifyFunction(*function, &llvm::errs());
-            if (errors)
-            {
-                exit(1);
-            }
-            return function;
-        }
-
-        function->eraseFromParent();
         return nullptr;
     }
 
+    if (!token_is_binop(this->op))
+    {
+        return nullptr;
+    }
+
+    switch (this->op)
+    {
+        case TOKEN_ID_CMP_EQ:
+            return ctx->builder->CreateICmpEQ(left, right, "cmptmp");
+        case TOKEN_ID_CMP_NOT_EQ:
+            return ctx->builder->CreateICmpNE(left, right, "cmptmp");
+        case TOKEN_ID_CMP_LESS:
+            return ctx->builder->CreateICmpSLT(left, right, "cmptmp");
+        case TOKEN_ID_CMP_GREATER:
+            return ctx->builder->CreateICmpSGT(left, right, "cmptmp");
+        case TOKEN_ID_CMP_LESS_OR_EQ:
+            return ctx->builder->CreateICmpSLE(left, right, "cmptmp");
+        case TOKEN_ID_CMP_GREATER_OR_EQ:
+            return ctx->builder->CreateICmpSGE(left, right, "cmptmp");
+        default:
+            RED_NOT_IMPLEMENTED;
+            return nullptr;
+    }
+}
+
+Value* BranchExpr::codegen(Context* ctx)
+{
+    Value* cond_value = this->condition->codegen(ctx);
+    if (!cond_value)
+    {
+        return nullptr;
+    }
+
+    Value* bool_cond = ctx->builder->CreateICmpNE(cond_value, ConstantInt::get(*context, APInt(1, 0, true)), "cond");
+    llvm::Function* function = ctx->builder->GetInsertBlock()->getParent();
+
+    BasicBlock* true_block = BasicBlock::Create(*context, "if-block", function);
+    BasicBlock* false_block = BasicBlock::Create(*context, "else-block");
+    BasicBlock* merge_block = BasicBlock::Create(*context, "merge-block");
+
+    ctx->builder->CreateCondBr(bool_cond, true_block, false_block);
+
+    ctx->builder->SetInsertPoint(true_block);
+
+    Value* true_block_value = this->true_block->codegen(ctx);
+    if (!true_block_value)
+    {
+        return nullptr;
+    }
+    
+    ctx->builder->CreateBr(merge_block);
+    true_block = ctx->builder->GetInsertBlock();
+
+    function->getBasicBlockList().push_back(false_block);
+    ctx->builder->SetInsertPoint(false_block);
+
+    Value* false_block_value = this->false_block->codegen(ctx);
+    // TODO: flexibility (not always we encounter else blocks
+    if (!false_block_value)
+    {
+        return nullptr;
+    }
+
+    ctx->builder->CreateBr(merge_block);
+    false_block = ctx->builder->GetInsertBlock();
+
+    function->getBasicBlockList().push_back(merge_block);
+    ctx->builder->SetInsertPoint(merge_block);
+    PHINode* pn = ctx->builder->CreatePHI(Type::getInt32Ty(*context), 2, "iftmp");
+
+    pn->addIncoming(true_block_value, true_block);
+    pn->addIncoming(false_block_value, false_block);
+
+    return pn;
+}
+
+llvm::Value* ReturnExpr::codegen(Context* ctx)
+{
+    return this->return_expr->codegen(ctx);
+}
+
+llvm::Function* RedAST::Prototype::codegen(Context* ctx)
+{
+    Buffer* return_type_name = this->return_type;
+    Type* return_type = ctx->type_map.find_value(return_type_name);
+    if (!return_type)
+    {
+        log_error("return type %s not found", buf_ptr(return_type_name));
+        return nullptr;
+    }
+
+    Buffer* fn_name = this->name;
+
+    std::vector<VariableExpr*>* parameters = &this->args;
+    std::vector<Type*> llvm_args;
+    FunctionType* fn_type;
+
+    if (!parameters->empty())
+    {
+        for (usize i = 0; i < parameters->size(); i++)
+        {
+            VariableExpr* parameter = parameters->at(i);
+            Buffer* type = parameter->type;
+            Type* llvm_type = ctx->type_map.find_value(type);
+            if (!llvm_type)
+            {
+                log_error("type %s not found", buf_ptr(type));
+                return nullptr;
+            }
+        }
+        fn_type = FunctionType::get(return_type, llvm_args, false); // varargs always false
+    }
+    else
+    {
+        fn_type = FunctionType::get(return_type, false);
+    }
+
+    llvm::Function* function = llvm::Function::Create(fn_type, llvm::Function::ExternalLinkage, buf_ptr(fn_name), ctx->module);
+
+    if (!parameters->empty())
+    {
+        auto args = function->args();
+        usize i = 0;
+        for (auto& arg : args)
+        {
+            VariableExpr* parameter = static_cast<VariableExpr*>(parameters->at(i));
+            arg.setName(buf_ptr(parameter->name));
+            i++;
+        }
+    }
+
+    /* TODO: register fn */
+    return function;
+}
+
+llvm::Function* RedAST::Function::codegen(Context* ctx)
+{
+    Buffer* name = this->proto->name;
+    llvm::Function* search_result = ctx->function_map.find_value(name);
+    redassert(!search_result);
+
+    llvm::Function* function = ctx->module->getFunction(buf_ptr(name));
+    if (!function)
+    {
+        function = this->proto->codegen(ctx);
+    }
+
+    if (!function)
+    {
+        log_error("could not generate function %s prototype", buf_ptr(name));
+        return nullptr;
+    }
+
+    if (!function->empty())
+    {
+        log_error("function %s cannot be redefined", buf_ptr(name));
+        return nullptr;
+    }
+
+    BasicBlock* bb = BasicBlock::Create(*context, "entry", function);
+    ctx->builder->SetInsertPoint(bb);
+
+    ctx->value_map.clear();
+    auto args = function->args();
+    for (const Argument& arg : args)
+    {
+        Buffer bf = {};
+        buf_init_from_str(&bf, arg.getName().data());
+        ctx->value_map.append(&bf, (Value*)&arg);
+    }
+
+    Value* return_value = this->body->codegen(ctx);
+    if (return_value)
+    {
+        ctx->builder->CreateRet(return_value);
+
+        bool errors = verifyFunction(*function, &llvm::errs());
+        if (errors)
+        {
+            os_exit(1);
+        }
+
+        return function;
+    }
+
+    function->eraseFromParent();
+    return nullptr;
+}
+
+namespace RedIR
+{
     static inline void register_types(TypeMap& map)
     {
         const char* typenames[] =
@@ -245,7 +309,6 @@ namespace RedIR
             map.append(buf, types[i]);
         }
     }
-
 }
 
 #include <llvm/Target/TargetMachine.h>
@@ -320,7 +383,7 @@ void llvm_codegen(List<RedAST::Function*>* fn_list)
     for (u32 i = 0; i < fn_list->length; i++)
     {
         RedAST::Function* ast_fn = fn_list->at(i);
-        llvm::Function* ir_fn = RedIR::fn_definition(ast_fn, context.function_map, context.type_map, context.value_map, context.module, context.builder);
+        ast_fn->codegen(&context);
     }
     llvm_ir_generation.end();
 

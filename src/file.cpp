@@ -6,6 +6,8 @@
 #include "file.h"
 #include <stdio.h>
 
+// TODO: move to OS module
+
 FileLoadResult file_load(const char *name, Buffer* file_buffer)
 {
     s32 rc;

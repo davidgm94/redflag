@@ -1,10 +1,9 @@
-#include "new_parser.h"
+#include "parser.h"
 #include "lexer.h"
 #include <vector>
 #include <stdarg.h>
 #include "os.h"
 
-#if RED_NEW_PARSER
 namespace RedAST
 {
     struct ParseContext
@@ -74,10 +73,12 @@ namespace RedAST
 
     static inline void put_back_token(ParseContext* pc)
     {
-        Token* wrong_token = get_token(pc);
-        pc->current_token -= 1;
-        Token* good_token = get_token(pc);
 #if RED_PARSER_VERBOSE
+        Token* wrong_token = get_token(pc);
+#endif
+        pc->current_token -= 1;
+#if RED_PARSER_VERBOSE
+        Token* good_token = get_token(pc);
         Buffer* wrong_symbol = wrong_token->id == TOKEN_ID_SYMBOL ? token_buffer(wrong_token) : nullptr;
         Buffer* good_symbol = good_token->id == TOKEN_ID_SYMBOL ? token_buffer(good_token) : nullptr;
         print("Current token #%zu: %s name: %s ******** Putting back token #%zu: %s name: %s\n", pc->current_token + 1, token_name(wrong_token->id), wrong_symbol ? wrong_symbol->items : "not a symbol", pc->current_token, token_name(good_token->id), good_symbol ? good_symbol->items : "not a symbol");
@@ -85,23 +86,25 @@ namespace RedAST
     }
 
     
-    static inline Buffer* token_type(ParseContext* pc, Token* token)
-    {
-        redassert(token->id == TOKEN_ID_SYMBOL);
-        return token_buffer(token);
-    }
+    //static inline Buffer* token_type(ParseContext* pc, Token* token)
+    //{
+    //    redassert(token->id == TOKEN_ID_SYMBOL);
+    //    return token_buffer(token);
+    //}
 
-
-    // TODO: translate into a more OOP approach
-    static inline Expression* expect_expression(ParseContext* pc, Expression* (*expression_parser)(ParseContext*))
+    static inline Expression* parse_bool_expr(ParseContext* pc)
     {
-        Expression* exp = expression_parser(pc);
-        if (!exp)
+        Token* token = consume_token_if(pc, TOKEN_ID_KEYWORD_TRUE);
+        if (token)
         {
-            invalid_token_error(pc, get_token(pc));
+            return new BoolExpr(token, true);
         }
-
-        return exp;
+        token = consume_token_if(pc, TOKEN_ID_KEYWORD_FALSE);
+        if (token)
+        {
+            return new BoolExpr(token, false);
+        }
+        return nullptr;
     }
 
     static inline Expression* parse_int_expr(ParseContext* pc)
@@ -172,6 +175,10 @@ namespace RedAST
             case TOKEN_ID_LEFT_PARENTHESIS:
                 result = parse_expression_parenthesis(pc);
                 break;
+            case TOKEN_ID_KEYWORD_FALSE:
+            case TOKEN_ID_KEYWORD_TRUE:
+                result = parse_bool_expr(pc);
+                break;
             default:
                 invalid_token_error(pc, token);
                 break;
@@ -180,21 +187,13 @@ namespace RedAST
         return result;
     }
 
-    static inline bool is_binop_token(Token* token)
-    {
-        bool is_it = token->id == TOKEN_ID_PLUS ||
-            token->id == TOKEN_ID_DASH ||
-            token->id == TOKEN_ID_STAR ||
-            token->id == TOKEN_ID_SLASH;
-        return is_it;
-    }
 
     static inline Expression* parse_right_expr(ParseContext* pc, Expression** left_expr)
     {
         while (true)
         {
             Token* token = get_token(pc);
-            if (is_binop_token(token))
+            if (token_is_binop(token->id))
             {
                 consume_token(pc);
             }
@@ -224,7 +223,7 @@ namespace RedAST
         return parse_right_expr(pc, &left_expr);
     }
 
-    static inline Expression* parse_element_decl(ParseContext* pc)
+    static inline VariableExpr* parse_arg_decl(ParseContext* pc)
     {
         Token* symbol_name = expect_token(pc, TOKEN_ID_SYMBOL);
         Token* symbol_type = expect_token(pc, TOKEN_ID_SYMBOL);
@@ -233,13 +232,13 @@ namespace RedAST
         return elem_decl;
     }
 
-    static inline std::vector<Expression*> parse_elem_list(ParseContext* pc, TokenID separator, TokenID end_of_list)
+    static inline std::vector<VariableExpr*> parse_arg_list(ParseContext* pc, TokenID separator, TokenID end_of_list)
     {
-        std::vector<Expression*> elem_list = {};
+        std::vector<VariableExpr*> elem_list = {};
         // TODO: empty parameter list
         while (get_token(pc)->id != end_of_list)
         {
-            elem_list.emplace_back(parse_element_decl(pc));
+            elem_list.emplace_back(parse_arg_decl(pc));
             if (get_token(pc)->id != end_of_list)
             {
                 expect_token(pc, separator);
@@ -247,6 +246,98 @@ namespace RedAST
         }
         expect_token(pc, end_of_list);
         return elem_list;
+    }
+
+    static inline ReturnExpr* parse_return_expr(ParseContext* pc);
+    void print_statement(Expression* statement);
+    static inline BranchExpr* parse_if_expr(ParseContext* pc);
+    static inline Expression* parse_statement(ParseContext* pc)
+    {
+        // TODO: modify to amplify
+        /*
+        * return expr
+        * if
+        * var_decl
+        * var_assign
+        * fn_call
+        * for
+        * while
+        * do while
+        * switch
+        */
+        switch (get_token(pc)->id)
+        {
+            case TOKEN_ID_KEYWORD_IF:
+                return parse_if_expr(pc);
+            case TOKEN_ID_KEYWORD_RETURN:
+                return parse_return_expr(pc);
+            default:
+                RED_NOT_IMPLEMENTED;
+                return nullptr;
+        }
+    }
+    
+    static inline BlockExpr* parse_block_expr(ParseContext* pc)
+    {
+        std::vector<Expression*>* expr_list = new std::vector<Expression*>();
+        Token* token = consume_token_if(pc, TOKEN_ID_LEFT_BRACE);
+        if (!token)
+        {
+            return nullptr;
+        }
+
+        while (get_token(pc)->id != TOKEN_ID_RIGHT_BRACE)
+        {
+            Expression* expr = parse_statement(pc);
+            if (expr == nullptr)
+            {
+                return nullptr;
+            }
+            expr_list->emplace_back(expr);
+        }
+
+        expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+
+        return new BlockExpr(token, expr_list);
+    }
+
+    static inline BranchExpr* parse_if_expr(ParseContext* pc)
+    {
+        Token* if_kw_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
+        if (!if_kw_token)
+        {
+            return nullptr;
+        }
+
+        Expression* expression = parse_expression(pc);
+        if (!expression)
+        {
+            return nullptr;
+        }
+        BoolExpr* bool_expr = static_cast<BoolExpr*>(expression);
+        if (!bool_expr)
+        {
+            return nullptr;
+        }
+
+        BlockExpr* if_block = parse_block_expr(pc);
+        if (!if_block)
+        {
+            return nullptr;
+        }
+        
+        BlockExpr* else_block = nullptr;
+        Token* else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE);
+        if (else_token)
+        {
+            else_block = parse_block_expr(pc);
+            if (!else_block)
+            {
+                return nullptr;
+            }
+        }
+
+        return new BranchExpr(if_kw_token, bool_expr, if_block, else_block);
     }
 
     static inline Prototype* parse_fn_prototype(ParseContext* pc)
@@ -274,7 +365,7 @@ namespace RedAST
         consume_token(pc);
         consume_token(pc);
 
-        auto arg_list = parse_elem_list(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_PARENTHESIS);
+        auto arg_list = parse_arg_list(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_PARENTHESIS);
 
         Buffer* return_typename = nullptr;
         Token* return_type = consume_token_if(pc, TOKEN_ID_SYMBOL);
@@ -299,22 +390,6 @@ namespace RedAST
         return new ReturnExpr(ret_token, ret_expr);
     }
 
-    static inline Expression* parse_keyword_op(ParseContext* pc)
-    {
-        Token* token = get_token(pc);
-        
-        switch (token->id)
-        {
-            case TOKEN_ID_KEYWORD_RETURN:
-                return parse_return_expr(pc);
-            default:
-                RED_UNREACHABLE;
-                return nullptr;
-        }
-
-        return nullptr;
-    }
-
     static inline Function* parse_fn_definition(ParseContext* pc)
     {
         Prototype* proto = parse_fn_prototype(pc);
@@ -323,12 +398,9 @@ namespace RedAST
             return nullptr;
         }
 
-        expect_token(pc, TOKEN_ID_LEFT_BRACE);
-        // TOOD: handle body properly
-        Expression* body = parse_return_expr(pc);
+        BlockExpr* body = parse_block_expr(pc);
         if (body)
         {
-            expect_token(pc, TOKEN_ID_RIGHT_BRACE);
             return new Function(proto, body);
         }
 
@@ -338,17 +410,16 @@ namespace RedAST
 
     // @unused: interpreted stuff, which i am not interested in right now
     //static inline Function* parse_top_level_expr()
+    //static inline Prototype* parse_extern_proto(ParseContext* pc)
+    //{
+    //    Token* token = consume_token_if(pc, TOKEN_ID_KEYWORD_EXTERN);
+    //    if (!token)
+    //    {
+    //        return nullptr;
+    //    }
 
-    static inline Prototype* parse_extern_proto(ParseContext* pc)
-    {
-        Token* token = consume_token_if(pc, TOKEN_ID_KEYWORD_EXTERN);
-        if (!token)
-        {
-            return nullptr;
-        }
-
-        return parse_fn_prototype(pc);
-    }
+    //    return parse_fn_prototype(pc);
+    //}
 
     /***
     * Top level parsing
@@ -371,9 +442,96 @@ namespace RedAST
 
         return function_definitions;
     }
+
+    void print_statement(Expression* statement)
+    {
+        if (statement)
+        {
+            statement->print();
+        }
+        else
+        {
+            print("Statement is null\n");
+        }
+    }
+
+    void FloatExpr::print()
+    {
+        RED_NOT_IMPLEMENTED;
+    }
+
+    void VariableExpr::print()
+    {
+        ::print("Variable declaration: Name: %s. Type: %s.\n", buf_ptr(name), buf_ptr(type));
+    }
+
+    void BranchExpr::print()
+    {
+        ::print("Branching over condition: ");
+        print_statement(this->condition);
+        ::print("If block\n");
+        this->true_block->print();
+        ::print("Else block\n");
+        this->false_block->print();
+    }
+
+    void BoolExpr::print()
+    {
+        ::print("Bool value: %s\n", this->value ? "true" : "false");
+    }
+
+    void IntExpr::print()
+    {
+        // TODO: modify
+        ::print("Int value: %d\n", this->bigint->digit);
+    }
+
+    void Prototype::print()
+    {
+        ::print("Printing function: %s\n", buf_ptr(this->name));
+        for (auto& arg : args)
+        {
+            ::print("Parameter %s: %s\n", arg->name, arg->type);
+        }
+        ::print("Return type: %s\n", buf_ptr(this->return_type));
+    }
+
+    //void VariableExpr::print()
+    //{
+    //    ::print("Variable declaration. Name: %s. Type: %s\n", buf_ptr(name), buf_ptr(type));
+    //}
+
+    void ReturnExpr::print()
+    {
+        ::print("Return expr: ");
+        print_statement(this->return_expr);
+    }
+
+    void BlockExpr::print()
+    {
+        ::print("{\n");
+        for (auto& statement : *expressions_in_block)
+        {
+            print_statement(statement);
+        }
+        ::print("}\n");
+    }
+
+    void Function::print()
+    {
+        proto->print();
+        body->print();
+    }
+
+    void BinaryExpr::print()
+    {
+        print_statement(this->left);
+        ::print(" %c ", this->op);
+        print_statement(this->right);
+    }
 }
 
-List<RedAST::Function*> new_parse(Buffer* file_buffer, List<Token>* tokens)
+List<RedAST::Function*> parse(Buffer* file_buffer, List<Token>* tokens)
 {
     ScopeTimer parser_time("Parse");
     RedAST::ParseContext pc = {};
@@ -382,4 +540,13 @@ List<RedAST::Function*> new_parse(Buffer* file_buffer, List<Token>* tokens)
     List<RedAST::Function*> function_list = RedAST::parse_internal(&pc);
     return function_list;
 }
-#endif
+
+void parser_print_ast(List<RedAST::Function*>* fn_list)
+{
+    print("Printing Abstract Syntax Tree\n=======================\n");
+    for (u32 i = 0; i < fn_list->length; i++)
+    {
+        RedAST::Function* fn = fn_list->at(i);
+        fn->print();
+    }
+}

@@ -1,4 +1,11 @@
 main = () s32
 {
-   return 1;
+  if 5 > 4
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
 }

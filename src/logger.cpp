@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+// TODO: Move to OS module
 static const char *log_type_to_str(LogType log_type)
 {
     switch (log_type)
