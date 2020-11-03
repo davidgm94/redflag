@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+typedef _Bool bool;
+#define true 1
+#define false 0
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -20,77 +23,26 @@ typedef float f32;
 typedef double f64;
 typedef struct { u64 v[2]; } float128_t;
 typedef float128_t f128;
+#define Enum typedef enum
+#define Struct typedef struct
+#define Union typedef union
 
 #define strempty(str) str == 0 || *str == 0
 #define strequal(a, b) strcmp(a, b) == 0
-template <typename T, size_t n>
-inline constexpr size_t array_length(const T (&)[n])
-{
-    return n;
-}
+#define array_length(_arr) ((sizeof(_arr))/ (sizeof(_arr[0])))
 #define CASE_TO_STR(x) case(x): return #x
 #define UNUSED_ELEM(x) x = x
 
+#define max(a, b) (((a) >= (b)) ? (a) : (b))
+#define min(a, b) (((a) <= (b)) ? (a) : (b))
+#define char_to_int(c) (((s32)c) - 48)
 
-template <typename T>
-static inline T max(T a, T b)
-{
-    return (a >= b) ? a : b;
-}
-//template <typename T>
-//static inline T max(T& a, T& b)
-//{
-//    return (a >= b) ? a : b;
-//}
-//template <typename T>
-//static inline T max(const T& a, const T& b)
-//{
-//    return (a >= b) ? a : b;
-//}
-template <typename T>
-static inline T min(T a, T b)
-{
-    return (a <= b) ? a : b;
-}
-
-static inline s32 char_to_int(char c)
-{
-    return (s32)c - 48;
-}
-enum LogType
+Enum LogType
 {
     LOG_TYPE_INFO,
     LOG_TYPE_WARN,
     LOG_TYPE_ERROR,
-};
-//struct TypeInfo
-//{
-//    size_t size;
-//    size_t alignment;
-//
-//    template<typename T>
-//    static constexpr TypeInfo make()
-//    {
-//        return {sizeof(T), alignof(T)};
-//    }
-//};
-//static constexpr size_t max_filename_length = 512;
-//struct Allocation
-//{
-//    char file[max_filename_length];
-//    char function[max_filename_length];
-//    char type[max_filename_length];
-//    TypeInfo type_info;
-//    void* address;
-//    size_t line;
-//};
-//static constexpr size_t MAX_ALLOCS = 1024 * 100;
-//struct Allocator
-//{
-//    Allocation allocations[MAX_ALLOCS];
-//    size_t allocation_count;
-//};
-//static Allocator allocator = {};
+} LogType;
 
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...);
 void os_abort();
@@ -100,10 +52,11 @@ void os_exit(s32 code);
 #define RED_UNREACHABLE { red_panic(__FILE__, __LINE__, __func__, "Unreachable"); __debugbreak(); os_exit(1); }
 #define RED_PANIC(...) {  red_panic(__FILE__, __LINE__, __func__, __VA_ARGS__);  __debugbreak(); os_exit(1);}
 
-#define A_BYTE 1ULL
-#define KILOBYTE (A_BYTE * 1024)
-#define MEGABYTE (KILOBYTE * 1024)
-#define GIGABYTE (KILOBYTE * 1024)
+#define A_BYTE      (1ULL)
+#define BYTE(x)     (x * A_BYTE)
+#define KILOBYTE(x) (x * (BYTE(1024)))
+#define MEGABYTE(x) (x * (KILOBYTE(1024)))
+#define GIGABYTE(x) (x * (MEGABYTE(1024)))
 
 #ifdef RED_DEBUG
 #define redassert(_expr) if (!(_expr)) { RED_PANIC("Expression " #_expr " is false\n"); }

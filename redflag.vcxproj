@@ -11,30 +11,18 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\allocator.cpp" />
-    <ClCompile Include="src\bigfloat.cpp" />
-    <ClCompile Include="src\bigint.cpp" />
-    <ClCompile Include="src\buffer.cpp" />
-    <ClCompile Include="src\file.cpp" />
-    <ClCompile Include="src\lexer.cpp" />
-    <ClCompile Include="src\llvm_codegen.cpp" />
-    <ClCompile Include="src\logger.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\os.cpp" />
-    <ClCompile Include="src\panic.cpp" />
-    <ClCompile Include="src\src_file.cpp" />
-    <ClCompile Include="src\parser.cpp" />
+    <ClCompile Include="src\bigint.c" />
+    <ClCompile Include="src\lexer.c" />
+    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\new_parser.c" />
+    <ClCompile Include="src\os.c" />
+    <ClCompile Include="src\src_file.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ast_types.h" />
-    <ClInclude Include="src\bigfloat.h" />
     <ClInclude Include="src\bigint.h" />
     <ClInclude Include="src\compiler_types.h" />
     <ClInclude Include="src\config.h" />
-    <ClInclude Include="src\file.h" />
     <ClInclude Include="src\lexer.h" />
-    <ClInclude Include="src\llvm_codegen.h" />
-    <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\os.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
@@ -89,15 +77,16 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>VC_EXTRALEAN;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;RED_DEBUG;_ITERATOR_DEBUG_LEVEL=0;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>Default</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include;$(SolutionDir)dependencies/stb/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>-m64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-m64 -Wno-unused-function %(AdditionalOptions)</AdditionalOptions>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -114,15 +103,16 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>VC_EXTRALEAN;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>Default</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include;$(SolutionDir)dependencies/stb/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>-m64 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-m64 -Wno-unused-function %(AdditionalOptions)</AdditionalOptions>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

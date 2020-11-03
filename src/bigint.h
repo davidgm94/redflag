@@ -2,10 +2,8 @@
 // Created by david on 7/10/20.
 //
 
-#ifndef REDFLAG_BIGINT_H
-#define REDFLAG_BIGINT_H
+#pragma once
 
-#include "types.h"
 #include "compiler_types.h"
 void BigInt_init_unsigned(BigInt* dst, u64 x);
 
@@ -62,7 +60,7 @@ void BigInt_truncate(BigInt* dst, const BigInt* op, size_t bit_count, bool is_si
 
 Cmp BigInt_cmp(const BigInt* op1, const BigInt* op2);
 
-void BigInt_append_buffer(Buffer* buffer, const BigInt* op, u64 base);
+void BigInt_append_buffer(SB* buffer, const BigInt* op, u64 base);
 
 size_t BigInt_ctz(const BigInt* big_int, size_t bit_count);
 size_t BigInt_clz(const BigInt* big_int, size_t bit_count);
@@ -81,5 +79,3 @@ bool mul_u64_overflow(u64 op1, u64 op2, u64* result);
 u32 BigInt_hash(BigInt n);
 bool BigInt_eql(BigInt a, BigInt b);
 
-
-#endif //REDFLAG_BIGINT_H

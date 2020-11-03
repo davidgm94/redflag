@@ -4,4 +4,6 @@ out/
 .vs/
 x64/
 VTune Profiler Results/
-output.*
+red_module.*
+main.o
+main.exe

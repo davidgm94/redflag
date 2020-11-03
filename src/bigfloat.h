@@ -2,8 +2,7 @@
 // Created by david on 7/10/20.
 //
 
-#ifndef REDFLAG_BIGFLOAT_H
-#define REDFLAG_BIGFLOAT_H
+#pragma once
 
 #include "types.h"
 #include "compiler_types.h"
@@ -38,5 +37,3 @@ bool BigFloat_is_nan(const BigFloat* op);
 
 Cmp BigFloat_cmp_zero(const BigFloat* op);
 bool BigFloat_has_fraction(const BigFloat* op);
-
-#endif //REDFLAG_BIGFLOAT_H

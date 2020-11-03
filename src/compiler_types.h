@@ -2,18 +2,19 @@
 // Created by david on 8/10/20.
 //
 #pragma once
+
 #include "types.h"
 #include <string.h>
-#include <ctype.h>
-#include <malloc.h>
 
-/* Forward declaration of structs */
-struct RedType;
-struct ASTNode;
-//struct RedPackage;
-/* Enum declaration */
 
-enum Error
+typedef struct StringBuffer
+{
+    char* ptr;
+    u32 len; /* length */
+    u32 cap; /* capacity */
+} SB, StringBuffer;
+
+Enum Error
 {
     ERROR_NONE,
     ERROR_NO_MEM,
@@ -94,16 +95,16 @@ enum Error
     ERROR_ZIG_IS_THEC_COMPILER,
     ERROR_FILE_BUSY,
     ERROR_LOCKED,
-};
+} Error;
 
-enum Cmp
+Enum Cmp
 {
     CMP_LESS,
     CMP_GREATER,
     CMP_EQ
-};
+} Cmp;
 
-enum TokenID
+Enum TokenID
 {
     TOKEN_ID_AMPERSAND = '&',
     TOKEN_ID_ARROW,
@@ -111,7 +112,6 @@ enum TokenID
     TOKEN_ID_BANG = '!',
     TOKEN_ID_BIT_OR = '|',
     TOKEN_ID_BIT_XOR = '^',
-    TOKEN_ID_BIT_AND = '&',
     TOKEN_ID_CMP_GREATER = '>',
     TOKEN_ID_CMP_LESS = '<',
     TOKEN_ID_COLON = ':',
@@ -198,9 +198,9 @@ enum TokenID
     TOKEN_ID_TIMES_EQ,
     TOKEN_ID_STRING_LIT,
     TOKEN_ID_MULTILINE_STRING_LIT,
-};
+} TokenID;
 
-enum RedTypeID
+Enum RedTypeID
 {
     RED_TYPE_INVALID,
     RED_TYPE_VOID,
@@ -216,842 +216,155 @@ enum RedTypeID
     RED_TYPE_UNDEFINED,
     RED_TYPE_NULL,
     RED_TYPE_FUNCTION,
-};
-
-enum BinaryOpType
-{
-    BIN_OP_TYPE_INVALID,
-    BIN_OP_TYPE_ASSIGN,
-    BIN_OP_TYPE_ASSIGN_TIMES,
-    BIN_OP_TYPE_ASSIGN_TIMES_WRAP,
-    BIN_OP_TYPE_ASSIGN_DIV,
-    BIN_OP_TYPE_ASSIGN_MOD,
-    BIN_OP_TYPE_ASSIGN_PLUS,
-    BIN_OP_TYPE_ASSIGN_PLUS_WRAP,
-    BIN_OP_TYPE_ASSIGN_MINUS,
-    BIN_OP_TYPE_ASSIGN_MINUS_WRAP,
-    BIN_OP_TYPE_ASSIGN_BIT_SHIFT_LEFT,
-    BIN_OP_TYPE_ASSIGN_BIT_SHIFT_RIGHT,
-    BIN_OP_TYPE_ASSIGN_BIT_AND,
-    BIN_OP_TYPE_ASSIGN_BIT_XOR,
-    BIN_OP_TYPE_ASSIGN_BIT_OR,
-    BIN_OP_TYPE_ASSIGN_MERGE_ERROR_SETS,
-    BIN_OP_TYPE_BOOL_OR,
-    BIN_OP_TYPE_BOOL_AND,
-    BIN_OP_TYPE_CMP_EQ,
-    BIN_OP_TYPE_CMP_NOT_EQ,
-    BIN_OP_TYPE_CMP_LESS,
-    BIN_OP_TYPE_CMP_GREATER,
-    BIN_OP_TYPE_CMP_LESS_OR_EQ,
-    BIN_OP_TYPE_CMP_GREATER_OR_EQ,
-    BIN_OP_TYPE_BIN_OR,
-    BIN_OP_TYPE_BIN_XOR,
-    BIN_OP_TYPE_BIN_AND,
-    BIN_OP_TYPE_BIT_SHIFT_LEFT,
-    BIN_OP_TYPE_BIT_SHIFT_RIGHT,
-    BIN_OP_TYPE_ADD,
-    BIN_OP_TYPE_ADD_WRAP,
-    BIN_OP_TYPE_SUB,
-    BIN_OP_TYPE_SUB_WRAP,
-    BIN_OP_TYPE_MULT,
-    BIN_OP_TYPE_MULT_WRAP,
-    BIN_OP_TYPE_DIV,
-    BIN_OP_TYPE_MOD,
-    BIN_OP_TYPE_UNWRAP_OPTIONAL,
-    BIN_OP_TYPE_ARRAY_CAT,
-    BIN_OP_TYPE_ARRAY_MULT,
-    BIN_OP_TYPE_ERROR_UNION,
-    BIN_OP_TYPE_MERGE_ERROR_SETS,
-};
-
+} RedTypeID;
 
 void print(const char* format, ...);
 void logger(LogType log_type, const char *format, ...);
-template <typename T>
-static inline T* NEW(size_t element_count)
-{
-#if RED_CUSTOM_ALLOCATOR
-    return reinterpret_cast<T*>(allocate_chunk(element_count * sizeof(T)));
-#else
-    size_t byte_count = element_count * sizeof(T);
-    T* address = reinterpret_cast<T*>(malloc(byte_count));
-    u8* it = (u8*)address;
-    for (usize i = 0; i < byte_count; i++)
-    {
-        *it++ = 0;
-    }
-    return address;
-#endif
-}
-template <typename T>
-static inline T* RENEW(T* old_address, usize element_count)
-{
-#if RED_CUSTOM_ALLOCATOR
-    return reinterpret_cast<T*>(reallocate_chunk(old_address, element_count * sizeof(T)));
-#else
-    return reinterpret_cast<T*>(realloc(old_address, element_count * sizeof(T)));
-#endif
+
+#define NEW(T, count) (T*)(allocate_chunk(count * sizeof(T)))
+#define RENEW(T, old_ptr, count) (T*)(reallocate_chunk(old_ptr, count * sizeof(T)))
+
+#define GEN_BUFFER_STRUCT(type) \
+    typedef struct type##Buffer \
+    {\
+        type* ptr;\
+        u32 len;\
+        u32 cap;\
+    } type##Buffer;
+
+#define GEN_BUFFER_FUNCTIONS(p_type_prefix, buffer_name, t_type, elem_type)\
+static inline u32 p_type_prefix##_len(t_type* buffer_name)\
+{\
+    return buffer_name->len;\
+}\
+static inline elem_type* p_type_prefix##_ptr(t_type* buffer_name)\
+{\
+    return buffer_name->ptr;\
+}\
+static inline void p_type_prefix##_deinit()\
+{\
+    RED_NOT_IMPLEMENTED;\
+}\
+\
+static inline void p_type_prefix##_ensure_capacity(t_type* buffer_name, u32 new_capacity)\
+{\
+    if (buffer_name->cap >= new_capacity)\
+        return;\
+\
+    u32 better_capacity = buffer_name->cap;\
+    do {\
+        better_capacity = better_capacity * 5 / 2 + 8;\
+    } while (better_capacity < new_capacity);\
+\
+    buffer_name->ptr = RENEW(elem_type, buffer_name->ptr, better_capacity);\
+    buffer_name->cap = better_capacity;\
+}\
+\
+static inline void p_type_prefix##_resize(t_type* buffer_name, size_t new_length)\
+{\
+    redassert(new_length != SIZE_MAX);\
+    p_type_prefix##_ensure_capacity(buffer_name, new_length);\
+    buffer_name->len = new_length;\
+}\
+\
+static inline void p_type_prefix##_append(t_type* buffer_name, elem_type item)\
+{\
+    p_type_prefix##_ensure_capacity(buffer_name, buffer_name->len + 1);\
+    buffer_name->ptr[buffer_name->len++] = item;\
+}\
+\
+static inline void p_type_prefix##_append_assuming_capacity(t_type* buffer_name, elem_type item)\
+{\
+    buffer_name->ptr[buffer_name->len++] = item;\
+}\
+\
+static inline elem_type p_type_prefix##_pop(t_type* buffer_name)\
+{\
+    redassert(buffer_name->len >= 1);\
+    return buffer_name->ptr[--buffer_name->len];\
+}\
+\
+static inline elem_type* p_type_prefix##_last(t_type* buffer_name)\
+{\
+    redassert(buffer_name->len >= 1);\
+    return &buffer_name->ptr[buffer_name->len - 1];\
+}\
+\
+static inline elem_type* p_type_prefix##_add_one(t_type* buffer_name)\
+{\
+    p_type_prefix##_resize(buffer_name, buffer_name->len + 1);\
+    return p_type_prefix##_last(buffer_name);\
+}\
+\
+static inline void p_type_prefix##_clear(t_type* buffer_name)\
+{\
+    buffer_name->len = 0;\
 }
 
 void* allocate_chunk(size_t size);
 void* reallocate_chunk(void* allocated_address, usize size);
-void mem_init(void);
-
-static inline bool mem_eql_mem(const char* a, size_t a_len, const char* b, size_t b_len)
-{
-    if (a_len != b_len)
-    {
-        return false;
-    }
-    return memcmp(a, b, a_len) == 0;
-}
-
-static inline bool mem_eql_mem_ignore_case(const char* a, size_t a_len, const char* b, size_t b_len)
-{
-    if (a_len != b_len)
-    {
-        return false;
-    }
-
-    for (size_t i = 0; i < a_len; i++)
-    {
-        if (tolower(a[i]) != tolower(b[i]))
-            return false;
-    }
-    return true;
-}
-
-static inline bool mem_eql_str(const char* mem, size_t mem_len, const char* str)
-{
-    return mem_eql_mem(mem, mem_len, str, strlen(str));
-}
-
-static inline bool str_eql_str(const char* a, const char* b)
-{
-    return mem_eql_mem(a, strlen(a), b, strlen(b));
-}
-
-static inline bool str_eql_str_ignore_case(const char* a, const char* b)
-{
-    return mem_eql_mem_ignore_case(a, strlen(a), b, strlen(b));
-}
-
-static inline bool is_power_of_2(u64 x)
-{
-    return x != 0 && ((x & (~x + 1)) == x);
-}
-
-static inline bool mem_ends_with_mem(const char* mem, size_t mem_len, const char* end, size_t end_len)
-{
-    if (mem_len < end_len)
-    {
-        return false;
-    }
-    return memcmp(mem + mem_len - end_len, end, end_len) == 0;
-}
-
-static inline bool mem_ends_with_str(const char* mem, size_t mem_len, const char* str)
-{
-    return mem_ends_with_mem(mem, mem_len, str, strlen(str));
-}
-
-template<typename T>
-struct RedList
-{
-    T* items;
-    usize length;
-    usize capacity;
-
-    void deinit()
-    {
-        RED_NOT_IMPLEMENTED;
-    }
-    void append(T item)
-    {
-        ensure_capacity(length + 1);
-        items[length++] = item;
-    }
-
-    void append_assuming_capacity(T item)
-    {
-        items[length++] = item;
-    }
-
-    T& operator[](size_t index)
-    {
-        redassert(index >= 0);
-        redassert(index < length);
-        return items[index];
-    }
-    T& at(size_t index)
-    {
-        redassert(index != SIZE_MAX);
-        redassert(index < length);
-        return items[index];
-    }
-    T pop()
-    {
-        redassert(length >= 1);
-        return items[--length];
-    }
-
-    void add_one()
-    {
-        return resize(length+1);
-    }
-    const T& last() const
-    {
-        redassert(length +1);
-        return items[length - 1];
-    }
-    T& last()
-    {
-        redassert(length +1);
-        return items[length - 1];
-    }
-
-    void resize(size_t new_length)
-    {
-        redassert(new_length >= 0);
-        ensure_capacity(new_length);
-        length = new_length;
-    }
-
-    void clear()
-    {
-        length = 0;
-    }
-
-    void ensure_capacity(size_t new_capacity)
-    {
-        size_t better_capacity = max(capacity, (size_t)16);
-        while (better_capacity < new_capacity)
-        {
-            better_capacity *= 2;
-        }
-        if (better_capacity != capacity)
-        {
-#if RED_CUSTOM_ALLOCATOR
-            items = RENEW(items, better_capacity);
-            capacity = better_capacity;
-#else
-            usize m_capacity = this->capacity;
-            items = RENEW(items, better_capacity);
-            u8* to_be_initialized = (u8*)&items[m_capacity];
-            memset(to_be_initialized, 0, sizeof(T) * better_capacity - m_capacity);
-            capacity = better_capacity;
-#endif
-        }
-    }
-};
-
-template <typename T>
-using List = RedList<T>;
-using Buffer = List<char>;
-
-
-static inline Buffer buf_create_in_stack()
-{
-    return {};
-}
-
-Buffer *buf_sprintf(const char *format, ...)
-__attribute__ ((format (printf, 1, 2)));
-
-static inline int buf_len(Buffer *buf)
-{
-    redassert(buf->length);
-    return buf->length - 1;
-}
-
-static inline char *buf_ptr(Buffer *buf)
-{
-    redassert(buf->length);
-    return buf->items;
-}
-
-static inline void buf_resize(Buffer *buf, int new_len)
-{
-    buf->resize(new_len + 1);
-    buf->at(buf_len(buf)) = 0;
-}
-
-
-static inline Buffer *buf_alloc_fixed(int size)
-{
-    Buffer *buf = NEW<Buffer>(1);
-    redassert(buf->length == 0);
-    redassert(buf->capacity == 0);
-    buf_resize(buf, size);
-    return buf;
-}
-
-static inline Buffer *buf_alloc(void)
-{
-    return buf_alloc_fixed(0);
-}
-
-static inline void buf_deinit(Buffer *buf)
-{
-    buf->deinit();
-}
-
-static inline void buf_init_from_mem(Buffer *buf, const char *ptr, int len)
-{
-    redassert(len != SIZE_MAX);
-    buf->resize(len + 1);
-    memcpy(buf_ptr(buf), ptr, len);
-    buf->at(buf_len(buf)) = 0;
-}
-
-static inline void buf_init_from_str(Buffer *buf, const char *str)
-{
-    buf_init_from_mem(buf, str, strlen(str));
-}
-
-static inline void buf_init_from_buf(Buffer *buf, Buffer *other)
-{
-    buf_init_from_mem(buf, buf_ptr(other), buf_len(other));
-}
-
-static inline Buffer *buf_create_from_mem(const char *ptr, int len)
-{
-    Buffer* buf = NEW<Buffer>(1);
-    buf_init_from_mem(buf, ptr, len);
-    return buf;
-}
-
-static inline Buffer *buf_create_from_str(const char *str) {
-    return buf_create_from_mem(str, strlen(str));
-}
-
-static inline Buffer *buf_slice(Buffer *in_buf, int start, int end) {
-    redassert(in_buf->length);
-    redassert(start >= 0);
-    redassert(end >= 0);
-    redassert(start < buf_len(in_buf));
-    redassert(end <= buf_len(in_buf));
-    Buffer* out_buf = NEW<Buffer>(1);
-    out_buf->resize(end - start + 1);
-    memcpy(buf_ptr(out_buf), buf_ptr(in_buf) + start, end - start);
-    (*out_buf)[buf_len(out_buf)] = 0;
-    return out_buf;
-}
-
-static inline void buf_append_mem(Buffer *buf, const char *mem, int mem_len) {
-    redassert(buf->length);
-    redassert(mem_len >= 0);
-    int old_len = buf_len(buf);
-    buf_resize(buf, old_len + mem_len);
-    memcpy(buf_ptr(buf) + old_len, mem, mem_len);
-    (*buf)[buf_len(buf)] = 0;
-}
-
-static inline void buf_append_str(Buffer *buf, const char *str) {
-    redassert(buf->length);
-    buf_append_mem(buf, str, strlen(str));
-}
-
-static inline void buf_append_buf(Buffer *buf, Buffer *append_buf) {
-    redassert(buf->length);
-    buf_append_mem(buf, buf_ptr(append_buf), buf_len(append_buf));
-}
-
-static inline void buf_append_char(Buffer *buf, uint8_t c) {
-    redassert(buf->length);
-    buf_append_mem(buf, (const char *)&c, 1);
-}
-
-void buf_appendf(Buffer *buf, const char *format, ...)
-__attribute__ ((format (printf, 2, 3)));
-
-static inline bool buf_eql_mem(Buffer *buf, const char *mem, int mem_len) {
-    redassert(buf->length);
-    if (buf_len(buf) != mem_len)
-        return false;
-    return memcmp(buf_ptr(buf), mem, mem_len) == 0;
-}
-
-bool buf_eql_str(Buffer* buf, const char* str);
-
-static inline bool buf_starts_with_mem(Buffer *buf, const char *mem, size_t mem_len) {
-    if (buf_len(buf) < mem_len) {
-        return false;
-    }
-    return memcmp(buf_ptr(buf), mem, mem_len) == 0;
-}
-
-bool buf_eql_buf(Buffer *buf, Buffer *other);
-uint32_t buf_hash(Buffer *buf);
-
-Buffer* buf_vprintf(const char *format, va_list ap);
-
-template <typename K, typename V, u32 (*HashFunction)(K key), bool (*EqualFn)(K a, K b)>
-class HashMap
-{
-public:
-    void init(int capacity) {
-        init_capacity(capacity);
-    }
-    void deinit(void) {
-        _entries.deinit();
-        free(_index_bytes);
-    }
-
-    struct Entry {
-        uint32_t hash;
-        uint32_t distance_from_start_index;
-        K key;
-        V value;
-    };
-
-    void clear() {
-        _entries.clear();
-        memset(_index_bytes, 0, _indexes_len * capacity_index_size(_indexes_len));
-        _max_distance_from_start_index = 0;
-        _modification_count += 1;
-    }
-
-    size_t size() const {
-        return _entries.length;
-    }
-
-    void put(const K &key, const V &value) {
-        _modification_count += 1;
-
-        // This allows us to take a pointer to an entry in `internal_put` which
-        // will not become a dead pointer when the array list is appended.
-        _entries.ensure_capacity(_entries.length + 1);
-
-        if (_index_bytes == nullptr) {
-            if (_entries.length < 16) {
-                _entries.append({HashFunction(key), 0, key, value});
-                return;
-            } else {
-                _indexes_len = 32;
-                _index_bytes = NEW<uint8_t>(_indexes_len);
-                _max_distance_from_start_index = 0;
-                for (size_t i = 0; i < _entries.length; i += 1) {
-                    Entry *entry = &_entries.items[i];
-                    put_index(entry, i, _index_bytes);
-                }
-                return internal_put(key, value, _index_bytes);
-            }
-        }
-
-        // if we would get too full (60%), double the indexes size
-        if ((_entries.length + 1) * 5 >= _indexes_len * 3) {
-            // TODO: FREE
-            _index_bytes = nullptr;
-            _indexes_len *= 2;
-            size_t sz = capacity_index_size(_indexes_len);
-            // This zero initializes the bytes, setting them all empty.
-            //_index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
-#if RED_CUSTOM_ALLOCATOR
-            _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
-#else
-            _index_bytes = (u8*)malloc(_indexes_len * sz);
-#endif
-            _max_distance_from_start_index = 0;
-            for (size_t i = 0; i < _entries.length; i += 1) {
-                Entry *entry = &_entries.items[i];
-                switch (sz) {
-                    case 1:
-                        put_index(entry, i, (uint8_t*)_index_bytes);
-                        continue;
-                    case 2:
-                        put_index(entry, i, (uint16_t*)_index_bytes);
-                        continue;
-                    case 4:
-                        put_index(entry, i, (uint32_t*)_index_bytes);
-                        continue;
-                    default:
-                        put_index(entry, i, (size_t*)_index_bytes);
-                        continue;
-                }
-            }
-        }
-
-        switch (capacity_index_size(_indexes_len)) {
-            case 1: return internal_put(key, value, (uint8_t*)_index_bytes);
-            case 2: return internal_put(key, value, (uint16_t*)_index_bytes);
-            case 4: return internal_put(key, value, (uint32_t*)_index_bytes);
-            default: return internal_put(key, value, (size_t*)_index_bytes);
-        }
-    }
-
-    Entry *put_unique(const K &key, const V &value) {
-        // TODO make this more efficient
-        Entry *entry = internal_get(key);
-        if (entry)
-            return entry;
-        put(key, value);
-        return nullptr;
-    }
-
-    const V &get(const K &key) const {
-        Entry *entry = internal_get(key);
-        if (!entry)
-            RED_PANIC("key not found");
-        return entry->value;
-    }
-
-    Entry *maybe_get(const K &key) const {
-        return internal_get(key);
-    }
-
-    bool remove(const K &key) {
-        bool deleted_something = maybe_remove(key);
-        if (!deleted_something)
-            RED_PANIC("key not found");
-        return deleted_something;
-    }
-
-    bool maybe_remove(const K &key) {
-        _modification_count += 1;
-        if (_index_bytes == nullptr) {
-            uint32_t hash = HashFunction(key);
-            for (size_t i = 0; i < _entries.length; i += 1) {
-                if (_entries.items[i].hash == hash && EqualFn(_entries.items[i].key, key)) {
-                    _entries.swap_remove(i);
-                    return true;
-                }
-            }
-            return false;
-        }
-        switch (capacity_index_size(_indexes_len)) {
-            case 1: return internal_remove(key, (uint8_t*)_index_bytes);
-            case 2: return internal_remove(key, (uint16_t*)_index_bytes);
-            case 4: return internal_remove(key, (uint32_t*)_index_bytes);
-            default: return internal_remove(key, (size_t*)_index_bytes);
-        }
-    }
-
-    class Iterator {
-    public:
-        Entry *next() {
-            if (_inital_modification_count != _table->_modification_count)
-                RED_PANIC("concurrent modification");
-            if (_index >= _table->_entries.length)
-                return nullptr;
-            Entry *entry = &_table->_entries.items[_index];
-            _index += 1;
-            return entry;
-        }
-    private:
-        const HashMap * _table;
-        // iterator through the entry array
-        size_t _index = 0;
-        // used to detect concurrent modification
-        uint32_t _inital_modification_count;
-        Iterator(const HashMap * table) :
-                _table(table), _inital_modification_count(table->_modification_count) {
-        }
-        friend HashMap;
-    };
-
-    // you must not modify the underlying HashMap while this iterator is still in use
-    Iterator entry_iterator() const {
-        return Iterator(this);
-    }
-
-private:
-    // Maintains insertion order.
-    List<Entry> _entries;
-    // If _indexes_len is less than 2**8, this is an array of uint8_t.
-    // If _indexes_len is less than 2**16, it is an array of uint16_t.
-    // If _indexes_len is less than 2**32, it is an array of uint32_t.
-    // Otherwise it is size_t.
-    // It's off by 1. 0 means empty slot, 1 means index 0, etc.
-    uint8_t *_index_bytes;
-    // This is the number of indexes. When indexes are bytes, it equals number of bytes.
-    // When indexes are uint16_t, _indexes_len is half the number of bytes.
-    size_t _indexes_len;
-
-    size_t _max_distance_from_start_index;
-    // This is used to detect bugs where a hashtable is edited while an iterator is running.
-    uint32_t _modification_count;
-
-    void init_capacity(size_t capacity) {
-        _entries = {};
-        _entries.ensure_capacity(capacity);
-        _indexes_len = 0;
-        if (capacity >= 16) {
-            // So that at capacity it will only be 60% full.
-            _indexes_len = capacity * 5 / 3;
-            size_t sz = capacity_index_size(_indexes_len);
-            // This zero initializes _index_bytes which sets them all to empty.
-            // _index_bytes = heap::c_allocator.allocate<uint8_t>(_indexes_len * sz);
-#if RED_CUSTOM_ALLOCATOR
-            _index_bytes = (u8*)allocate_chunk(_indexes_len * sz);
-#else
-            _index_bytes = (u8*)malloc(_indexes_len * sz);
-#endif
-        } else {
-            _index_bytes = nullptr;
-        }
-
-        _max_distance_from_start_index = 0;
-        _modification_count = 0;
-    }
-
-    static size_t capacity_index_size(size_t len) {
-        if (len < UINT8_MAX)
-            return 1;
-        if (len < UINT16_MAX)
-            return 2;
-        if (len < UINT32_MAX)
-            return 4;
-        return sizeof(size_t);
-    }
-
-    template <typename I>
-    void internal_put(const K &key, const V &value, I *indexes) {
-        uint32_t hash = HashFunction(key);
-        uint32_t distance_from_start_index = 0;
-        size_t start_index = hash_to_index(hash);
-        for (size_t roll_over = 0; roll_over < _indexes_len;
-             roll_over += 1, distance_from_start_index += 1)
-        {
-            size_t index_index = (start_index + roll_over) % _indexes_len;
-            I index_data = indexes[index_index];
-            if (index_data == 0) {
-                _entries.append_assuming_capacity({ hash, distance_from_start_index, key, value });
-                indexes[index_index] = _entries.length;
-                if (distance_from_start_index > _max_distance_from_start_index)
-                    _max_distance_from_start_index = distance_from_start_index;
-                return;
-            }
-            // This pointer survives the following append because we call
-            // _entries.ensure_capacity before internal_put.
-            Entry *entry = &_entries.items[index_data - 1];
-            if (entry->hash == hash && EqualFn(entry->key, key)) {
-                *entry = {hash, distance_from_start_index, key, value};
-                if (distance_from_start_index > _max_distance_from_start_index)
-                    _max_distance_from_start_index = distance_from_start_index;
-                return;
-            }
-            if (entry->distance_from_start_index < distance_from_start_index) {
-                // In this case, we did not find the item. We will put a new entry.
-                // However, we will use this index for the new entry, and move
-                // the previous index down the line, to keep the _max_distance_from_start_index
-                // as small as possible.
-                _entries.append_assuming_capacity({ hash, distance_from_start_index, key, value });
-                indexes[index_index] = _entries.length;
-                if (distance_from_start_index > _max_distance_from_start_index)
-                    _max_distance_from_start_index = distance_from_start_index;
-
-                distance_from_start_index = entry->distance_from_start_index;
-
-                // Find somewhere to put the index we replaced by shifting
-                // following indexes backwards.
-                roll_over += 1;
-                distance_from_start_index += 1;
-                for (; roll_over < _indexes_len; roll_over += 1, distance_from_start_index += 1) {
-                    size_t index_index = (start_index + roll_over) % _indexes_len;
-                    I next_index_data = indexes[index_index];
-                    if (next_index_data == 0) {
-                        if (distance_from_start_index > _max_distance_from_start_index)
-                            _max_distance_from_start_index = distance_from_start_index;
-                        entry->distance_from_start_index = distance_from_start_index;
-                        indexes[index_index] = index_data;
-                        return;
-                    }
-                    Entry *next_entry = &_entries.items[next_index_data - 1];
-                    if (next_entry->distance_from_start_index < distance_from_start_index) {
-                        if (distance_from_start_index > _max_distance_from_start_index)
-                            _max_distance_from_start_index = distance_from_start_index;
-                        entry->distance_from_start_index = distance_from_start_index;
-                        indexes[index_index] = index_data;
-                        distance_from_start_index = next_entry->distance_from_start_index;
-                        entry = next_entry;
-                        index_data = next_index_data;
-                    }
-                }
-                RED_UNREACHABLE;
-            }
-        }
-        RED_UNREACHABLE;
-    }
-
-    template <typename I>
-    void put_index(Entry *entry, size_t entry_index, I *indexes) {
-        size_t start_index = hash_to_index(entry->hash);
-        size_t index_data = entry_index + 1;
-        for (size_t roll_over = 0, distance_from_start_index = 0;
-             roll_over < _indexes_len; roll_over += 1, distance_from_start_index += 1)
-        {
-            size_t index_index = (start_index + roll_over) % _indexes_len;
-            size_t next_index_data = indexes[index_index];
-            if (next_index_data == 0) {
-                if (distance_from_start_index > _max_distance_from_start_index)
-                    _max_distance_from_start_index = distance_from_start_index;
-                entry->distance_from_start_index = distance_from_start_index;
-                indexes[index_index] = index_data;
-                return;
-            }
-            Entry *next_entry = &_entries.items[next_index_data - 1];
-            if (next_entry->distance_from_start_index < distance_from_start_index) {
-                if (distance_from_start_index > _max_distance_from_start_index)
-                    _max_distance_from_start_index = distance_from_start_index;
-                entry->distance_from_start_index = distance_from_start_index;
-                indexes[index_index] = index_data;
-                distance_from_start_index = next_entry->distance_from_start_index;
-                entry = next_entry;
-                index_data = next_index_data;
-            }
-        }
-        RED_UNREACHABLE;
-    }
-
-    Entry *internal_get(const K &key) const {
-        if (_index_bytes == nullptr) {
-            uint32_t hash = HashFunction(key);
-            for (size_t i = 0; i < _entries.length; i += 1) {
-                if (_entries.items[i].hash == hash && EqualFn(_entries.items[i].key, key)) {
-                    return &_entries.items[i];
-                }
-            }
-            return nullptr;
-        }
-        switch (capacity_index_size(_indexes_len)) {
-            case 1: return internal_get2(key, (uint8_t*)_index_bytes);
-            case 2: return internal_get2(key, (uint16_t*)_index_bytes);
-            case 4: return internal_get2(key, (uint32_t*)_index_bytes);
-            default: return internal_get2(key, (size_t*)_index_bytes);
-        }
-    }
-
-    template <typename I>
-    Entry *internal_get2(const K &key, I *indexes) const {
-        uint32_t hash = HashFunction(key);
-        size_t start_index = hash_to_index(hash);
-        for (size_t roll_over = 0; roll_over <= _max_distance_from_start_index; roll_over += 1) {
-            size_t index_index = (start_index + roll_over) % _indexes_len;
-            size_t index_data = indexes[index_index];
-            if (index_data == 0)
-                return nullptr;
-
-            Entry *entry = &_entries.items[index_data - 1];
-            if (entry->hash == hash && EqualFn(entry->key, key))
-                return entry;
-        }
-        return nullptr;
-    }
-
-    size_t hash_to_index(uint32_t hash) const {
-        return ((size_t)hash) % _indexes_len;
-    }
-
-    template <typename I>
-    bool internal_remove(const K &key, I *indexes) {
-        uint32_t hash = HashFunction(key);
-        size_t start_index = hash_to_index(hash);
-        for (size_t roll_over = 0; roll_over <= _max_distance_from_start_index; roll_over += 1) {
-            size_t index_index = (start_index + roll_over) % _indexes_len;
-            size_t index_data = indexes[index_index];
-            if (index_data == 0)
-                return false;
-
-            size_t index = index_data - 1;
-            Entry *entry = &_entries.items[index];
-            if (entry->hash != hash || !EqualFn(entry->key, key))
-                continue;
-
-            size_t prev_index = index_index;
-            _entries.swap_remove(index);
-            if (_entries.length > 0 && _entries.length != index) {
-                // Because of the swap remove, now we need to update the index that was
-                // pointing to the last entry and is now pointing to this removed item slot.
-                update_entry_index(_entries.length, index, indexes);
-            }
-
-            // Now we have to shift over the following indexes.
-            roll_over += 1;
-            for (; roll_over < _indexes_len; roll_over += 1) {
-                size_t next_index = (start_index + roll_over) % _indexes_len;
-                if (indexes[next_index] == 0) {
-                    indexes[prev_index] = 0;
-                    return true;
-                }
-                Entry *next_entry = &_entries.items[indexes[next_index] - 1];
-                if (next_entry->distance_from_start_index == 0) {
-                    indexes[prev_index] = 0;
-                    return true;
-                }
-                indexes[prev_index] = indexes[next_index];
-                prev_index = next_index;
-                next_entry->distance_from_start_index -= 1;
-            }
-            RED_UNREACHABLE;
-        }
-        return false;
-    }
-
-    template <typename I>
-    void update_entry_index(size_t old_entry_index, size_t new_entry_index, I *indexes) {
-        size_t start_index = hash_to_index(_entries.items[new_entry_index].hash);
-        for (size_t roll_over = 0; roll_over <= _max_distance_from_start_index; roll_over += 1) {
-            size_t index_index = (start_index + roll_over) % _indexes_len;
-            if (indexes[index_index] == old_entry_index + 1) {
-                indexes[index_index] = new_entry_index + 1;
-                return;
-            }
-        }
-        RED_UNREACHABLE;
-    }
-};
-
-template<typename T>
-struct Slice {
-    T *ptr;
-    size_t len;
-
-    inline T &at(size_t i) {
-        redassert(i < len);
-        return ptr[i];
-    }
-
-    inline Slice<T> slice(size_t start, size_t end) {
-        redassert(end <= len);
-        redassert(end >= start);
-        return {
-                ptr + start,
-                end - start,
-        };
-    }
-
-    inline Slice<T> sliceFrom(size_t start) {
-        redassert(start <= len);
-        return {
-                ptr + start,
-                len - start,
-        };
-    }
-
-    static inline Slice<T> alloc(size_t n) {
-        return {heap::c_allocator.allocate_nonzero<T>(n), n};
-    }
-};
-
-template<typename T>
-static inline bool slice_eql(Slice<T> a, Slice<T> b) {
-    if (a.len != b.len)
-        return false;
-    for (size_t i = 0; i < a.len; i += 1) {
-        if (a.ptr[i] != b.ptr[i])
-            return false;
-    }
-    return true;
-}
-
-template<typename T>
-static inline bool slice_starts_with(Slice<T> haystack, Slice<T> needle) {
-    if (needle.len > haystack.len)
-        return false;
-    return slice_eql(haystack.slice(0, needle.len), needle);
-}
-struct BigInt
+void  mem_init(void);
+
+//static inline bool mem_eql_mem(const char* a, size_t a_len, const char* b, size_t b_len)
+//{
+//    if (a_len != b_len)
+//    {
+//        return false;
+//    }
+//    return memcmp(a, b, a_len) == 0;
+//}
+//
+//static inline bool mem_eql_mem_ignore_case(const char* a, size_t a_len, const char* b, size_t b_len)
+//{
+//    if (a_len != b_len)
+//    {
+//        return false;
+//    }
+//
+//    for (size_t i = 0; i < a_len; i++)
+//    {
+//        if (tolower(a[i]) != tolower(b[i]))
+//            return false;
+//    }
+//    return true;
+//}
+//
+//static inline bool mem_eql_str(const char* mem, size_t mem_len, const char* str)
+//{
+//    return mem_eql_mem(mem, mem_len, str, strlen(str));
+//}
+//
+//static inline bool str_eql_str(const char* a, const char* b)
+//{
+//    return mem_eql_mem(a, strlen(a), b, strlen(b));
+//}
+//
+//static inline bool str_eql_str_ignore_case(const char* a, const char* b)
+//{
+//    return mem_eql_mem_ignore_case(a, strlen(a), b, strlen(b));
+//}
+//
+//static inline bool is_power_of_2(u64 x)
+//{
+//    return x != 0 && ((x & (~x + 1)) == x);
+//}
+//
+//static inline bool mem_ends_with_mem(const char* mem, size_t mem_len, const char* end, size_t end_len)
+//{
+//    if (mem_len < end_len)
+//    {
+//        return false;
+//    }
+//    return memcmp(mem + mem_len - end_len, end, end_len) == 0;
+//}
+//
+//static inline bool mem_ends_with_str(const char* mem, size_t mem_len, const char* str)
+//{
+//    return mem_ends_with_mem(mem, mem_len, str, strlen(str));
+//}
+//
+
+typedef struct BigInt
 {
     size_t digit_count;
     union
@@ -1060,32 +373,32 @@ struct BigInt
         u64* digits; // least significant digit first
     };
     bool is_negative;
-};
+} BigInt;
 
-struct BigFloat
+typedef struct BigFloat
 {
     f128 value;
-};
-struct TokenFloatLit
+} BigFloat;
+typedef struct TokenFloatLit
 {
     BigFloat big_float;
     bool overflow;
-};
-struct TokenIntLit
+} TokenFloatLit;
+typedef struct TokenIntLit
 {
     BigInt big_int;
-};
-struct TokenStrLit
+} TokenIntLit;
+typedef struct TokenStrLit
 {
-    Buffer str;
-};
-struct TokenCharLit
+    struct StringBuffer str;
+} TokenStrLit;
+typedef struct TokenCharLit
 {
     // TODO: we are only supporting 1-byte characters for now
     char value;
-};
+} TokenCharLit;
 
-struct Token
+typedef struct Token
 {
     TokenID id;
     size_t start_position;
@@ -1100,14 +413,66 @@ struct Token
         TokenStrLit str_lit;
         TokenCharLit char_lit;
     };
-};
+} Token;
 
-struct LexingResult
+GEN_BUFFER_STRUCT(Token)
+typedef usize Usize;
+GEN_BUFFER_STRUCT(Usize)
+typedef TokenBuffer TB;
+
+typedef struct UsizeBuffer UsizeBuffer;
+typedef struct LexingResult
 {
-    List<Token> tokens;
-    List<size_t> line_offsets;
+    TokenBuffer tokens;
+    UsizeBuffer line_offsets;
 
-    Buffer* error;
+    StringBuffer error;
     size_t error_line;
     size_t error_column;
-};
+} LexingResult;
+
+static inline struct StringBuffer* token_buffer(Token* token)
+{
+    if (!token)
+    {
+        return NULL;
+    }
+    redassert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL);
+    return &token->str_lit.str;
+}
+
+static inline BigInt* token_bigint(Token* token)
+{
+    if (!token)
+    {
+        return NULL;
+    }
+    redassert(token->id == TOKEN_ID_INT_LIT);
+    return &token->int_lit.big_int;
+}
+
+static inline BigFloat* token_bigfloat(Token* token)
+{
+    if (!token)
+    {
+        return NULL;
+    }
+    redassert(token->id == TOKEN_ID_FLOAT_LIT);
+    return &token->float_lit.big_float;
+}
+
+static inline bool token_is_binop(TokenID op)
+{
+    bool is_it = op == TOKEN_ID_PLUS ||
+        op == TOKEN_ID_EQ ||
+        op == TOKEN_ID_DASH ||
+        op == TOKEN_ID_STAR ||
+        op == TOKEN_ID_SLASH ||
+        op == TOKEN_ID_CMP_NOT_EQ ||
+        op == TOKEN_ID_CMP_EQ ||
+        op == TOKEN_ID_CMP_GREATER ||
+        op == TOKEN_ID_CMP_GREATER_OR_EQ ||
+        op == TOKEN_ID_CMP_LESS ||
+        op == TOKEN_ID_CMP_LESS_OR_EQ;
+    return is_it;
+}

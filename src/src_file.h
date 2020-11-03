@@ -4,4 +4,4 @@
 
 #pragma once
 
-void add_source_file(Buffer*source_code, const char* path);
+void add_source_file(struct StringBuffer* source_code, const char* path);

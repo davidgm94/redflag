@@ -1,33 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\allocator.cpp" />
-    <ClCompile Include="src\bigfloat.cpp" />
-    <ClCompile Include="src\bigint.cpp" />
-    <ClCompile Include="src\buffer.cpp" />
-    <ClCompile Include="src\file.cpp" />
-    <ClCompile Include="src\lexer.cpp" />
-    <ClCompile Include="src\logger.cpp" />
-    <ClCompile Include="src\os.cpp" />
-    <ClCompile Include="src\panic.cpp" />
-    <ClCompile Include="src\src_file.cpp" />
-    <ClCompile Include="src\llvm_codegen.cpp" />
-    <ClCompile Include="src\parser.cpp" />
+    <ClCompile Include="src\bigint.c" />
+    <ClCompile Include="src\lexer.c" />
+    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\new_parser.c" />
+    <ClCompile Include="src\os.c" />
+    <ClCompile Include="src\src_file.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\types.h" />
-    <ClInclude Include="src\bigfloat.h" />
     <ClInclude Include="src\bigint.h" />
     <ClInclude Include="src\compiler_types.h" />
     <ClInclude Include="src\config.h" />
-    <ClInclude Include="src\file.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\os.h" />
     <ClInclude Include="src\src_file.h" />
-    <ClInclude Include="src\llvm_codegen.h" />
-    <ClInclude Include="src\ast_types.h" />
-    <ClInclude Include="src\parser.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\redflag.sln" />
