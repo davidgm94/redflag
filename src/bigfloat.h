@@ -12,8 +12,8 @@ void BigFloat_init_32(BigFloat* dst, f32 x);
 void BigFloat_init_64(BigFloat* dst, f64 x);
 void BigFloat_init_128(BigFloat* dst, f128 x);
 void BigFloat_init_big_float(BigFloat* dst, f16 x);
-void BigFloat_init_big_int(BigFloat* dst, const u8* buffer, size_t buffer_length);
-Error BigFloat_init_buffer(BigFloat* dst, const u8* buffer, size_t buffer_length);
+void BigFloat_init_big_int(BigFloat* dst, const u8* src_buffer, size_t buffer_length);
+Error BigFloat_init_buffer(BigFloat* dst, const u8* src_buffer, size_t buffer_length);
 
 f16 BigFloat_to_f16(const BigFloat* big_float);
 f32 BigFloat_to_f32(const BigFloat* big_float);

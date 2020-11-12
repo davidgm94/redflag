@@ -14,9 +14,9 @@ f128 parse_f128(char *begin, char **p_string)
 }
 
 /* TODO: Simplify */
-Error BigFloat_init_buffer(BigFloat *dst, const u8 *buffer, size_t buffer_length)
+Error BigFloat_init_buffer(BigFloat *dst, const u8 *src_buffer, size_t buffer_length)
 {
-    char* str_begin = (char*)buffer;
+    char* str_begin = (char*)src_buffer;
     char* str_end;
 
     errno = 0;
@@ -26,7 +26,7 @@ Error BigFloat_init_buffer(BigFloat *dst, const u8 *buffer, size_t buffer_length
         return ERROR_OVERFLOW;
     }
 
-    redassert(str_end <= ((char*)buffer) + buffer_length);
+    redassert(str_end <= ((char*)src_buffer) + buffer_length);
     return ERROR_NONE;
 }
 

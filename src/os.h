@@ -51,8 +51,8 @@ typedef struct ExplicitTimer
     char* text;
 } ExplicitTimer;
 
-ExplicitTimer et_start(const char* text);
-void et_end(ExplicitTimer* et);
+ExplicitTimer os_timer_start(const char* text);
+void os_timer_end(ExplicitTimer* et);
 
 typedef enum FileLoadResult
 {
@@ -71,6 +71,7 @@ size_t os_get_page_size(void);
 void os_spawn_process(const char* exe, os_arg_list args, Termination* termination);
 void os_abort(void);
 void os_exit(s32 code);
+void os_exit_with_message(const char* message, ...);
 void os_print_recorded_times(f64 total_ms);
 s64 os_performance_counter(void);
 f64 os_compute_ms(s64 pc_start, s64 pc_end);
@@ -138,6 +139,11 @@ static inline void sb_append_char(SB* sb, u8 c)
     sb_append_mem(sb, (const char*)&c, 1);
 }
 
+static inline void sb_append_s32(SB* sb, s32 n)
+{
+    sb_append_mem(sb, (char*)&n, sizeof(s32));
+}
+
 static inline void sb_append_str(SB* sb, const char* str)
 {
     sb_assert_not_empty(sb);
@@ -174,5 +180,10 @@ static inline void sb_clear(SB* sb)
     sb->len = 0;
 }
 
+static inline bool sb_cmp(SB* sb1, SB* sb2)
+{
+    return strcmp(sb1->ptr, sb2->ptr) == 0;
+}
 
+void prints(const char* msg);
 void sb_vprintf(SB* sb, const char* format, va_list ap);

@@ -101,13 +101,13 @@ typedef struct RedKeyword
     TokenID id;
 } RedKeyword;
 
-void print_token(SB* buffer, Token* token)
+void print_token(SB* src_buffer, Token* token, u32 token_index)
 {
-    fwrite(buffer->ptr + token->start_position, 1, token->end_position - token->start_position, stdout);
-    fputc('\n', stdout);
+    //fwrite(src_buffer->ptr + token->start_position, 1, token->end_position - token->start_position, stdout);
+    PRINT_TOKEN_WITH_PREFIX("Printing", token, token_index, symbol_name);
 }
 
-void print_tokens(SB* buffer, TokenBuffer* tokens)
+void print_tokens(SB* src_buffer, TokenBuffer* tokens)
 {
 #if RED_LEXER_VERBOSE
     for (size_t i = 0; i < tokb_len(tokens); i++)
@@ -116,13 +116,15 @@ void print_tokens(SB* buffer, TokenBuffer* tokens)
         //logger(LOG_TYPE_INFO, "%s ", token_name(token->id));
         if (token->start_position != SIZE_MAX)
         {
-            fwrite(buffer->ptr + token->start_position, 1, token->end_position - token->start_position, stdout);
+            //fwrite(sb_ptr(src_buffer) + token->start_position, 1, token->end_position - token->start_position, stdout);
+            print_token(src_buffer, token, i);
         }
-        fputc('\n', stdout);
     }
+    fputc('\n', stdout);
 #endif
 }
 
+/* TODO: SoA this*/
 static const struct RedKeyword red_keywords[] =
 {
     { "const", TOKEN_ID_KEYWORD_CONST, },
@@ -218,7 +220,7 @@ typedef enum LexerState
 typedef struct Lexer
 {
     LexingResult result;
-    SB* buffer;
+    SB* src_buffer;
     Token* current_token;
     LexerState state;
     size_t position;
@@ -264,8 +266,7 @@ static void set_token_id(Lexer* l, Token* token, TokenID id)
 static void begin_token(Lexer* l, TokenID id)
 {
     redassert(!l->current_token);
-    tokb_add_one(&l->result.tokens);
-    Token* token = tokb_last(&l->result.tokens);
+    Token* token = tokb_add_one(&l->result.tokens);
     token->start_line = l->line;
     token->start_column = l->column;
     token->start_position = l->position;
@@ -297,12 +298,14 @@ static void end_token(Lexer* l)
     }
     else if (current_token->id == TOKEN_ID_SYMBOL)
     {
-        char* token_memory = sb_ptr(l->buffer) + current_token->start_position;
+        char* token_str = sb_ptr(l->src_buffer) + current_token->start_position;
         s32 token_len = (s32)(current_token->end_position - current_token->start_position);
 
         for (size_t i = 0; i < array_length(red_keywords); i++)
         {
-            if (memcmp(token_memory, red_keywords[i].text, token_len) == 0)
+            char* kw = (char*)red_keywords[i].text;
+            usize kw_len = strlen(kw);
+            if (token_len == kw_len && strncmp(token_str, kw, token_len) == 0)
             {
                 l->current_token->id = red_keywords[i].id;
                 break;
@@ -394,12 +397,12 @@ static void invalid_char_error(Lexer* l, u8 c)
     lexer_error(l, "Invalid character: '\\x%02x'", c);
 }
 
-LexingResult lex(SB* buffer)
+LexingResult lex_file(SB* src_buffer)
 {
     //ScopeTimer lexer_time("Lexer");
     Lexer l = {0};
     /* TODO: stack return may involve some kind of errors, check later */
-    l.buffer = buffer;
+    l.src_buffer = src_buffer;
     uszbf_append(&l.result.line_offsets, 0);
 
     /* Skip UTF-8 BOM */
@@ -408,9 +411,9 @@ LexingResult lex(SB* buffer)
     //    l.position += 3;
     //}
 
-    for (; l.position < sb_len(l.buffer); l.position += 1)
+    for (; l.position < sb_len(l.src_buffer); l.position += 1)
     {
-        u8 c = l.buffer->ptr[l.position];
+        u8 c = l.src_buffer->ptr[l.position];
         
         switch (l.state)
         {
@@ -526,11 +529,11 @@ LexingResult lex(SB* buffer)
                         l.state = LEXER_STATE_AMPERSAND;
                         break;
                     case '^':
-                        begin_token(&l, TOKEN_ID_BIT_XOR);
+                        begin_token(&l, TOKEN_ID_CARET);
                         l.state = LEXER_STATE_CARET;
                         break;
                     case '|':
-                        begin_token(&l, TOKEN_ID_BIT_OR);
+                        begin_token(&l, TOKEN_ID_BAR);
                         l.state = LEXER_STATE_BAR;
                         break;
                     case '=':
@@ -1196,8 +1199,8 @@ const char* token_name(TokenID id)
         case TOKEN_ID_ARROW: return "->";
         case TOKEN_ID_AT: return "@";
         case TOKEN_ID_BANG: return "!";
-        case TOKEN_ID_BIT_OR: return "|";
-        case TOKEN_ID_BIT_XOR: return "^";
+        case TOKEN_ID_BAR: return "|";
+        case TOKEN_ID_CARET: return "^";
         case TOKEN_ID_BIT_SHL: return "<<";
         case TOKEN_ID_BIT_SHR: return ">>";
         case TOKEN_ID_BIT_XOR_EQ: return "^=";

@@ -36,7 +36,7 @@ static u32 record_count = 0;
 #else
 #endif
 
-ExplicitTimer et_start(const char* text)
+ExplicitTimer os_timer_start(const char* text)
 {
 #ifdef RED_OS_WINDOWS
     ExplicitTimer et;
@@ -47,7 +47,7 @@ ExplicitTimer et_start(const char* text)
 #endif
 }
 
-void et_end(ExplicitTimer* et)
+void os_timer_end(ExplicitTimer* et)
 {
 #ifdef RED_OS_WINDOWS
     LARGE_INTEGER end;
@@ -206,6 +206,16 @@ void os_spawn_process(const char* exe, os_arg_list args, Termination* terminatio
 void os_exit(s32 code)
 {
     exit(code);
+}
+
+void os_exit_with_message(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    vfprintf(stdout, message, args);
+    va_end(args);
+
+    exit(1);
 }
 
 void os_print_recorded_times(f64 total_ms)
@@ -564,6 +574,11 @@ void print(const char* format, ...)
     va_end(args);
 }
 
+void prints(const char* msg)
+{
+    (void)puts(msg);
+}
+
 void logger(LogType log_type, const char *format, ...)
 {
     fprintf(stdout, "[%s] ", log_type_to_str(log_type));
@@ -575,8 +590,8 @@ void logger(LogType log_type, const char *format, ...)
 
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...)
 {
-    char buffer[10 * 1024];
-    char buffer2[10 * 1024];
+    char buffer [1024];
+    char buffer2[1024];
 
     //memset(buffer, 0x00, sizeof(buffer));
 

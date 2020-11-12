@@ -12,20 +12,31 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\bigint.c" />
+    <ClCompile Include="src\ir.c" />
     <ClCompile Include="src\lexer.c" />
+    <ClCompile Include="src\llvm.c" />
+    <ClCompile Include="src\llvm_codegen.c" />
     <ClCompile Include="src\main.c" />
-    <ClCompile Include="src\new_parser.c" />
+    <ClCompile Include="src\parser.c" />
     <ClCompile Include="src\os.c" />
+    <ClCompile Include="src\red_llvm.c" />
     <ClCompile Include="src\src_file.c" />
+    <ClCompile Include="src\x64_backend.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bigint.h" />
     <ClInclude Include="src\compiler_types.h" />
     <ClInclude Include="src\config.h" />
+    <ClInclude Include="src\ir.h" />
     <ClInclude Include="src\lexer.h" />
+    <ClInclude Include="src\llvm.h" />
+    <ClInclude Include="src\llvm_codegen.h" />
+    <ClInclude Include="src\red_llvm.h" />
     <ClInclude Include="src\os.h" />
+    <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\src_file.h" />
     <ClInclude Include="src\types.h" />
+    <ClInclude Include="src\x64_backend.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\redflag.sln" />
@@ -86,7 +97,9 @@
       <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include;$(SolutionDir)dependencies/stb/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>-m64 -Wno-unused-function %(AdditionalOptions)</AdditionalOptions>
-      <CompileAs>CompileAsC</CompileAs>
+      <CompileAs>Default</CompileAs>
+      <AssemblerOutput>NoListing</AssemblerOutput>
+      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,7 +125,9 @@
       <AdditionalIncludeDirectories>$(SolutionDir)dependencies/llvm/include;$(SolutionDir)dependencies/stb/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>-m64 -Wno-unused-function %(AdditionalOptions)</AdditionalOptions>
-      <CompileAs>CompileAsC</CompileAs>
+      <CompileAs>Default</CompileAs>
+      <AssemblerOutput>NoListing</AssemblerOutput>
+      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

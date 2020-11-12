@@ -1,0 +1,5 @@
+# Compiler
+
+* Provide sense of scope
+* Expression vs statement, block vs compound statement
+* Function body is compound statement

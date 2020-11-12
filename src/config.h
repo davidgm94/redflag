@@ -4,8 +4,9 @@
 
 // Choose one of the three
 #define RED_C_BACKEND 0
-#define RED_LLVM_BACKEND 1
+#define RED_LLVM_BACKEND 0
 #define RED_SELF_BACKEND 0
+#define RED_LLVM_EXPERIMENTS 1
 
 #define RED_JIT 1
 

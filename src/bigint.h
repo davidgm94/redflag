@@ -32,8 +32,8 @@ static inline const u64* bigint_ptr(const BigInt* big_int)
 }
 
 bool BigInt_fits_in_bits(const BigInt* bn, size_t bit_count, bool is_signed);
-void BigInt_write_twos_complement(const BigInt* big_int, u8* buffer, size_t bit_count, bool is_big_endian);
-void BigInt_read_twos_complement(BigInt* dst, const u8* buffer, size_t big_count, bool is_big_endian, bool is_signed);
+void BigInt_write_twos_complement(const BigInt* big_int, u8* src_buffer, size_t bit_count, bool is_big_endian);
+void BigInt_read_twos_complement(BigInt* dst, const u8* src_buffer, size_t big_count, bool is_big_endian, bool is_signed);
 void BigInt_add(BigInt* dst, const BigInt* op1, const BigInt* op2);
 void BigInt_add_wrap(BigInt* dst, const BigInt* op1, const BigInt* op2, size_t bit_count, bool is_signed);
 void BigInt_sub(BigInt* dst, const BigInt* op1, const BigInt* op2);
@@ -60,7 +60,7 @@ void BigInt_truncate(BigInt* dst, const BigInt* op, size_t bit_count, bool is_si
 
 Cmp BigInt_cmp(const BigInt* op1, const BigInt* op2);
 
-void BigInt_append_buffer(SB* buffer, const BigInt* op, u64 base);
+void BigInt_append_buffer(SB* src_buffer, const BigInt* op, u64 base);
 
 size_t BigInt_ctz(const BigInt* big_int, size_t bit_count);
 size_t BigInt_clz(const BigInt* big_int, size_t bit_count);

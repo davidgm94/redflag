@@ -14,7 +14,7 @@ typedef struct StringBuffer
     u32 cap; /* capacity */
 } SB, StringBuffer;
 
-Enum Error
+typedef enum Error
 {
     ERROR_NONE,
     ERROR_NO_MEM,
@@ -97,21 +97,20 @@ Enum Error
     ERROR_LOCKED,
 } Error;
 
-Enum Cmp
+typedef enum Cmp
 {
     CMP_LESS,
     CMP_GREATER,
     CMP_EQ
 } Cmp;
 
-Enum TokenID
+typedef enum TokenID
 {
     TOKEN_ID_AMPERSAND = '&',
-    TOKEN_ID_ARROW,
     TOKEN_ID_AT = '@',
     TOKEN_ID_BANG = '!',
-    TOKEN_ID_BIT_OR = '|',
-    TOKEN_ID_BIT_XOR = '^',
+    TOKEN_ID_BAR = '|',
+    TOKEN_ID_CARET = '^',
     TOKEN_ID_CMP_GREATER = '>',
     TOKEN_ID_CMP_LESS = '<',
     TOKEN_ID_COLON = ':',
@@ -133,6 +132,7 @@ Enum TokenID
     TOKEN_ID_SLASH = '/',
     TOKEN_ID_STAR = '*',
     TOKEN_ID_TILDE = '~',
+    TOKEN_ID_ARROW = 256,
     TOKEN_ID_BIT_OR_EQ,
     TOKEN_ID_BIT_XOR_EQ,
     TOKEN_ID_BIT_AND_EQ,
@@ -200,7 +200,7 @@ Enum TokenID
     TOKEN_ID_MULTILINE_STRING_LIT,
 } TokenID;
 
-Enum RedTypeID
+typedef enum RedTypeID
 {
     RED_TYPE_INVALID,
     RED_TYPE_VOID,
@@ -224,7 +224,14 @@ void logger(LogType log_type, const char *format, ...);
 #define NEW(T, count) (T*)(allocate_chunk(count * sizeof(T)))
 #define RENEW(T, old_ptr, count) (T*)(reallocate_chunk(old_ptr, count * sizeof(T)))
 
-#define GEN_BUFFER_STRUCT(type) \
+#define GEN_BUFFER_STRUCT_PTR(type_name, type) \
+    typedef struct type_name##Buffer \
+    {\
+        struct type* ptr;\
+        u32 len;\
+        u32 cap;\
+    } type_name##Buffer;
+#define GEN_BUFFER_STRUCT(type)\
     typedef struct type##Buffer \
     {\
         type* ptr;\
@@ -264,7 +271,6 @@ static inline void p_type_prefix##_resize(t_type* buffer_name, size_t new_length
 {\
     redassert(new_length != SIZE_MAX);\
     p_type_prefix##_ensure_capacity(buffer_name, new_length);\
-    buffer_name->len = new_length;\
 }\
 \
 static inline void p_type_prefix##_append(t_type* buffer_name, elem_type item)\
@@ -293,6 +299,7 @@ static inline elem_type* p_type_prefix##_last(t_type* buffer_name)\
 static inline elem_type* p_type_prefix##_add_one(t_type* buffer_name)\
 {\
     p_type_prefix##_resize(buffer_name, buffer_name->len + 1);\
+    buffer_name->len++;\
     return p_type_prefix##_last(buffer_name);\
 }\
 \
@@ -419,6 +426,17 @@ GEN_BUFFER_STRUCT(Token)
 typedef usize Usize;
 GEN_BUFFER_STRUCT(Usize)
 typedef TokenBuffer TB;
+typedef struct Node Node;
+GEN_BUFFER_STRUCT_PTR(Node, Node*)
+typedef u8 U8;
+GEN_BUFFER_STRUCT(U8)
+GEN_BUFFER_FUNCTIONS(u8, u8b, U8Buffer, u8)
+
+typedef struct RedModuleTree
+{
+    NodeBuffer fn_definitions;
+} RedModuleTree;
+
 
 typedef struct UsizeBuffer UsizeBuffer;
 typedef struct LexingResult
@@ -461,7 +479,7 @@ static inline BigFloat* token_bigfloat(Token* token)
     return &token->float_lit.big_float;
 }
 
-static inline bool token_is_binop(TokenID op)
+static inline bool token_is_binop_char(TokenID op)
 {
     bool is_it = op == TOKEN_ID_PLUS ||
         op == TOKEN_ID_EQ ||
@@ -476,3 +494,168 @@ static inline bool token_is_binop(TokenID op)
         op == TOKEN_ID_CMP_LESS_OR_EQ;
     return is_it;
 }
+
+typedef enum ASTType
+{
+    AST_TYPE_FN_DEF,
+    AST_TYPE_FN_PROTO,
+    AST_TYPE_TYPE_EXPR,
+    AST_TYPE_PARAM_DECL,
+    AST_TYPE_COMPOUND_STATEMENT,
+    AST_TYPE_RETURN_STATEMENT,
+    AST_TYPE_SYM_DECL,
+    AST_TYPE_SYM_EXPR,
+    AST_TYPE_BIN_EXPR,
+    AST_TYPE_FN_CALL,
+    AST_TYPE_BRANCH_EXPR,
+    AST_TYPE_INT_LIT,
+} ASTType;
+
+/* AST Kind
+* statement
+* compound statement
+* declare statement
+* expression statement
+* return statement
+* while statement
+* for statement
+* do statement
+* if statement
+* else if statement ??
+* else statement ??
+* switch statement
+* case statement
+* break statement
+* continue statement
+*/
+
+
+GEN_BUFFER_FUNCTIONS(node, nb, NodeBuffer, struct Node*)
+typedef struct Symbol
+{
+    SB* name;
+} Symbol;
+
+typedef enum RedTypeKind
+{
+    PRIMITIVE,
+    FUNCTION,
+    //*****
+} RedTypeKind;
+
+typedef enum RedTypePrimitive
+{
+    RED_TYPE_PRIMITIVE_U8,
+    RED_TYPE_PRIMITIVE_U16,
+    RED_TYPE_PRIMITIVE_U32,
+    RED_TYPE_PRIMITIVE_U64,
+    RED_TYPE_PRIMITIVE_S8,
+    RED_TYPE_PRIMITIVE_S16,
+    RED_TYPE_PRIMITIVE_S32,
+    RED_TYPE_PRIMITIVE_S64,
+    RED_TYPE_PRIMITIVE_F32,
+    RED_TYPE_PRIMITIVE_F64,
+    RED_TYPE_PRIMITIVE_F128,
+    RED_TYPE_PRIMITIVE_POINTER,
+} RedTypePrimitive;
+
+typedef struct RedType
+{
+    RedTypeKind kind;
+    usize size;
+
+    union
+    {
+        RedTypePrimitive primitive;
+        struct RedTypeIdentifier* struct_components;
+        struct
+        {
+            struct RedType* return_type;
+            struct RedType** parameter_types;
+        } function;
+    };
+} RedType;
+
+typedef struct Type
+{
+    SB* type_name;
+} Type;
+
+typedef struct ParamDecl
+{
+    Node* sym;
+    Node* type;
+} ParamDecl;
+
+typedef struct SymDecl
+{
+    Node* sym;
+    Node* type;
+    Node* value;
+    bool is_const;
+} SymDecl;
+
+typedef struct IntLit
+{
+    BigInt* bigint;
+} IntLit;
+
+typedef struct BinExpr
+{
+    TokenID op;
+    Node* left;
+    Node* right;
+} BinExpr;
+
+typedef struct RetExpr
+{
+    Node* expr;
+} RetExpr;
+
+typedef struct CompoundStatement
+{
+    NodeBuffer statements;
+} CompoundStatement;
+
+typedef struct BranchExpr
+{
+    Node* condition;
+    Node* true_block;
+    Node* false_block;
+} BranchExpr;
+
+typedef struct FnProto
+{
+    NodeBuffer params;
+    Node* sym;
+    Node* ret_type;
+} FnProto;
+
+typedef struct FnDef
+{
+    Node* proto;
+    Node* body;
+} FnDef;
+
+typedef struct Node
+{
+    ASTType node_id;
+    u32 node_line;
+    u32 node_column;
+    u32 node_padding;
+
+    union
+    {
+        Symbol sym_expr;
+        Type type_expr;
+        ParamDecl param_decl;
+        SymDecl sym_decl;
+        IntLit int_lit;
+        BinExpr bin_expr;
+        RetExpr return_expr;
+        CompoundStatement compound_statement;
+        BranchExpr branch_expr;
+        FnProto fn_proto;
+        FnDef fn_def;
+    };
+} Node;

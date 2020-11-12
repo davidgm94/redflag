@@ -1,0 +1,8 @@
+                            *** TODO LIST ***
+                            =================
+
+* Symbol types are values
+* Array-based parser (bunch of nodes in dynamic arrays, indices as pointer to node)
+* rework reallocation. If there is enough space ahead of the allocated space,
+just modify block metadata (amplify allocation boundaries) and don't copy already existent data
+* when doing standard library, redesign memcpy/memcmp so they are all safe and check size on ***BOTH*** ends
