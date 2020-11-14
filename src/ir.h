@@ -7,12 +7,6 @@ typedef struct IRParamDecl
     SB* name;
 } IRParamDecl;
 
-typedef struct IRSymDecl
-{
-    RedType type;
-    SB* name;
-    bool is_const;
-} IRSymDecl;
 
 typedef struct IRConstValue
 {
@@ -40,7 +34,7 @@ typedef struct IRFunctionConfig
 typedef struct IRFunctionPrototype
 {
     IRParamDecl* params;
-    RedType* ret_type;
+    RedType ret_type;
     SB* name;
     IRFunctionConfig fn_cfg;
     u8 param_count;
@@ -55,9 +49,10 @@ typedef struct IRCompoundStatement
 
 typedef enum IRStatementType
 {
-    IR_ST_TYPE_BIN_ST,
     IR_ST_TYPE_COMPOUND_ST,
     IR_ST_TYPE_RETURN_ST,
+    IR_ST_TYPE_BRANCH_ST,
+    IR_ST_TYPE_SYM_DECL_ST,
 } IRStatementType;
 
 typedef enum IRExpressionType
@@ -65,6 +60,7 @@ typedef enum IRExpressionType
     IR_EXPRESSION_TYPE_VOID = 0,
     IR_EXPRESSION_TYPE_INT_LIT,
     IR_EXPRESSION_TYPE_SYM_EXPR,
+    IR_EXPRESSION_TYPE_BIN_EXPR,
 } IRExpressionType;
 
 typedef struct IRIntLiteral
@@ -77,15 +73,26 @@ typedef enum IRSymExprType
     IR_SYM_EXPR_TYPE_SYM,
     IR_SYM_EXPR_TYPE_PARAM,
 } IRSymExprType;
+
+typedef struct IRSymDeclStatement IRSymDeclStatement;
 typedef struct IRSymExpr
 {
     IRSymExprType type;
     union
     {
-        IRSymDecl* sym_decl;
+        IRSymDeclStatement* sym_decl;
         IRParamDecl* param_decl;
     };
 } IRSymExpr;
+
+typedef struct IRExpression IRExpression;
+
+typedef struct IRBinaryExpr
+{
+    IRExpression* left;
+    IRExpression* right;
+    TokenID op;
+} IRBinaryExpr;
 
 typedef struct IRExpression
 {
@@ -94,6 +101,7 @@ typedef struct IRExpression
     {
         IRIntLiteral int_literal;
         IRSymExpr sym_expr;
+        IRBinaryExpr bin_expr;
     };
 } IRExpression;
 
@@ -103,6 +111,21 @@ typedef struct IRReturnStatement
     RedType red_type;
 } IRReturnStatement;
 
+typedef struct IRBranchStatement
+{
+    IRExpression condition;
+    IRCompoundStatement if_block;
+    IRCompoundStatement else_block;
+} IRBranchStatement;
+
+typedef struct IRSymDeclStatement
+{
+    RedType type;
+    SB* name;
+    IRExpression value;
+    bool is_const;
+} IRSymDeclStatement;
+
 typedef struct IRStatement
 {
     IRStatementType type;
@@ -110,13 +133,17 @@ typedef struct IRStatement
     {
         IRCompoundStatement compound_st;
         IRReturnStatement return_st;
+        IRBranchStatement branch_st;
+        IRSymDeclStatement sym_decl_st;
     };
 } IRStatement;
 
+GEN_BUFFER_STRUCT_PTR(IRSymDeclStatement, IRSymDeclStatement*)
 typedef struct IRFunctionDefinition
 {
     IRFunctionPrototype proto;
     IRCompoundStatement body;
+    IRSymDeclStatementBuffer sym_declarations;
 } IRFunctionDefinition;
 
 GEN_BUFFER_STRUCT(IRFunctionDefinition)

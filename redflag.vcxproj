@@ -15,11 +15,9 @@
     <ClCompile Include="src\ir.c" />
     <ClCompile Include="src\lexer.c" />
     <ClCompile Include="src\llvm.c" />
-    <ClCompile Include="src\llvm_codegen.c" />
     <ClCompile Include="src\main.c" />
     <ClCompile Include="src\parser.c" />
     <ClCompile Include="src\os.c" />
-    <ClCompile Include="src\red_llvm.c" />
     <ClCompile Include="src\src_file.c" />
     <ClCompile Include="src\x64_backend.c" />
   </ItemGroup>
@@ -30,8 +28,6 @@
     <ClInclude Include="src\ir.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\llvm.h" />
-    <ClInclude Include="src\llvm_codegen.h" />
-    <ClInclude Include="src\red_llvm.h" />
     <ClInclude Include="src\os.h" />
     <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\src_file.h" />

@@ -538,6 +538,8 @@ typedef struct Symbol
 
 typedef enum RedTypeKind
 {
+    INVALID,
+    VOID,
     PRIMITIVE,
     FUNCTION,
     //*****
@@ -558,6 +560,28 @@ typedef enum RedTypePrimitive
     RED_TYPE_PRIMITIVE_F128,
     RED_TYPE_PRIMITIVE_POINTER,
 } RedTypePrimitive;
+
+static inline const char* primitive_type_str(RedTypePrimitive primitive_type_id)
+{
+    switch (primitive_type_id)
+    {
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_U8);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_U16);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_U32);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_U64);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_S8);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_S16);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_S32);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_S64);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_F32);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_F64);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_F128);
+        CASE_TO_STR(RED_TYPE_PRIMITIVE_POINTER);
+        default:
+            RED_NOT_IMPLEMENTED;
+            return null;
+    }
+}
 
 typedef struct RedType
 {
@@ -620,8 +644,8 @@ typedef struct CompoundStatement
 typedef struct BranchExpr
 {
     Node* condition;
-    Node* true_block;
-    Node* false_block;
+    Node* if_block;
+    Node* else_block;
 } BranchExpr;
 
 typedef struct FnProto

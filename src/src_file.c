@@ -12,7 +12,9 @@
 
 void add_source_file(SB* src_buffer, const char* path)
 {
+#if RED_SRC_FILE_VERBOSE
     print("Src file:\n\n***\n\n%s\n\n***\n\n", sb_ptr(src_buffer));
+#endif
     ExplicitTimer lexer_dt = os_timer_start("Lexer");
     LexingResult lexing_result = lex_file(src_buffer);
     os_timer_end(&lexer_dt);

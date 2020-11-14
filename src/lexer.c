@@ -239,8 +239,7 @@ static void lexer_error(Lexer* l, const char* format, ...)
     va_start(args, format);
     sb_vprintf(&l->result.error, format, args);
     va_end(args);
-    print("Error: %s\n", sb_ptr(&l->result.error));
-    os_exit(1);
+    os_exit_with_message("Error: %s\n", sb_ptr(&l->result.error));
 }
 
 static void set_token_id(Lexer* l, Token* token, TokenID id)
@@ -496,9 +495,11 @@ LexingResult lex_file(SB* src_buffer)
                         break;
                     case '*':
                         begin_token(&l, TOKEN_ID_STAR);
+                        end_token(&l);
                         break;
                     case '/':
                         begin_token(&l, TOKEN_ID_SLASH);
+                        end_token(&l);
                         break;
                     case '\\':
                         begin_token(&l, TOKEN_ID_MULTILINE_STRING_LIT);

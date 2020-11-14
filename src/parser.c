@@ -50,10 +50,15 @@ static inline Node* create_symbol_node(Token* t)
 
 static inline Node* create_type_node(Token* t)
 {
-    Node* node = NEW(Node, 1);
-    fill_base_node(node, t, AST_TYPE_TYPE_EXPR);
-    node->type_expr.type_name = &t->str_lit.str;
-    return node;
+    if (t)
+    {
+        Node* node = NEW(Node, 1);
+        fill_base_node(node, t, AST_TYPE_TYPE_EXPR);
+        node->type_expr.type_name = &t->str_lit.str;
+        return node;
+    }
+
+    return null;
 }
 
 typedef struct ParseContext
@@ -135,6 +140,7 @@ static inline void put_back_token(ParseContext* pc)
 #endif
 }
 
+static inline Node* parse_expression(ParseContext* pc);
 static inline Node* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
@@ -205,7 +211,16 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     }
 
     expect_token(pc, TOKEN_ID_EQ);
-    RED_NOT_IMPLEMENTED;
+    Node* expression = parse_expression(pc);
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+
+    sym_node = NEW(Node, 1);
+    fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
+    sym_node->sym_decl.is_const = is_const;
+    sym_node->sym_decl.sym = create_symbol_node(sym_name);
+    sym_node->sym_decl.type = create_type_node(sym_type);
+    sym_node->sym_decl.value = expression;
+
     return sym_node;
 }
 
@@ -213,9 +228,8 @@ static inline Node* parse_sym_decl(ParseContext* pc)
 Var declaration
 Branch (if-else)
 return expression
-variable assignmen (bin op?)
+variable assignment (bin op?)
 */
-static inline Node* parse_expression(ParseContext* pc);
 static inline Node* parse_int_literal(ParseContext* pc)
 {
     Token* token = consume_token_if(pc, TOKEN_ID_INT_LIT);
@@ -243,56 +257,112 @@ static inline Node* parse_symbol_expr(ParseContext* pc)
     return node;
 }
 
-static inline Node* parse_primary_expr(ParseContext* pc)
+static inline Node* parse_primary_expr(ParseContext* pc);
+static inline Node* parse_branch_block(ParseContext* pc)
 {
-    Token* t = get_token(pc);
-    TokenID id = t->id;
-    //Node* node = parse_return_st(pc);
-    //if (node)
-    //{
-    //    return node;
-    //}
-    //node = parse_int_literal(pc);
-    Node* node = null;
-    switch (id)
+    Token* if_token = expect_token(pc, TOKEN_ID_KEYWORD_IF);
+
+    Node* condition_node = parse_expression(pc);
+    if (!condition_node)
     {
-        case TOKEN_ID_KEYWORD_RETURN:
-            (void)consume_token(pc);
-            node = NEW(Node, 1);
-            fill_base_node(node, t, AST_TYPE_RETURN_STATEMENT);
-            node->return_expr.expr = parse_primary_expr(pc);
-            return node;
-        case TOKEN_ID_INT_LIT:
-            node = parse_int_literal(pc);
-            return node;
-        case TOKEN_ID_SYMBOL:
-            node = parse_symbol_expr(pc);
-            return node;
-        default:
+        return null;
+    }
+
+    Node* if_block = parse_expression(pc);
+    if (!if_block)
+    {
+        RED_NOT_IMPLEMENTED;
+        return null;
+    }
+
+    Token* else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE);
+    if (!else_token)
+    {
+        // create branch block with just this if
+        RED_NOT_IMPLEMENTED;
+        return null;
+    }
+
+    Token* else_if_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
+    if (!else_if_token)
+    {
+        // IF-ELSE BLOCK
+
+        // parse else block
+        Node* else_block = parse_expression(pc);
+        if (!else_block)
+        {
             RED_NOT_IMPLEMENTED;
             return null;
+        }
+        redassert(else_block->node_id == AST_TYPE_COMPOUND_STATEMENT);
+
+        Node* branch_block = NEW(Node, 1);
+        fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
+        branch_block->branch_expr.condition = condition_node;
+        branch_block->branch_expr.if_block = if_block;
+        branch_block->branch_expr.else_block = else_block;
+
+        return branch_block;
     }
+
+    while ((else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE)))
+    {
+        else_if_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
+        if (else_if_token)
+        {
+
+        }
+    }
+        
+    RED_NOT_IMPLEMENTED;
+    return null;
 }
 
-static inline Node* parse_return_st(ParseContext* pc)
+static inline Node* parse_return_statement(ParseContext* pc)
 {
     Token* ret_token = consume_token_if(pc, TOKEN_ID_KEYWORD_RETURN);
     if (!ret_token)
     {
         return null;
     }
+    Node* node = NEW(Node, 1);
+    fill_base_node(node, ret_token, AST_TYPE_RETURN_STATEMENT);
+    node->return_expr.expr = parse_expression(pc);
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+    return node;
+}
 
-    Node* expr = parse_expression(pc);
-    if (!expr)
+static inline Node* parse_compound_st(ParseContext* pc);
+static inline Node* parse_primary_expr(ParseContext* pc)
+{
+    Token* t = get_token(pc);
+    TokenID id = t->id;
+    switch (id)
     {
-        error(pc, get_token(pc), "can't parse return expression\n");
-        return null;
+        case TOKEN_ID_LEFT_BRACE:
+            return parse_compound_st(pc);
+        case TOKEN_ID_LEFT_PARENTHESIS:
+        {
+            expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
+            Node* node = parse_expression(pc);
+            expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
+            return node;
+        }
+        case TOKEN_ID_KEYWORD_IF:
+            return parse_branch_block(pc);
+        case TOKEN_ID_KEYWORD_RETURN:
+            return parse_return_statement(pc);
+        case TOKEN_ID_INT_LIT:
+            return parse_int_literal(pc);
+        case TOKEN_ID_SYMBOL:
+            return parse_symbol_expr(pc);
+        case TOKEN_ID_END_OF_FILE:
+            return null;
+        default:
+            RED_NOT_IMPLEMENTED;
+            return null;
     }
-
-    Node* ret_node = NEW(Node, 1);
-    fill_base_node(ret_node, ret_token, AST_TYPE_RETURN_STATEMENT);
-    ret_node->return_expr.expr = expr;
-    return ret_node;
 }
 
 static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
@@ -315,11 +385,12 @@ static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
             return null;
         }
         
-        *left_expr = NEW(Node, 1);
-        fill_base_node(*left_expr, token, AST_TYPE_BIN_EXPR);
-        (*left_expr)->bin_expr.op = token->id;
-        (*left_expr)->bin_expr.left = *left_expr;
-        (*left_expr)->bin_expr.right = right_expr;
+        Node* node = NEW(Node, 1);
+        copy_base_node(node, *left_expr, AST_TYPE_BIN_EXPR);
+        node->bin_expr.op = token->id;
+        node->bin_expr.left = *left_expr;
+        node->bin_expr.right = right_expr;
+        *left_expr = node;
     }
 }
 
@@ -348,17 +419,27 @@ static inline Node* parse_statement(ParseContext* pc)
         return node;
     }
 
+    node = parse_return_statement(pc);
+    if (node)
+    {
+        return node;
+    }
+
     node = parse_expression(pc);
     if (node)
     {
-        expect_token(pc, TOKEN_ID_SEMICOLON);
+        bool add_semicolon = node->node_id != AST_TYPE_BRANCH_EXPR && node->node_id != AST_TYPE_COMPOUND_STATEMENT;
+        if (add_semicolon)
+        {
+            expect_token(pc, TOKEN_ID_SEMICOLON);
+        }
         return node;
     }
 
     RED_NOT_IMPLEMENTED;
     return null;
 }
-static inline Node* parse_block_expr(ParseContext* pc)
+static inline Node* parse_compound_st(ParseContext* pc)
 {
     Token* start_block = consume_token_if(pc, TOKEN_ID_LEFT_BRACE);
     if (!start_block)
@@ -397,6 +478,7 @@ static inline Node* parse_fn_proto(ParseContext* pc)
     Token* identifier = get_token(pc);
     if (identifier->id != TOKEN_ID_SYMBOL)
     {
+        print("expected identifier for function prototype, found: %s\n", token_name(identifier->id));
         return null;
     }
 
@@ -438,12 +520,14 @@ static inline Node* parse_fn_definition(ParseContext* pc)
     Node* proto = parse_fn_proto(pc);
     if (!proto)
     {
+        print("Error parsing function prototype for function (token %zu)\n", pc->current_token);
         return null;
     }
 
-    Node* body = parse_block_expr(pc);
+    Node* body = parse_compound_st(pc);
     if (!body)
     {
+        print("Error parsing function %s body\n", sb_ptr(proto->fn_proto.sym->sym_expr.name));
         return null;
     }
 

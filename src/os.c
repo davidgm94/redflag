@@ -215,7 +215,7 @@ void os_exit_with_message(const char* message, ...)
     vfprintf(stdout, message, args);
     va_end(args);
 
-    exit(1);
+    os_exit(1);
 }
 
 void os_print_recorded_times(f64 total_ms)
