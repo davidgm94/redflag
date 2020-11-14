@@ -41,7 +41,7 @@ typedef enum TerminationID
 
 typedef struct Termination
 {
-    TerminationID type;
+    TerminationID fn_type;
     s32 code;
 } Termination;
 

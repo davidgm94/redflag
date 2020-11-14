@@ -20,22 +20,50 @@
 
 static const u32 max_param_count = 100;
 
+GEN_BUFFER_STRUCT(LLVMValueRef)
+GEN_BUFFER_FUNCTIONS(alloca, ab, LLVMValueRefBuffer, LLVMValueRef)
+
 typedef struct RedLLVMFn
 {
     LLVMTypeRef param_types[max_param_count];
-    LLVMValueRef value;
-    LLVMTypeRef type;
+    LLVMValueRef param_arr[max_param_count];
+    LLVMValueRef param_alloc_arr[max_param_count];
+    LLVMValueRefBuffer alloca_buffer;
+    LLVMValueRef fn_handle;
+    LLVMTypeRef fn_type;
     LLVMTypeRef ret_type;
     u8 param_count;
 } RedLLVMFn;
 
-
-static inline LLVMTypeRef llvm_gen_type(LLVMContextRef context, RedType* type)
+typedef struct RedLLVMContext
 {
-    if (type)
+    LLVMContextRef context;
+    LLVMBuilderRef builder;
+
+    LLVMValueRef function;
+    LLVMValueRef alloca_point;
+    IRFunctionDefinition* current_fn; // TODO: this is obsolete
+    RedLLVMFn* llvm_current_fn;
+    LLVMBasicBlockRef current_block;
+
+    bool current_block_is_target;
+    LLVMBasicBlockRef expr_block_exit;
+    LLVMValueRef return_out;
+
+
+    LLVMTargetRef target;
+    char* default_target_triple;
+    LLVMTargetMachineRef target_machine;
+    LLVMTargetDataRef target_data_layout;
+    LLVMModuleRef module;
+} RedLLVMContext;
+
+static inline LLVMTypeRef llvm_gen_type(LLVMContextRef context, RedType* fn_type)
+{
+    if (fn_type)
     {
-        redassert(type->kind == PRIMITIVE);
-        redassert(type->primitive == RED_TYPE_PRIMITIVE_S32);
+        redassert(fn_type->kind == PRIMITIVE);
+        redassert(fn_type->primitive == RED_TYPE_PRIMITIVE_S32);
 
         return LLVMInt32TypeInContext(context);
     }
@@ -56,14 +84,14 @@ static inline LLVMTypeRef llvm_gen_fn_type(RedLLVMFn* fn_struct, LLVMContextRef 
 
         for (u32 i = 0; i < fn_struct->param_count; i++)
         {
-            RedType* red_type = &proto->params[i].type;
+            RedType* red_type = &proto->params[i].fn_type;
             fn_struct->param_types[i] = llvm_gen_type(context, red_type);
             redassert(fn_struct->param_types[i]);
         }
     }
 
-    fn_struct->type = LLVMFunctionType(fn_struct->ret_type, fn_struct->param_types, fn_struct->param_count, false);
-    return fn_struct->type;
+    fn_struct->fn_type = LLVMFunctionType(fn_struct->ret_type, fn_struct->param_types, fn_struct->param_count, false);
+    return fn_struct->fn_type;
 }
 
 static inline RedLLVMFn llvm_gen_fn_proto(LLVMContextRef context, LLVMModuleRef module, IRFunctionPrototype* proto)
@@ -74,7 +102,7 @@ static inline RedLLVMFn llvm_gen_fn_proto(LLVMContextRef context, LLVMModuleRef 
     LLVMSetLinkage(fn, LLVMExternalLinkage);
     LLVMSetVisibility(fn, LLVMDefaultVisibility);
 
-    fn_struct.value = fn;
+    fn_struct.fn_handle = fn;
 
     return fn_struct;
 }
@@ -120,43 +148,33 @@ static inline void llvm_verify_module(LLVMModuleRef module)
     }
 }
 
-static inline LLVMValueRef llvm_gen_expression(LLVMContextRef context, LLVMBuilderRef builder, IRExpression* expression, IRFunctionDefinition* fn_definition, LLVMValueRef* params);
-
-
-
-
-
-
-
-
-
-static inline LLVMValueRef llvm_gen_expression(LLVMContextRef context, LLVMBuilderRef builder, IRExpression* expression, IRFunctionDefinition* fn_definition, LLVMValueRef* params)
+static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpression* expression)
 {
-    IRExpressionType type = expression->type;
-    switch (type)
+    IRExpressionType fn_type = expression->fn_type;
+    switch (fn_type)
     {
         case IR_EXPRESSION_TYPE_BIN_EXPR:
         {
             IRBinaryExpr* bin_expr = &expression->bin_expr;
-            LLVMValueRef left = llvm_gen_expression(context, builder, bin_expr->left, fn_definition, params);
-            LLVMValueRef right = llvm_gen_expression(context, builder, bin_expr->right, fn_definition, params);
+            LLVMValueRef left = llvm_gen_expression(llvm, bin_expr->left);
+            LLVMValueRef right = llvm_gen_expression(llvm, bin_expr->right);
             TokenID op = bin_expr->op;
 
             switch (op)
             {
                 case TOKEN_ID_CMP_GREATER:
-                    return LLVMBuildICmp(builder, LLVMIntSGT, left, right, "gt");
+                    return LLVMBuildICmp(llvm->builder, LLVMIntSGT, left, right, "gt");
                 case TOKEN_ID_CMP_EQ:
-                    return LLVMBuildICmp(builder, LLVMIntEQ, left, right, "eq");
+                    return LLVMBuildICmp(llvm->builder, LLVMIntEQ, left, right, "eq");
                 case TOKEN_ID_PLUS:
-                    return LLVMBuildAdd(builder, left, right, "add");
+                    return LLVMBuildAdd(llvm->builder, left, right, "add");
                 case TOKEN_ID_DASH:
-                    return LLVMBuildSub(builder, left, right, "sub");
+                    return LLVMBuildSub(llvm->builder, left, right, "sub");
                 case TOKEN_ID_STAR:
-                    return LLVMBuildMul(builder, left, right, "mul");
+                    return LLVMBuildMul(llvm->builder, left, right, "mul");
                 case TOKEN_ID_SLASH:
                     // TODO: which division we want to perform
-                    return LLVMBuildExactSDiv(builder, left, right, "exact_div");
+                    return LLVMBuildExactSDiv(llvm->builder, left, right, "exact_div");
                 default:
                     RED_NOT_IMPLEMENTED;
                     break;
@@ -166,14 +184,14 @@ static inline LLVMValueRef llvm_gen_expression(LLVMContextRef context, LLVMBuild
         case IR_EXPRESSION_TYPE_SYM_EXPR:
         {
             IRSymExpr* sym_expr = &expression->sym_expr;
-            IRSymExprType se_type = sym_expr->type;
+            IRSymExprType se_type = sym_expr->fn_type;
             switch (se_type)
             {
                 case IR_SYM_EXPR_TYPE_PARAM:
                 {
                     IRParamDecl* param = sym_expr->param_decl;
-                    u8 index = (u8)(param - fn_definition->proto.params);
-                    return LLVMBuildLoad(builder, params[index], sb_ptr(param->name));
+                    u8 index = (u8)(param - llvm->current_fn->proto.params);
+                    return LLVMBuildLoad(llvm->builder, llvm->llvm_current_fn->param_alloc_arr[index], sb_ptr(param->name));
                 }
                 default:
                     RED_NOT_IMPLEMENTED;
@@ -187,7 +205,7 @@ static inline LLVMValueRef llvm_gen_expression(LLVMContextRef context, LLVMBuild
             redassert(int_lit->bigint.digit_count == 1);
             u64 n = int_lit->bigint.digit;
             // TODO: fix type
-            return LLVMConstInt(LLVMInt32TypeInContext(context), n, int_lit->bigint.is_negative);
+            return LLVMConstInt(LLVMInt32TypeInContext(llvm->context), n, int_lit->bigint.is_negative);
         }
         default:
             RED_NOT_IMPLEMENTED;
@@ -196,9 +214,9 @@ static inline LLVMValueRef llvm_gen_expression(LLVMContextRef context, LLVMBuild
     return null;
 }
 
-static inline LLVMValueRef llvm_gen_statement(LLVMContextRef context, LLVMBuilderRef builder, IRStatement* st, IRFunctionDefinition* fn_definition, LLVMValueRef current_fn, LLVMValueRef* params);
+static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement* st);
 
-static inline void llvm_gen_compound_statement(LLVMContextRef context, LLVMBuilderRef builder, IRCompoundStatement* compound_st, IRFunctionDefinition* fn_definition, LLVMValueRef current_fn, LLVMValueRef* params)
+static inline void llvm_gen_compound_statement(RedLLVMContext* llvm, IRCompoundStatement* compound_st)
 {
     IRStatementBuffer* st_bf = &compound_st->stmts;
     IRStatement* st_it = st_bf->ptr;
@@ -208,7 +226,7 @@ static inline void llvm_gen_compound_statement(LLVMContextRef context, LLVMBuild
         for (u32 i = 0; i < st_count; i++)
         {
             IRStatement* st = &st_it[i];
-            llvm_gen_statement(context, builder, st, fn_definition, current_fn, params);
+            llvm_gen_statement(llvm, st);
         }
     }
     else
@@ -217,102 +235,77 @@ static inline void llvm_gen_compound_statement(LLVMContextRef context, LLVMBuild
     }
 }
 
-static inline LLVMValueRef llvm_gen_statement(LLVMContextRef context, LLVMBuilderRef builder, IRStatement* st, IRFunctionDefinition* fn_definition, LLVMValueRef current_fn, LLVMValueRef* params)
+static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement* st)
+    //IRFunctionDefinition* fn_definition, LLVMValueRef current_fn, LLVMValueRef* params, LLVMValueRef* declarations)
 {
-    IRStatementType type = st->type;
-    switch (type)
+    IRStatementType fn_type = st->fn_type;
+    switch (fn_type)
     {
         case IR_ST_TYPE_RETURN_ST:
         {
             IRReturnStatement* ret_st = &st->return_st;
-            IRExpressionType expr_type = ret_st->expression.type;
+            IRExpressionType expr_type = ret_st->expression.fn_type;
             IRExpression* expr = &ret_st->expression;
-            LLVMValueRef ret_value = llvm_gen_expression(context, builder, expr, fn_definition, params);
+            LLVMValueRef ret_value = llvm_gen_expression(llvm, expr);
             redassert(ret_value);
 
-            LLVMBuildRet(builder, ret_value);
+            LLVMBuildRet(llvm->builder, ret_value);
             break;
         }
         case IR_ST_TYPE_BRANCH_ST:
         {
             IRBranchStatement* branch_st = &st->branch_st;
 
-            LLVMBasicBlockRef if_block = LLVMAppendBasicBlockInContext(context, current_fn, "if_block");
+            LLVMBasicBlockRef if_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "if_block");
             bool else_block_exists = branch_st->else_block.stmts.len > 0;
             LLVMBasicBlockRef else_block = null;
-            LLVMBasicBlockRef branch_end_block = LLVMAppendBasicBlockInContext(context, current_fn, "if_cont");
+            LLVMBasicBlockRef branch_end_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "if_cont");
             if (else_block_exists)
             {
-                else_block = LLVMAppendBasicBlockInContext(context, current_fn, "else_block");
+                else_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "else_block");
             }
             //else
             //{
             //    else_block = branch_end_block;
             //}
 
-            LLVMValueRef condition_value = llvm_gen_expression(context, builder, &branch_st->condition, fn_definition, params);
+            LLVMValueRef condition_value = llvm_gen_expression(llvm, &branch_st->condition);
             redassert(condition_value);
 
-#define C3C 0
-#if C3C == 0
-            LLVMBuildCondBr(builder, condition_value, if_block, else_block);
-            LLVMPositionBuilderAtEnd(builder, if_block);
+            LLVMBuildCondBr(llvm->builder, condition_value, if_block, else_block);
+            LLVMPositionBuilderAtEnd(llvm->builder, if_block);
 
             /* If block */
             IRCompoundStatement* ir_if_block = &branch_st->if_block;
             // WRONG: if statements should be generated not by compound statement gen function
             //LLVMValueRef llvm_if_block = llvm_gen_compound_statement(context, builder, if_block, fn_definition, params);
 
-            LLVMAppendExistingBasicBlock(current_fn, if_block);
-            LLVMPositionBuilderAtEnd(builder, if_block);
+            LLVMAppendExistingBasicBlock(llvm->llvm_current_fn->fn_handle, if_block);
+            LLVMPositionBuilderAtEnd(llvm->builder, if_block);
 
             // emit statement
-            llvm_gen_compound_statement(context, builder, ir_if_block, fn_definition, current_fn, params);
+            llvm_gen_compound_statement(llvm, ir_if_block);
             // end emit statement
 
-            LLVMBuildBr(builder, branch_end_block);
+            LLVMBuildBr(llvm->builder, branch_end_block);
             /* End If block */
             
             // TODO: else block optional. Make "else-if" happen
             /* Else block */
             IRCompoundStatement* ir_else_block = &branch_st->else_block;
-            LLVMAppendExistingBasicBlock(current_fn, else_block);
-            LLVMPositionBuilderAtEnd(builder, else_block);
+            LLVMAppendExistingBasicBlock(llvm->llvm_current_fn->fn_handle, else_block);
+            LLVMPositionBuilderAtEnd(llvm->builder, else_block);
 
             // emit statement
-            llvm_gen_compound_statement(context, builder, ir_else_block, fn_definition, current_fn, params);
+            llvm_gen_compound_statement(llvm, ir_else_block);
             // end emit statement
 
-            LLVMBuildBr(builder, branch_end_block);
+            LLVMBuildBr(llvm->builder, branch_end_block);
 
             /* End else block */
 
-            LLVMAppendExistingBasicBlock(current_fn, branch_end_block);
-            LLVMPositionBuilderAtEnd(builder, branch_end_block);
-#else
-            if (LLVMIsConstant(condition_value))
-            {
-                u32 br_v = LLVMConstIntGetZExtValue(condition_value);
-                // TODO: dummy value
-                LLVMBasicBlockRef dummy = NULL;
-                if (br_v)
-                {
-                    llvm_gen_br(builder, &dummy, if_block);
-                    else_block = null;
-                }
-                else
-                {
-                    llvm_gen_br(builder, &dummy, else_block);
-                    if_block = null;
-                }
-            }
-            else
-            {
-                LLVMBuildCondBr(builder, condition_value, if_block, else_block);
-                LLVMClearInsertionPosition(builder);
-                // context current block = null
-            }
-#endif
+            LLVMAppendExistingBasicBlock(llvm->llvm_current_fn->fn_handle, branch_end_block);
+            LLVMPositionBuilderAtEnd(llvm->builder, branch_end_block);
 
             return null;
         }
@@ -321,65 +314,51 @@ static inline LLVMValueRef llvm_gen_statement(LLVMContextRef context, LLVMBuilde
             return null;
         default:
             RED_NOT_IMPLEMENTED;
-            break;
+            return null;
     }
 }
 
-static inline void llvm_gen_fn_definition(LLVMContextRef context, LLVMModuleRef module, IRFunctionDefinition* fn_definition)
+static inline void llvm_gen_fn_definition(RedLLVMContext* llvm)
 {
     /* Prototype */
-    RedLLVMFn fn_struct = llvm_gen_fn_proto(context, module, &fn_definition->proto);
-    LLVMValueRef fn = fn_struct.value;
+    RedLLVMFn fn_struct = llvm_gen_fn_proto(llvm->context, llvm->module, &llvm->current_fn->proto);
+    llvm->llvm_current_fn = &fn_struct;
+    LLVMValueRef fn = fn_struct.fn_handle;
 
     /* Definition */
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context, fn, "entry");
-    LLVMBuilderRef builder = LLVMCreateBuilderInContext(context);
-    LLVMPositionBuilderAtEnd(builder, entry);
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(llvm->context, fn, "entry");
+    llvm->builder = LLVMCreateBuilderInContext(llvm->context);
+    LLVMPositionBuilderAtEnd(llvm->builder, entry);
 
-    u8 param_count = fn_definition->proto.param_count;
+    u8 param_count = llvm->current_fn->proto.param_count;
     LLVMValueRef* params = null;
-    LLVMValueRef param_arr[max_param_count];
-    LLVMValueRef param_alloc_arr[max_param_count];
-    IRParamDecl* ir_params = fn_definition->proto.params;
+    IRParamDecl* ir_params = llvm->current_fn->proto.params;
 
     if (param_count > 0)
     {
         redassert(param_count < max_param_count);
         redassert(ir_params);
-        params = param_arr;
+        params = fn_struct.param_arr;
         LLVMGetParams(fn, params);
 
         for (usize i = 0; i < param_count; i++)
         {
             LLVMSetValueName(params[i], ir_params[i].name->ptr);
-            param_alloc_arr[i] = LLVMBuildAlloca(builder, LLVMTypeOf(params[i]), "");
+            fn_struct.param_alloc_arr[i] = LLVMBuildAlloca(llvm->builder, LLVMTypeOf(params[i]), "");
+            LLVMBuildStore(llvm->builder, params[i], fn_struct.param_alloc_arr[i]);
         }
     }
 
-    // TODO: improve this (stores might need to be emitted even if there's just a return statement (because it could be a complex expression)
-#if 0
-    bool emit_stores = param_count > 0 && param_count > 1;
-#else
-    bool emit_stores = param_count > 0;
-#endif
-    if (emit_stores)
-    {
-        for (usize i = 0; i < param_count; i++)
-        {
-            LLVMBuildStore(builder, params[i], param_alloc_arr[i]);
-        }
-    }
-
-    u32 st_count = fn_definition->body.stmts.len;
+    u32 st_count = llvm->current_fn->body.stmts.len;
     if (st_count > 0)
     {
-        IRCompoundStatement* body = &fn_definition->body;
-        llvm_gen_compound_statement(context, builder, body, fn_definition, fn, param_alloc_arr);
+        IRCompoundStatement* body = &llvm->current_fn->body;
+        llvm_gen_compound_statement(llvm, body);
     }
     else if (st_count == 0)
     {
-        LLVMValueRef ret_value = LLVMConstInt(LLVMInt32TypeInContext(context), 0, false);
-        LLVMBuildRet(builder, ret_value);
+        LLVMValueRef ret_value = LLVMConstInt(LLVMInt32TypeInContext(llvm->context), 0, false);
+        LLVMBuildRet(llvm->builder, ret_value);
     }
     else
     {
@@ -390,28 +369,6 @@ static inline void llvm_gen_fn_definition(LLVMContextRef context, LLVMModuleRef 
     llvm_verify_function(fn, "definition");
 #endif
 }
-
-typedef struct RedLLVMContext
-{
-    LLVMContextRef context;
-    LLVMTargetRef target;
-    char* default_target_triple;
-    LLVMTargetMachineRef target_machine;
-    LLVMTargetDataRef target_data_layout;
-    LLVMModuleRef module;
-    LLVMBuilderRef builder;
-    /// End general context
-    ///
-    /// </summary>
-    LLVMValueRef function;
-    LLVMValueRef alloca_point;
-    Node* current_fn_decl;
-    LLVMBasicBlockRef current_block;
-
-    bool current_block_is_target;
-    LLVMBasicBlockRef expr_block_exit;
-    LLVMValueRef return_out;
-} RedLLVMContext;
 
 static inline RedLLVMContext llvm_init(void)
 {
@@ -478,7 +435,8 @@ void llvm_gen_machine_code(RedModuleIR* ir_tree)
     for (usize i = 0; i < fn_def_count; i++)
     {
         IRFunctionDefinition* fn_def_it = &fn_defs->ptr[i];
-        llvm_gen_fn_definition(ctx.context, ctx.module, fn_def_it);
+        ctx.current_fn = fn_def_it;
+        llvm_gen_fn_definition(&ctx);
     }
 
     llvm_verify_module(ctx.module);

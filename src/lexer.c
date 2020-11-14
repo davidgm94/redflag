@@ -336,7 +336,7 @@ static void handle_string_escape(Lexer* l, u8 c)
 {
     if (l->current_token->id == TOKEN_ID_CHAR_LIT)
     {
-        l->current_token->char_lit.value = c;
+        l->current_token->char_lit.fn_handle = c;
         l->state = LEXER_STATE_CHAR_LITERAL_END;
     }
     else if (l->current_token->id == TOKEN_ID_STRING_LIT || l->current_token->id == TOKEN_ID_SYMBOL)
@@ -977,7 +977,7 @@ LexingResult lex_file(SB* src_buffer)
                 }
                 else
                 {
-                    l.current_token->char_lit.value = c;
+                    l.current_token->char_lit.fn_handle = c;
                     l.state = LEXER_STATE_CHAR_LITERAL_END;
                 }
                 break;

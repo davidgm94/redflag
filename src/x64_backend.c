@@ -36,7 +36,7 @@ typedef struct Register
 
 typedef struct Operand
 {
-    OperandType type;
+    OperandType fn_type;
     union
     {
         Register reg;
@@ -45,13 +45,13 @@ typedef struct Operand
 
 const Operand rax =
 {
-    .type = OPERAND_TYPE_REGISTER,
+    .fn_type = OPERAND_TYPE_REGISTER,
     .reg.index = (u8)0xb0000,
 };
 
 const Operand rcx =
 {
-    .type = OPERAND_TYPE_REGISTER,
+    .fn_type = OPERAND_TYPE_REGISTER,
     .reg.index = (u8)0xb0001,
 };
 
@@ -110,37 +110,37 @@ void u8_append_s32(U8B* b, s32 c)
     u8_append_mem(b, &c, sizeof(s32));
 }
 
-void u8_append_sub_rsp_imm_8(U8B* b, s8 value)
+void u8_append_sub_rsp_imm_8(U8B* b, s8 fn_handle)
 {
     u8_append_u8(b, 0x48);
     u8_append_u8(b, 0x83);
     u8_append_u8(b, 0xec);
-    u8_append_u8(b, value);
+    u8_append_u8(b, fn_handle);
 }
 
-void u8_append_add_rsp_imm_8(U8B* b, s8 value)
+void u8_append_add_rsp_imm_8(U8B* b, s8 fn_handle)
 {
     u8_append_u8(b, 0x48);
     u8_append_u8(b, 0x83);
     u8_append_u8(b, 0xc4);
-    u8_append_u8(b, value);
+    u8_append_u8(b, fn_handle);
 }
 
-void u8_append_mov_to_stack_offset_imm_32(U8B* b, s8 offset, s32 value)
+void u8_append_mov_to_stack_offset_imm_32(U8B* b, s8 offset, s32 fn_handle)
 {
     u8_append_u8(b, 0xc7);
     u8_append_u8(b, 0x44);
     u8_append_u8(b, 0x24);
     u8_append_u8(b, offset);
-    u8_append_s32(b, value);
+    u8_append_s32(b, fn_handle);
 }
 
-void u8_append_add_to_ecx_value_at_stack_offset(U8B* b, s8 value)
+void u8_append_add_to_ecx_value_at_stack_offset(U8B* b, s8 fn_handle)
 {
     u8_append_u8(b, 0x03);
     u8_append_u8(b, 0x4c);
     u8_append_u8(b, 0x24);
-    u8_append_u8(b, value);
+    u8_append_u8(b, fn_handle);
 }
 
 void encode(U8Buffer* b, Instruction instruction)
@@ -178,13 +178,13 @@ void ptest(const char* text, bool expr)
 
 static const u8 x64_ret = 0xc3;
 
-get_constant_s32* make_constant_s32(s32 value)
+get_constant_s32* make_constant_s32(s32 fn_handle)
 {
     U8B buffer = make_buffer(1024, PAGE_EXECUTE_READWRITE);
     u8_append_u8(&buffer, 0x48);
     u8_append_u8(&buffer, 0xc7);
     u8_append_u8(&buffer, 0xc0);
-    u8_append_s32(&buffer, value);
+    u8_append_s32(&buffer, fn_handle);
     u8_append_u8(&buffer, x64_ret);
     return (get_constant_s32*)buffer.ptr;
 }

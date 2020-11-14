@@ -224,20 +224,20 @@ void logger(LogType log_type, const char *format, ...);
 #define NEW(T, count) (T*)(allocate_chunk(count * sizeof(T)))
 #define RENEW(T, old_ptr, count) (T*)(reallocate_chunk(old_ptr, count * sizeof(T)))
 
-#define GEN_BUFFER_STRUCT_PTR(type_name, type) \
+#define GEN_BUFFER_STRUCT_PTR(type_name, fn_type) \
     typedef struct type_name##Buffer \
     {\
-        struct type* ptr;\
+        struct fn_type* ptr;\
         u32 len;\
         u32 cap;\
     } type_name##Buffer;
-#define GEN_BUFFER_STRUCT(type)\
-    typedef struct type##Buffer \
+#define GEN_BUFFER_STRUCT(fn_type)\
+    typedef struct fn_type##Buffer \
     {\
-        type* ptr;\
+        fn_type* ptr;\
         u32 len;\
         u32 cap;\
-    } type##Buffer;
+    } fn_type##Buffer;
 
 #define GEN_BUFFER_FUNCTIONS(p_type_prefix, buffer_name, t_type, elem_type)\
 static inline u32 p_type_prefix##_len(t_type* buffer_name)\
@@ -384,7 +384,7 @@ typedef struct BigInt
 
 typedef struct BigFloat
 {
-    f128 value;
+    f128 fn_handle;
 } BigFloat;
 typedef struct TokenFloatLit
 {
@@ -402,7 +402,7 @@ typedef struct TokenStrLit
 typedef struct TokenCharLit
 {
     // TODO: we are only supporting 1-byte characters for now
-    char value;
+    char fn_handle;
 } TokenCharLit;
 
 typedef struct Token
@@ -608,14 +608,14 @@ typedef struct Type
 typedef struct ParamDecl
 {
     Node* sym;
-    Node* type;
+    Node* fn_type;
 } ParamDecl;
 
 typedef struct SymDecl
 {
     Node* sym;
-    Node* type;
-    Node* value;
+    Node* fn_type;
+    Node* fn_handle;
     bool is_const;
 } SymDecl;
 

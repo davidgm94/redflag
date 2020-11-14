@@ -144,7 +144,7 @@ static inline Node* parse_expression(ParseContext* pc);
 static inline Node* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
-    Token* type = expect_token(pc, TOKEN_ID_SYMBOL);
+    Token* fn_type = expect_token(pc, TOKEN_ID_SYMBOL);
     if (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
         expect_token(pc, TOKEN_ID_COMMA);
@@ -153,7 +153,7 @@ static inline Node* parse_param_decl(ParseContext* pc)
     Node* param = NEW(Node, 1);
     fill_base_node(param, name, AST_TYPE_PARAM_DECL);
     param->param_decl.sym = create_symbol_node(name);
-    param->param_decl.type = create_type_node(type);
+    param->param_decl.fn_type = create_type_node(fn_type);
     return param;
 }
 
@@ -206,7 +206,7 @@ static inline Node* parse_sym_decl(ParseContext* pc)
         fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
         sym_node->sym_decl.is_const = is_const;
         sym_node->sym_decl.sym = create_symbol_node(sym_name);
-        sym_node->sym_decl.type = create_type_node(sym_type);
+        sym_node->sym_decl.fn_type = create_type_node(sym_type);
         return sym_node;
     }
 
@@ -218,8 +218,8 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
     sym_node->sym_decl.is_const = is_const;
     sym_node->sym_decl.sym = create_symbol_node(sym_name);
-    sym_node->sym_decl.type = create_type_node(sym_type);
-    sym_node->sym_decl.value = expression;
+    sym_node->sym_decl.fn_type = create_type_node(sym_type);
+    sym_node->sym_decl.fn_handle = expression;
 
     return sym_node;
 }

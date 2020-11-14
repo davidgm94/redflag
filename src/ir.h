@@ -3,14 +3,14 @@
 
 typedef struct IRParamDecl
 {
-    RedType type;
+    RedType fn_type;
     SB* name;
 } IRParamDecl;
 
 
 typedef struct IRConstValue
 {
-    RedTypePrimitive type;
+    RedTypePrimitive fn_type;
     union
     {
         BigInt int_lit;
@@ -77,7 +77,7 @@ typedef enum IRSymExprType
 typedef struct IRSymDeclStatement IRSymDeclStatement;
 typedef struct IRSymExpr
 {
-    IRSymExprType type;
+    IRSymExprType fn_type;
     union
     {
         IRSymDeclStatement* sym_decl;
@@ -96,7 +96,7 @@ typedef struct IRBinaryExpr
 
 typedef struct IRExpression
 {
-    IRExpressionType type;
+    IRExpressionType fn_type;
     union
     {
         IRIntLiteral int_literal;
@@ -120,15 +120,15 @@ typedef struct IRBranchStatement
 
 typedef struct IRSymDeclStatement
 {
-    RedType type;
+    RedType fn_type;
     SB* name;
-    IRExpression value;
+    IRExpression fn_handle;
     bool is_const;
 } IRSymDeclStatement;
 
 typedef struct IRStatement
 {
-    IRStatementType type;
+    IRStatementType fn_type;
     union
     {
         IRCompoundStatement compound_st;
@@ -144,6 +144,7 @@ typedef struct IRFunctionDefinition
     IRFunctionPrototype proto;
     IRCompoundStatement body;
     IRSymDeclStatementBuffer sym_declarations;
+    //LLVMValueRef* llvm_sym_declarations;
 } IRFunctionDefinition;
 
 GEN_BUFFER_STRUCT(IRFunctionDefinition)

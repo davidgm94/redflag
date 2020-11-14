@@ -71,8 +71,8 @@ size_t BigInt_bits_needed(const BigInt* op);
 
 Cmp BigInt_cmp_zero(const BigInt* op);
 
-void BigInt_incr(BigInt* value);
-void BigInt_decr(BigInt* value);
+void BigInt_incr(BigInt* fn_handle);
+void BigInt_decr(BigInt* fn_handle);
 
 bool mul_u64_overflow(u64 op1, u64 op2, u64* result);
 

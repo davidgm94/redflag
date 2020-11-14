@@ -190,7 +190,7 @@ void os_spawn_process_windows(const char* exe, os_arg_list args, Termination* te
         RED_PANIC("panic");
     }
 
-    termination->type = CLEAN;
+    termination->fn_type = CLEAN;
     termination->code = exit_code;
 }
 

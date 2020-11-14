@@ -81,9 +81,9 @@ static const RedType primitive_types[] = {
     },
 };
 
-static inline bool red_type_is_invalid(RedType* type)
+static inline bool red_type_is_invalid(RedType* fn_type)
 {
-    return memcmp(type, &(const RedType)ZERO_INIT, sizeof(RedType)) == 0;
+    return memcmp(fn_type, &(const RedType)ZERO_INIT, sizeof(RedType)) == 0;
 }
 
 RedType resolve_type(Node* node)
@@ -117,7 +117,7 @@ static inline SB* param_name(Node* node)
 static inline SB* param_type(Node* node)
 {
     redassert(node->node_id == AST_TYPE_PARAM_DECL);
-    return node->param_decl.type->type_expr.type_name;
+    return node->param_decl.fn_type->type_expr.type_name;
 }
 
 static inline bool param_name_unique(IRParamDecl* param_arr, u32 param_count, SB* current_param_name)
@@ -188,7 +188,7 @@ static inline IRSymExpr find_symbol(SB* symbol, IRFunctionDefinition* fn_definit
         if (sb_cmp(name_it, symbol))
         {
             IRSymExpr result;
-            result.type = IR_SYM_EXPR_TYPE_PARAM;
+            result.fn_type = IR_SYM_EXPR_TYPE_PARAM;
             result.param_decl = &proto->params[i];
             return result;
         }
@@ -202,7 +202,7 @@ static inline IRSymExpr find_symbol(SB* symbol, IRFunctionDefinition* fn_definit
         if (sb_cmp(decl->name, symbol))
         {
             IRSymExpr result;
-            result.type = IR_SYM_EXPR_TYPE_SYM;
+            result.fn_type = IR_SYM_EXPR_TYPE_SYM;
             result.sym_decl = decl;
             return result;
         }
@@ -221,15 +221,15 @@ static inline IRExpression ast_to_ir_expression(Node* node, IRFunctionDefinition
     switch (id)
     {
         case AST_TYPE_INT_LIT:
-            expression.type = IR_EXPRESSION_TYPE_INT_LIT;
+            expression.fn_type = IR_EXPRESSION_TYPE_INT_LIT;
             expression.int_literal = ast_to_ir_int_lit_expr(node);
             return expression;
         case AST_TYPE_SYM_EXPR:
-            expression.type = IR_EXPRESSION_TYPE_SYM_EXPR;
+            expression.fn_type = IR_EXPRESSION_TYPE_SYM_EXPR;
             expression.sym_expr = find_symbol(node->sym_expr.name, parent_fn);
             return expression;
         case AST_TYPE_BIN_EXPR:
-            expression.type = IR_EXPRESSION_TYPE_BIN_EXPR;
+            expression.fn_type = IR_EXPRESSION_TYPE_BIN_EXPR;
             expression.bin_expr = ast_to_ir_binary_expr(&node->bin_expr, parent_fn);
             return expression;
         default:
@@ -241,8 +241,8 @@ static inline IRExpression ast_to_ir_expression(Node* node, IRFunctionDefinition
 static inline RedType ast_to_ir_find_expression_type(IRExpression* expression)
 {
     redassert(expression);
-    IRExpressionType type = expression->type;
-    switch (type)
+    IRExpressionType fn_type = expression->fn_type;
+    switch (fn_type)
     {
         case IR_EXPRESSION_TYPE_INT_LIT:
             return primitive_types[RED_TYPE_PRIMITIVE_S32];
@@ -251,13 +251,13 @@ static inline RedType ast_to_ir_find_expression_type(IRExpression* expression)
             //return expression->sym_expr.param_decl->type;
         {
             IRSymExpr* sym_expr = &expression->sym_expr;
-            IRSymExprType sym_type = sym_expr->type;
+            IRSymExprType sym_type = sym_expr->fn_type;
             switch (sym_type)
             {
                 case IR_SYM_EXPR_TYPE_PARAM:
-                    return sym_expr->param_decl->type;
+                    return sym_expr->param_decl->fn_type;
                 case IR_SYM_EXPR_TYPE_SYM:
-                    return sym_expr->sym_decl->type;
+                    return sym_expr->sym_decl->fn_type;
                 default:
                     RED_NOT_IMPLEMENTED;
                     break;
@@ -298,7 +298,7 @@ static inline IRReturnStatement ast_to_ir_return_st(Node* node, IRFunctionDefini
         {
             SB* sym_name = expr_node->sym_expr.name;
             IRExpression sym_expr = ast_to_ir_expression(expr_node, parent_fn);
-            redassert(sym_expr.type == IR_EXPRESSION_TYPE_SYM_EXPR);
+            redassert(sym_expr.fn_type == IR_EXPRESSION_TYPE_SYM_EXPR);
             IRSymExpr result = sym_expr.sym_expr;
             if (memcmp(&(const IRSymExpr)ZERO_INIT, &result, sizeof(IRSymExpr)) == 0)
             {
@@ -318,14 +318,14 @@ static inline IRReturnStatement ast_to_ir_return_st(Node* node, IRFunctionDefini
                 return ret_st;
             }
             ret_st.red_type = red_type;
-            ret_st.expression.type = IR_EXPRESSION_TYPE_SYM_EXPR;
+            ret_st.expression.fn_type = IR_EXPRESSION_TYPE_SYM_EXPR;
             ret_st.expression.sym_expr = result;
 
             return ret_st;
         }
         case AST_TYPE_BIN_EXPR:
         {
-            ret_st.expression.type = IR_EXPRESSION_TYPE_BIN_EXPR;
+            ret_st.expression.fn_type = IR_EXPRESSION_TYPE_BIN_EXPR;
             ret_st.expression.bin_expr = ast_to_ir_binary_expr(&expr_node->bin_expr, parent_fn);
             // TODO: modify this. We now get the type of the left
             ret_st.red_type = ast_to_ir_find_expression_type(&ret_st.expression);
@@ -348,7 +348,7 @@ static inline bool is_equal_type(RedType* type1, RedType* type2)
     return memcmp(type1, type2, sizeof(RedType)) == 0;
 }
 
-static inline bool is_operation_allowed(TokenID op, RedType* type)
+static inline bool is_operation_allowed(TokenID op, RedType* fn_type)
 {
     RED_NOT_IMPLEMENTED;
     return true;
@@ -404,7 +404,7 @@ static inline IRBranchStatement ast_to_ir_branch_st(Node* node, IRFunctionDefini
         case AST_TYPE_BIN_EXPR:
         {
             BinExpr* bin_expr = &ast_condition_node->bin_expr;
-            result.condition.type = IR_EXPRESSION_TYPE_BIN_EXPR;
+            result.condition.fn_type = IR_EXPRESSION_TYPE_BIN_EXPR;
             result.condition.bin_expr = ast_to_ir_binary_expr(bin_expr, parent_fn);
             break;
         }
@@ -448,8 +448,8 @@ static inline IRSymDeclStatement ast_to_ir_sym_decl_st(Node* node, IRFunctionDef
     IRSymDeclStatement st;
     st.is_const = node->sym_decl.is_const;
     st.name = node->sym_decl.sym->sym_expr.name;
-    st.value = ast_to_ir_expression(node->sym_decl.value, parent_fn);
-    st.type = resolve_type(node->sym_decl.type);
+    st.fn_handle = ast_to_ir_expression(node->sym_decl.fn_handle, parent_fn);
+    st.fn_type = resolve_type(node->sym_decl.fn_type);
 
     return st;
 }
@@ -470,20 +470,20 @@ static inline IRCompoundStatement ast_to_ir_compound_st(Node* node, IRFunctionDe
             IRStatement* st_it = ir_stmtb_add_one(&result.stmts);
             Node* st_node = sb->ptr[i];
             redassert(st_node);
-            ASTType type = st_node->node_id;
+            ASTType fn_type = st_node->node_id;
 
-            switch (type)
+            switch (fn_type)
             {
                 case AST_TYPE_BRANCH_EXPR:
-                    st_it->type = IR_ST_TYPE_BRANCH_ST;
+                    st_it->fn_type = IR_ST_TYPE_BRANCH_ST;
                     st_it->branch_st = ast_to_ir_branch_st(st_node, parent_fn);
                     break;
                 case AST_TYPE_RETURN_STATEMENT:
-                    st_it->type = IR_ST_TYPE_RETURN_ST;
+                    st_it->fn_type = IR_ST_TYPE_RETURN_ST;
                     st_it->return_st = ast_to_ir_return_st(st_node, parent_fn);
                     break;
                 case AST_TYPE_SYM_DECL:
-                    st_it->type = IR_ST_TYPE_SYM_DECL_ST;
+                    st_it->fn_type = IR_ST_TYPE_SYM_DECL_ST;
                     st_it->sym_decl_st = ast_to_ir_sym_decl_st(st_node, parent_fn);
                     decl_append(&parent_fn->sym_declarations, &st_it->sym_decl_st);
                     break;
@@ -517,14 +517,14 @@ IRFunctionPrototype ast_to_ir_fn_proto(Node* node)
         {
             Node* param = param_data[i];
 
-            RedType red_type = resolve_type(param->param_decl.type);
+            RedType red_type = resolve_type(param->param_decl.fn_type);
 
             if (red_type_is_invalid(&red_type))
             {
                 os_exit_with_message("unknown type for %s: %s\n", sb_ptr(param_name(param)), sb_ptr(param_type(param)));
             }
 
-            params[i].type = red_type;
+            params[i].fn_type = red_type;
 
             if (!param_name_unique(params, i, param_name(param)))
             {
@@ -608,8 +608,8 @@ static inline void print_fn_cfg(IRFunctionConfig* fn_cfg)
 
 static inline void print_param_decl(IRParamDecl* param)
 {
-    redassert(param->type.kind == PRIMITIVE);
-    print("Param %s, type: %s\n", sb_ptr(param->name), primitive_type_str(param->type.primitive));
+    redassert(param->fn_type.kind == PRIMITIVE);
+    print("Param %s, type: %s\n", sb_ptr(param->name), primitive_type_str(param->fn_type.primitive));
 }
 
 static inline void print_fn_proto(IRFunctionPrototype* fn_proto)
@@ -649,7 +649,7 @@ static inline void print_compount_st(IRCompoundStatement* compound_st)
         for (u32 i = 0; i < statement_count; i++)
         {
             IRStatement* st = &statement_it[i];
-            IRStatementType st_type = st->type;
+            IRStatementType st_type = st->fn_type;
             switch (st_type)
             {
                 case IR_ST_TYPE_COMPOUND_ST:
@@ -682,14 +682,14 @@ static inline void print_binary_expr(IRBinaryExpr* bin_expr)
 
 static inline void print_param_expr(IRParamDecl* param)
 {
-    redassert(param->type.kind == PRIMITIVE);
-    print("Param name: %s; param type: %s\n", sb_ptr(param->name), primitive_type_str(param->type.primitive));
+    redassert(param->fn_type.kind == PRIMITIVE);
+    print("Param name: %s; param type: %s\n", sb_ptr(param->name), primitive_type_str(param->fn_type.primitive));
 }
 
 static inline void print_sym_expr(IRSymExpr* sym_expr)
 {
-    IRSymExprType type = sym_expr->type;
-    switch (type)
+    IRSymExprType fn_type = sym_expr->fn_type;
+    switch (fn_type)
     {
         case IR_SYM_EXPR_TYPE_PARAM:
             print_param_expr(sym_expr->param_decl);
@@ -719,8 +719,8 @@ static inline void print_int_literal(IRIntLiteral* int_lit)
 
 static inline void print_expression(IRExpression* expr)
 {
-    IRExpressionType type = expr->type;
-    switch (type)
+    IRExpressionType fn_type = expr->fn_type;
+    switch (fn_type)
     {
         case IR_EXPRESSION_TYPE_BIN_EXPR:
             print_binary_expr(&expr->bin_expr);
