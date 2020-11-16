@@ -47,7 +47,7 @@ ExplicitTimer os_timer_start(const char* text)
 #endif
 }
 
-void os_timer_end(ExplicitTimer* et)
+f64 os_timer_end(ExplicitTimer* et)
 {
 #ifdef RED_OS_WINDOWS
     LARGE_INTEGER end;
@@ -59,6 +59,8 @@ void os_timer_end(ExplicitTimer* et)
     records[record_count].time_ms = ms_time;
     records[record_count].text = sb;
     record_count++;
+
+    return ms_time;
 #else
 #error
 #endif
@@ -190,7 +192,7 @@ void os_spawn_process_windows(const char* exe, os_arg_list args, Termination* te
         RED_PANIC("panic");
     }
 
-    termination->fn_type = CLEAN;
+    termination->type = CLEAN;
     termination->code = exit_code;
 }
 

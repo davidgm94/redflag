@@ -17,7 +17,11 @@ void add_source_file(SB* src_buffer, const char* path)
 #endif
     ExplicitTimer lexer_dt = os_timer_start("Lexer");
     LexingResult lexing_result = lex_file(src_buffer);
-    os_timer_end(&lexer_dt);
+    f64 lexer_ms = os_timer_end(&lexer_dt);
+    u64 byte_count = src_buffer->len;
+    f64 byte_per_ms = byte_count / lexer_ms;
+    f64 byte_per_s = byte_per_ms * 1000;
+    print("Bytes: %llu\nTime in ms: %f\nLexer throughput: %Lf bytes/s\nLexer throughput: %Lf MB/s\n\n", byte_count, lexer_ms, byte_per_s, byte_per_s / 1000000);
     if (lexing_result.error.len)
     {
         os_exit(1);

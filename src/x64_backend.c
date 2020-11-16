@@ -36,7 +36,7 @@ typedef struct Register
 
 typedef struct Operand
 {
-    OperandType fn_type;
+    OperandType type;
     union
     {
         Register reg;
@@ -45,13 +45,13 @@ typedef struct Operand
 
 const Operand rax =
 {
-    .fn_type = OPERAND_TYPE_REGISTER,
+    .type = OPERAND_TYPE_REGISTER,
     .reg.index = (u8)0xb0000,
 };
 
 const Operand rcx =
 {
-    .fn_type = OPERAND_TYPE_REGISTER,
+    .type = OPERAND_TYPE_REGISTER,
     .reg.index = (u8)0xb0001,
 };
 

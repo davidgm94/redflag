@@ -3,14 +3,14 @@
 
 typedef struct IRParamDecl
 {
-    RedType fn_type;
+    RedType type;
     SB* name;
 } IRParamDecl;
 
 
 typedef struct IRConstValue
 {
-    RedTypePrimitive fn_type;
+    RedTypePrimitive type;
     union
     {
         BigInt int_lit;
@@ -53,6 +53,7 @@ typedef enum IRStatementType
     IR_ST_TYPE_RETURN_ST,
     IR_ST_TYPE_BRANCH_ST,
     IR_ST_TYPE_SYM_DECL_ST,
+    IR_ST_TYPE_ASSIGN_ST,
 } IRStatementType;
 
 typedef enum IRExpressionType
@@ -74,15 +75,21 @@ typedef enum IRSymExprType
     IR_SYM_EXPR_TYPE_PARAM,
 } IRSymExprType;
 
+typedef enum LoadStoreCfg
+{
+    LOAD,
+    STORE,
+} LoadStoreCfg;
 typedef struct IRSymDeclStatement IRSymDeclStatement;
 typedef struct IRSymExpr
 {
-    IRSymExprType fn_type;
+    IRSymExprType type;
     union
     {
         IRSymDeclStatement* sym_decl;
         IRParamDecl* param_decl;
     };
+    LoadStoreCfg use_type;
 } IRSymExpr;
 
 typedef struct IRExpression IRExpression;
@@ -96,7 +103,7 @@ typedef struct IRBinaryExpr
 
 typedef struct IRExpression
 {
-    IRExpressionType fn_type;
+    IRExpressionType type;
     union
     {
         IRIntLiteral int_literal;
@@ -120,31 +127,37 @@ typedef struct IRBranchStatement
 
 typedef struct IRSymDeclStatement
 {
-    RedType fn_type;
+    RedType type;
     SB* name;
-    IRExpression fn_handle;
+    IRExpression value;
     bool is_const;
 } IRSymDeclStatement;
 
+typedef struct IRSymAssignStatement
+{
+    IRSymExpr left;
+    IRExpression* right;
+} IRSymAssignStatement;
+
 typedef struct IRStatement
 {
-    IRStatementType fn_type;
+    IRStatementType type;
     union
     {
         IRCompoundStatement compound_st;
         IRReturnStatement return_st;
         IRBranchStatement branch_st;
         IRSymDeclStatement sym_decl_st;
+        IRSymAssignStatement sym_assign_st;
     };
 } IRStatement;
 
-GEN_BUFFER_STRUCT_PTR(IRSymDeclStatement, IRSymDeclStatement*)
+GEN_BUFFER_STRUCT(IRSymDeclStatement)
 typedef struct IRFunctionDefinition
 {
     IRFunctionPrototype proto;
     IRCompoundStatement body;
     IRSymDeclStatementBuffer sym_declarations;
-    //LLVMValueRef* llvm_sym_declarations;
 } IRFunctionDefinition;
 
 GEN_BUFFER_STRUCT(IRFunctionDefinition)

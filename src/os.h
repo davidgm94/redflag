@@ -41,7 +41,7 @@ typedef enum TerminationID
 
 typedef struct Termination
 {
-    TerminationID fn_type;
+    TerminationID type;
     s32 code;
 } Termination;
 
@@ -52,7 +52,7 @@ typedef struct ExplicitTimer
 } ExplicitTimer;
 
 ExplicitTimer os_timer_start(const char* text);
-void os_timer_end(ExplicitTimer* et);
+f64 os_timer_end(ExplicitTimer* et);
 
 typedef enum FileLoadResult
 {

@@ -28,7 +28,14 @@ s32 main(s32 argc, char* argv[])
 #if 0
     FileManager fm = handle_main_arguments(argc, argv);
 #else
-    char* src_files[] = { "test.red", };
+    char* src_files[] =
+    {
+#if 1
+        "test.red",
+#else
+        "not_passing.red",
+#endif
+    };
 #if RED_CWD_VERBOSE
     SB* cwd = os_get_cwd();
     print("CWD: %s\n", sb_ptr(cwd));

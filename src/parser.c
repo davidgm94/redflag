@@ -144,7 +144,7 @@ static inline Node* parse_expression(ParseContext* pc);
 static inline Node* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
-    Token* fn_type = expect_token(pc, TOKEN_ID_SYMBOL);
+    Token* type = expect_token(pc, TOKEN_ID_SYMBOL);
     if (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
         expect_token(pc, TOKEN_ID_COMMA);
@@ -153,7 +153,7 @@ static inline Node* parse_param_decl(ParseContext* pc)
     Node* param = NEW(Node, 1);
     fill_base_node(param, name, AST_TYPE_PARAM_DECL);
     param->param_decl.sym = create_symbol_node(name);
-    param->param_decl.fn_type = create_type_node(fn_type);
+    param->param_decl.type = create_type_node(type);
     return param;
 }
 
@@ -206,7 +206,7 @@ static inline Node* parse_sym_decl(ParseContext* pc)
         fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
         sym_node->sym_decl.is_const = is_const;
         sym_node->sym_decl.sym = create_symbol_node(sym_name);
-        sym_node->sym_decl.fn_type = create_type_node(sym_type);
+        sym_node->sym_decl.type = create_type_node(sym_type);
         return sym_node;
     }
 
@@ -218,7 +218,7 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
     sym_node->sym_decl.is_const = is_const;
     sym_node->sym_decl.sym = create_symbol_node(sym_name);
-    sym_node->sym_decl.fn_type = create_type_node(sym_type);
+    sym_node->sym_decl.type = create_type_node(sym_type);
     sym_node->sym_decl.fn_handle = expression;
 
     return sym_node;
@@ -278,9 +278,13 @@ static inline Node* parse_branch_block(ParseContext* pc)
     Token* else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE);
     if (!else_token)
     {
-        // create branch block with just this if
-        RED_NOT_IMPLEMENTED;
-        return null;
+        Node* branch_block = NEW(Node, 1);
+        fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
+        branch_block->branch_expr.condition = condition_node;
+        branch_block->branch_expr.if_block = if_block;
+        branch_block->branch_expr.else_block = null;
+
+        return branch_block;
     }
 
     Token* else_if_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
@@ -485,12 +489,14 @@ static inline Node* parse_fn_proto(ParseContext* pc)
     Token* eq_sign = get_token_i(pc, 1);
     if (eq_sign->id != TOKEN_ID_EQ)
     {
+        print("Expected %s token for function prototype, found: %s\n", token_name(TOKEN_ID_EQ), token_name(eq_sign->id));
         return nullptr;
     }
 
     Token* left_parenthesis = get_token_i(pc, 2);
     if (left_parenthesis->id != TOKEN_ID_LEFT_PARENTHESIS)
     {
+        print("Expected %s token for function prototype, found: %s\n", token_name(TOKEN_ID_LEFT_PARENTHESIS), token_name(left_parenthesis->id));
         return nullptr;
     }
     // name

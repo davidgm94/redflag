@@ -224,20 +224,20 @@ void logger(LogType log_type, const char *format, ...);
 #define NEW(T, count) (T*)(allocate_chunk(count * sizeof(T)))
 #define RENEW(T, old_ptr, count) (T*)(reallocate_chunk(old_ptr, count * sizeof(T)))
 
-#define GEN_BUFFER_STRUCT_PTR(type_name, fn_type) \
+#define GEN_BUFFER_STRUCT_PTR(type_name, type) \
     typedef struct type_name##Buffer \
     {\
-        struct fn_type* ptr;\
+        struct type* ptr;\
         u32 len;\
         u32 cap;\
     } type_name##Buffer;
-#define GEN_BUFFER_STRUCT(fn_type)\
-    typedef struct fn_type##Buffer \
+#define GEN_BUFFER_STRUCT(type)\
+    typedef struct type##Buffer \
     {\
-        fn_type* ptr;\
+        type* ptr;\
         u32 len;\
         u32 cap;\
-    } fn_type##Buffer;
+    } type##Buffer;
 
 #define GEN_BUFFER_FUNCTIONS(p_type_prefix, buffer_name, t_type, elem_type)\
 static inline u32 p_type_prefix##_len(t_type* buffer_name)\
@@ -608,13 +608,13 @@ typedef struct Type
 typedef struct ParamDecl
 {
     Node* sym;
-    Node* fn_type;
+    Node* type;
 } ParamDecl;
 
 typedef struct SymDecl
 {
     Node* sym;
-    Node* fn_type;
+    Node* type;
     Node* fn_handle;
     bool is_const;
 } SymDecl;
