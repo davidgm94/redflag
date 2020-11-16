@@ -162,3 +162,35 @@ test_branch_return_make_compiler_fail = (a s32, b s32) s32
 
     return 1;
 }
+
+test_heavy_branch_truly_make_compiler_fail = (a s32, b s32) s32
+{
+    var c s32;
+    if a < b
+    {
+        c = 3;
+    }
+    else
+    {
+        if (b > a)
+        {
+            c = 5;
+            return c;
+        }
+        else
+        {
+            if a == 5
+            {
+                c = 15123;
+            }
+            else
+            {
+                c = a + b;
+                c = c + a + b;
+                return 1 + c;
+            }
+        }
+    }
+
+    return a + c;
+}

@@ -182,7 +182,8 @@ static inline void sb_clear(SB* sb)
 
 static inline bool sb_cmp(SB* sb1, SB* sb2)
 {
-    return strcmp(sb1->ptr, sb2->ptr) == 0;
+    s32 result = strcmp(sb1->ptr, sb2->ptr);
+    return result == 0;
 }
 
 void prints(const char* msg);
