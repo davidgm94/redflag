@@ -8,6 +8,8 @@
 #define RED_SELF_BACKEND 0
 #define RED_LLVM_EXPERIMENTS 1
 
+#define RED_RUN_NOT_PASSING 0
+
 #define RED_JIT 1
 
 #define RED_SRC_FILE_VERBOSE 0
@@ -18,6 +20,7 @@
 #define RED_LLVM_VERBOSE 1
 #define RED_CWD_VERBOSE 0
 #define RED_TIMESTAMPS 1
+
 
 #define RED_BUFFER_MEM_CHECK 0
 

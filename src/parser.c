@@ -383,7 +383,7 @@ static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
             return *left_expr;
         }
 
-        Node* right_expr = parse_primary_expr(pc);
+        Node* right_expr = parse_expression(pc);
         if (!right_expr)
         {
             return null;
@@ -410,6 +410,11 @@ static inline Node* parse_expression(ParseContext* pc)
     if (!left_expr)
     {
         return null;
+    }
+
+    if (left_expr->node_id == AST_TYPE_BIN_EXPR && left_expr->bin_expr.op == TOKEN_ID_EQ)
+    {
+        int k = 125123124;
     }
 
     return parse_right_expr(pc, &left_expr);

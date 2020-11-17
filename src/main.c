@@ -30,10 +30,10 @@ s32 main(s32 argc, char* argv[])
 #else
     char* src_files[] =
     {
-#if 1
-        "test.red",
-#else
+#if RED_RUN_NOT_PASSING
         "not_passing.red",
+#else
+        "test.red",
 #endif
     };
 #if RED_CWD_VERBOSE

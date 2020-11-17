@@ -347,7 +347,7 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
                 redassert(end_if_jmp);
             }
 
-            bool return_emitted_in_all_branches_else;
+            bool return_emitted_in_all_branches_else = false;
             if (else_statement)
             {
                 LLVMPositionBuilderAtEnd(llvm->builder, llvm_else_bb);
@@ -368,13 +368,11 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
                     redassert(llvm_if_end_bb);
                     LLVMValueRef end_else_jmp = LLVMBuildBr(llvm->builder, llvm_if_end_bb);
                     redassert(end_else_jmp);
-                    LLVMPositionBuilderAtEnd(llvm->builder, llvm_if_end_bb);
                 }
             }
-            else
+            if (llvm_if_end_bb)
             {
                 LLVMPositionBuilderAtEnd(llvm->builder, llvm_if_end_bb);
-                return_emitted_in_all_branches_else = false;
             }
 
             llvm->llvm_current_fn->return_already_emitted = return_emitted_in_all_branches_if && return_emitted_in_all_branches_else;
