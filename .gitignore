@@ -7,3 +7,5 @@ VTune Profiler Results/
 red_module.*
 main.o
 main.exe
+*.obj
+*.exe

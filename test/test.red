@@ -217,3 +217,23 @@ test_branchy_loop = (n s32) s32
     }
     return n;
 }
+
+test_nested_loops = () s32
+{
+    var a s32 = 0;
+    var b s32 = 0;
+    var c s32 = 0;
+
+    while (b < 10000)
+    {
+        while (a < 100)
+        {
+            c = a * b;
+            b = b + c;
+            a = a + 1;
+        }
+        b = b + 1;
+    }
+
+    return b;
+}
