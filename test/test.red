@@ -204,3 +204,16 @@ test_first_loop = (number s32) s32
 
     return number;
 }
+
+test_branchy_loop = (n s32) s32
+{
+    while n < 10
+    {
+        if n < 10
+        {
+            n = n * 2;
+        }
+        n = n + 1;
+    }
+    return n;
+}

@@ -453,7 +453,7 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             LLVMPositionBuilderAtEnd(llvm->builder, loop_block);
             llvm_gen_compound_statement(llvm, &loop_st->body);
             // Jump back to the top of the loop
-            LLVMValueRef jump_to_loop_again = LLVMBuildBr(llvm->builder, loop_block);
+            LLVMValueRef jump_to_loop_again = LLVMBuildBr(llvm->builder, condition_block);
 
             // Let the builder in a position where code after the loop can be written to
             LLVMPositionBuilderAtEnd(llvm->builder, end_loop_block);
