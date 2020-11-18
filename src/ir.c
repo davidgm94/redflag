@@ -531,6 +531,11 @@ static inline IRCompoundStatement ast_to_ir_compound_st(Node* node, IRFunctionDe
                     }
                     break;
                 }
+                case AST_TYPE_LOOP_EXPR:
+                    st_it->type = IR_ST_TYPE_LOOP_ST;
+                    st_it->loop_st.condition = ast_to_ir_expression(st_node->loop_expr.condition, parent_fn, LOAD);
+                    st_it->loop_st.body = ast_to_ir_compound_st(st_node->loop_expr.body, parent_fn);
+                    break;
                 default:
                     RED_NOT_IMPLEMENTED;
                     break;

@@ -194,3 +194,13 @@ test_heavy_branch_truly_make_compiler_fail = (a s32, b s32) s32
 
     return a + c;
 }
+
+test_first_loop = (number s32) s32
+{
+    while number < 10
+    {
+        number = number + 1;
+    }
+
+    return number;
+}

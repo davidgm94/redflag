@@ -414,7 +414,15 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
                     IRSymDeclStatement* sym_decl = sym_expr->sym_decl;
                     IRSymDeclStatement* sym_decl_base_ptr = llvm->current_fn->sym_declarations.ptr;
                     u32 index = sym_decl - sym_decl_base_ptr;
-                    alloca = *(llvm->llvm_current_fn->alloca_buffer.ptr + index);
+                    alloca = llvm->llvm_current_fn->alloca_buffer.ptr[index];
+                    break;
+                }
+                case IR_SYM_EXPR_TYPE_PARAM:
+                {
+                    IRParamDecl* param_decl = sym_expr->param_decl;
+                    IRParamDecl* param_decl_base_ptr = llvm->current_fn->proto.params;
+                    u32 index = param_decl - param_decl_base_ptr;
+                    alloca = llvm->llvm_current_fn->param_alloc_arr[index];
                     break;
                 }
                 default:
@@ -427,6 +435,28 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             redassert(value);
 
             LLVMBuildStore(llvm->builder, value, alloca);
+
+            return null;
+        }
+        case IR_ST_TYPE_LOOP_ST:
+        {
+            IRLoopStatement* loop_st = &st->loop_st;
+            LLVMBasicBlockRef condition_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "loop_condition");
+            LLVMBasicBlockRef loop_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "loop_block");
+            LLVMBasicBlockRef end_loop_block = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn->fn_handle, "end_loop_block");
+            LLVMValueRef jmp_to_loop = LLVMBuildBr(llvm->builder, condition_block);
+
+            LLVMPositionBuilderAtEnd(llvm->builder, condition_block);
+            LLVMValueRef condition_value = llvm_gen_expression(llvm, &loop_st->condition);
+            LLVMValueRef loop_conditional_branch = LLVMBuildCondBr(llvm->builder, condition_value, loop_block, end_loop_block);
+
+            LLVMPositionBuilderAtEnd(llvm->builder, loop_block);
+            llvm_gen_compound_statement(llvm, &loop_st->body);
+            // Jump back to the top of the loop
+            LLVMValueRef jump_to_loop_again = LLVMBuildBr(llvm->builder, loop_block);
+
+            // Let the builder in a position where code after the loop can be written to
+            LLVMPositionBuilderAtEnd(llvm->builder, end_loop_block);
 
             return null;
         }

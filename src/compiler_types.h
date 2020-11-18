@@ -508,6 +508,7 @@ typedef enum ASTType
     AST_TYPE_BIN_EXPR,
     AST_TYPE_FN_CALL,
     AST_TYPE_BRANCH_EXPR,
+    AST_TYPE_LOOP_EXPR,
     AST_TYPE_INT_LIT,
 } ASTType;
 
@@ -648,6 +649,12 @@ typedef struct BranchExpr
     Node* else_block;
 } BranchExpr;
 
+typedef struct LoopExpr
+{
+    Node* condition;
+    Node* body;
+} LoopExpr;
+
 typedef struct FnProto
 {
     NodeBuffer params;
@@ -679,6 +686,7 @@ typedef struct Node
         RetExpr return_expr;
         CompoundStatement compound_statement;
         BranchExpr branch_expr;
+        LoopExpr loop_expr;
         FnProto fn_proto;
         FnDef fn_def;
     };

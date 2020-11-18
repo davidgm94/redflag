@@ -34,8 +34,9 @@ typedef struct IRFunctionConfig
 typedef struct IRFunctionPrototype
 {
     IRParamDecl* params;
-    RedType ret_type;
     SB* name;
+    // TODO: remove
+    RedType ret_type;
     IRFunctionConfig fn_cfg;
     u8 param_count;
 } IRFunctionPrototype;
@@ -54,6 +55,7 @@ typedef enum IRStatementType
     IR_ST_TYPE_BRANCH_ST,
     IR_ST_TYPE_SYM_DECL_ST,
     IR_ST_TYPE_ASSIGN_ST,
+    IR_ST_TYPE_LOOP_ST,
 } IRStatementType;
 
 typedef enum IRExpressionType
@@ -139,6 +141,12 @@ typedef struct IRSymAssignStatement
     IRExpression* right;
 } IRSymAssignStatement;
 
+typedef struct IRLoopStatement
+{
+    IRExpression condition;
+    IRCompoundStatement body;
+} IRLoopStatement;
+
 typedef struct IRStatement
 {
     IRStatementType type;
@@ -149,6 +157,7 @@ typedef struct IRStatement
         IRBranchStatement branch_st;
         IRSymDeclStatement sym_decl_st;
         IRSymAssignStatement sym_assign_st;
+        IRLoopStatement loop_st;
     };
 } IRStatement;
 

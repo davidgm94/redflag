@@ -141,6 +141,7 @@ static inline void put_back_token(ParseContext* pc)
 }
 
 static inline Node* parse_expression(ParseContext* pc);
+static inline Node* parse_compound_st(ParseContext* pc);
 static inline Node* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
@@ -337,7 +338,31 @@ static inline Node* parse_return_statement(ParseContext* pc)
     return node;
 }
 
-static inline Node* parse_compound_st(ParseContext* pc);
+static inline Node* parse_while_expr(ParseContext* pc)
+{
+    Token* token = expect_token(pc, TOKEN_ID_KEYWORD_WHILE);
+    
+    Node* while_condition = parse_expression(pc);
+    if (!while_condition)
+    {
+        os_exit_with_message("Expected expression after while statement\n");
+        return null;
+    }
+
+    Node* while_block = parse_expression(pc);
+    if (!while_block)
+    {
+        os_exit_with_message("Expected block after while statement and condition\n");
+        return null;
+    }
+
+    Node* while_node = NEW(Node, 1);
+    fill_base_node(while_node, token, AST_TYPE_LOOP_EXPR);
+    while_node->loop_expr.condition = while_condition;
+    while_node->loop_expr.body = while_block;
+    return while_node;
+}
+
 static inline Node* parse_primary_expr(ParseContext* pc)
 {
     Token* t = get_token(pc);
@@ -355,6 +380,8 @@ static inline Node* parse_primary_expr(ParseContext* pc)
         }
         case TOKEN_ID_KEYWORD_IF:
             return parse_branch_block(pc);
+        case TOKEN_ID_KEYWORD_WHILE:
+            return parse_while_expr(pc);
         case TOKEN_ID_KEYWORD_RETURN:
             return parse_return_statement(pc);
         case TOKEN_ID_INT_LIT:
@@ -412,6 +439,7 @@ static inline Node* parse_expression(ParseContext* pc)
         return null;
     }
 
+    // TODO: remove
     if (left_expr->node_id == AST_TYPE_BIN_EXPR && left_expr->bin_expr.op == TOKEN_ID_EQ)
     {
         int k = 125123124;
@@ -437,7 +465,7 @@ static inline Node* parse_statement(ParseContext* pc)
     node = parse_expression(pc);
     if (node)
     {
-        bool add_semicolon = node->node_id != AST_TYPE_BRANCH_EXPR && node->node_id != AST_TYPE_COMPOUND_STATEMENT;
+        bool add_semicolon = node->node_id != AST_TYPE_BRANCH_EXPR && node->node_id != AST_TYPE_COMPOUND_STATEMENT && node->node_id != AST_TYPE_LOOP_EXPR;
         if (add_semicolon)
         {
             expect_token(pc, TOKEN_ID_SEMICOLON);
