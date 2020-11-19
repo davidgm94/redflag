@@ -363,6 +363,23 @@ static inline Node* parse_while_expr(ParseContext* pc)
     return while_node;
 }
 
+static inline Node* parse_fn_call_expr(ParseContext* pc)
+{
+    Token* fn_expr_token = get_token(pc);
+    if (fn_expr_token->id != TOKEN_ID_SYMBOL || get_token_i(pc, 1)->id != TOKEN_ID_LEFT_PARENTHESIS)
+    {
+        return null;
+    }
+    consume_token(pc);
+    consume_token(pc);
+    // TODO: modify to admit arguments
+    expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
+    Node* node = NEW(Node, 1);
+    fill_base_node(node, fn_expr_token, AST_TYPE_FN_CALL);
+    node->fn_call.name = *token_buffer(fn_expr_token);
+    return node;
+}
+
 static inline Node* parse_primary_expr(ParseContext* pc)
 {
     Token* t = get_token(pc);
@@ -387,7 +404,14 @@ static inline Node* parse_primary_expr(ParseContext* pc)
         case TOKEN_ID_INT_LIT:
             return parse_int_literal(pc);
         case TOKEN_ID_SYMBOL:
-            return parse_symbol_expr(pc);
+            if (get_token_i(pc, 1)->id == TOKEN_ID_LEFT_PARENTHESIS)
+            {
+                return parse_fn_call_expr(pc);
+            }
+            else
+            {
+                return parse_symbol_expr(pc);
+            }
         case TOKEN_ID_END_OF_FILE:
             return null;
         default:
@@ -448,9 +472,26 @@ static inline Node* parse_expression(ParseContext* pc)
     return parse_right_expr(pc, &left_expr);
 }
 
+static inline Node* parse_fn_call_statement(ParseContext* pc)
+{
+    Node* node = parse_fn_call_expr(pc);
+    if (!node)
+    {
+        return null;
+    }
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+    return node;
+}
+
 static inline Node* parse_statement(ParseContext* pc)
 {
     Node* node = parse_sym_decl(pc);
+    if (node)
+    {
+        return node;
+    }
+
+    node = parse_fn_call_statement(pc);
     if (node)
     {
         return node;

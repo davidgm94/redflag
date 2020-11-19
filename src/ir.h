@@ -64,6 +64,7 @@ typedef enum IRExpressionType
     IR_EXPRESSION_TYPE_INT_LIT,
     IR_EXPRESSION_TYPE_SYM_EXPR,
     IR_EXPRESSION_TYPE_BIN_EXPR,
+    IR_EXPRESSION_TYPE_FN_CALL_EXPR,
 } IRExpressionType;
 
 typedef struct IRIntLiteral
@@ -103,6 +104,14 @@ typedef struct IRBinaryExpr
     TokenID op;
 } IRBinaryExpr;
 
+typedef struct IRFunctionCallExpr
+{
+    // TODO: change for fn prototype pointer
+    SB name;
+    IRSymExpr* args;
+    u8 arg_count;
+} IRFunctionCallExpr;
+
 typedef struct IRExpression
 {
     IRExpressionType type;
@@ -111,6 +120,7 @@ typedef struct IRExpression
         IRIntLiteral int_literal;
         IRSymExpr sym_expr;
         IRBinaryExpr bin_expr;
+        IRFunctionCallExpr fn_call_expr;
     };
 } IRExpression;
 

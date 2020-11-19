@@ -237,3 +237,13 @@ test_nested_loops = () s32
 
     return b;
 }
+
+test_callee = () s32 
+{
+    return 5;
+}
+
+test_fn_function_caller = () s32
+{
+    return test_callee();
+}

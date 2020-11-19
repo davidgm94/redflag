@@ -340,6 +340,15 @@ static inline IRReturnStatement ast_to_ir_return_st(Node* node, IRFunctionDefini
             ret_st.red_type = ast_to_ir_find_expression_type(&ret_st.expression);
             return ret_st;
         }
+        case AST_TYPE_FN_CALL:
+        {
+            ret_st.expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
+            ret_st.expression.fn_call_expr.name = expr_node->fn_call.name;
+            // TODO: change, because we will be supporting arguments
+            ret_st.expression.fn_call_expr.args = null;
+            ret_st.expression.fn_call_expr.arg_count = 0;
+            return ret_st;
+        }
         default:
             RED_NOT_IMPLEMENTED;
             return ret_st;

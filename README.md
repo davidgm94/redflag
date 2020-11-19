@@ -3,12 +3,13 @@
                             =================
 
 ### URGENT PRIORITY
-* [ ] Admit binary expression in variable assignments
+* [x] Admit binary expression in variable assignments
 
 ### NORMAL PRIORITY
 * [x] Fix char and string literals lexing
 * [x] Expression vs statement, block vs compound statement
 * [x] Function body is compound statement
+* [ ] Amplify function calling
 * [ ] Provide sense of scope
 * [ ] Symbol types are values
 * [ ] Array-based parser (bunch of nodes in dynamic arrays, indices as pointer to node). Profile gains

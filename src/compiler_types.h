@@ -655,6 +655,12 @@ typedef struct LoopExpr
     Node* body;
 } LoopExpr;
 
+typedef struct FnCallExpr
+{
+    SB name;
+    SB* args;
+    u8 arg_count;
+} FnCallExpr;
 typedef struct FnProto
 {
     NodeBuffer params;
@@ -687,6 +693,7 @@ typedef struct Node
         CompoundStatement compound_statement;
         BranchExpr branch_expr;
         LoopExpr loop_expr;
+        FnCallExpr fn_call;
         FnProto fn_proto;
         FnDef fn_def;
     };

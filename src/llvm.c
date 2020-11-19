@@ -246,6 +246,13 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
             // TODO: fix type
             return LLVMConstInt(LLVMInt32TypeInContext(llvm->context), n, int_lit->bigint.is_negative);
         }
+        case IR_EXPRESSION_TYPE_FN_CALL_EXPR:
+        {
+            IRFunctionCallExpr* fn_call = &expression->fn_call_expr;
+            LLVMValueRef fn = LLVMGetNamedFunction(llvm->module, sb_ptr(&fn_call->name));
+            LLVMValueRef fn_call_value = LLVMBuildCall(llvm->builder, fn, null, 0, sb_ptr(&fn_call->name));
+            return fn_call_value;
+        }
         case IR_EXPRESSION_TYPE_VOID:
             return null;
         default:
