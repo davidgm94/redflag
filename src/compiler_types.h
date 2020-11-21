@@ -510,6 +510,7 @@ typedef enum ASTType
     AST_TYPE_BRANCH_EXPR,
     AST_TYPE_LOOP_EXPR,
     AST_TYPE_INT_LIT,
+    AST_TYPE_ARRAY_LIT,
 } ASTType;
 
 /* AST Kind
@@ -532,19 +533,12 @@ typedef enum ASTType
 
 
 GEN_BUFFER_FUNCTIONS(node, nb, NodeBuffer, struct Node*)
+
 typedef struct Symbol
 {
     SB* name;
+    Node* index_node_if_array_expr;
 } Symbol;
-
-typedef enum RedTypeKind
-{
-    INVALID,
-    VOID,
-    PRIMITIVE,
-    FUNCTION,
-    //*****
-} RedTypeKind;
 
 typedef enum RedTypePrimitive
 {
@@ -584,9 +578,22 @@ static inline const char* primitive_type_str(RedTypePrimitive primitive_type_id)
     }
 }
 
+typedef enum TypeKind
+{
+    INVALID,
+    VOID,
+    PRIMITIVE,
+    STRUCT,
+    UNION,
+    ENUM,
+    ARRAY,
+    FUNCTION,
+} TypeKind;
+
+typedef struct IRExpression IRExpression;
 typedef struct RedType
 {
-    RedTypeKind kind;
+    TypeKind kind;
     usize size;
 
     union
@@ -598,12 +605,34 @@ typedef struct RedType
             struct RedType* return_type;
             struct RedType** parameter_types;
         } function;
+        struct
+        {
+            struct RedType* type;
+            IRExpression* elem_count_expr;
+        } array;
     };
 } RedType;
 
+
+typedef struct BasicType
+{
+    SB* name;
+} BasicType;
+
+typedef struct ArrayType
+{
+    Node* type;
+    Node* element_count_expr;
+} ArrayType;
+
 typedef struct Type
 {
-    SB* type_name;
+    TypeKind kind;
+    union
+    {
+        BasicType basic;
+        ArrayType array;
+    };
 } Type;
 
 typedef struct ParamDecl
@@ -616,7 +645,7 @@ typedef struct SymDecl
 {
     Node* sym;
     Node* type;
-    Node* fn_handle;
+    Node* value;
     bool is_const;
 } SymDecl;
 
@@ -624,6 +653,11 @@ typedef struct IntLit
 {
     BigInt* bigint;
 } IntLit;
+
+typedef struct ArrayLit
+{
+    NodeBuffer values;
+} ArrayLit;
 
 typedef struct BinExpr
 {
@@ -658,7 +692,7 @@ typedef struct LoopExpr
 typedef struct FnCallExpr
 {
     SB name;
-    SB* args;
+    Node** args;
     u8 arg_count;
 } FnCallExpr;
 typedef struct FnProto
@@ -688,6 +722,7 @@ typedef struct Node
         ParamDecl param_decl;
         SymDecl sym_decl;
         IntLit int_lit;
+        ArrayLit array_lit;
         BinExpr bin_expr;
         RetExpr return_expr;
         CompoundStatement compound_statement;

@@ -40,25 +40,13 @@ static inline ASTType get_node_type(Node* n)
     return n->node_id;
 }
 
+
 static inline Node* create_symbol_node(Token* t)
 {
     Node* node = NEW(Node, 1);
     fill_base_node(node, t, AST_TYPE_SYM_EXPR);
     node->sym_expr.name = &t->str_lit.str;
     return node;
-}
-
-static inline Node* create_type_node(Token* t)
-{
-    if (t)
-    {
-        Node* node = NEW(Node, 1);
-        fill_base_node(node, t, AST_TYPE_TYPE_EXPR);
-        node->type_expr.type_name = &t->str_lit.str;
-        return node;
-    }
-
-    return null;
 }
 
 typedef struct ParseContext
@@ -126,6 +114,18 @@ static inline Token* expect_token(ParseContext* pc, TokenID id)
     return token;
 }
 
+static inline Token* expect_token_if_not(ParseContext* pc, TokenID expected_token, TokenID if_not_this_one)
+{
+    Token* token = get_token(pc);
+    if (token->id != if_not_this_one)
+    {
+        token = expect_token(pc, expected_token);
+        return token;
+    }
+
+    return null;
+}
+
 static inline void put_back_token(ParseContext* pc)
 {
 #if RED_PARSER_VERBOSE
@@ -142,10 +142,60 @@ static inline void put_back_token(ParseContext* pc)
 
 static inline Node* parse_expression(ParseContext* pc);
 static inline Node* parse_compound_st(ParseContext* pc);
+static inline Node* create_type_node(ParseContext* pc);
+
+static inline Node* create_basic_type_node(ParseContext* pc)
+{
+    Token* token = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    if (!token)
+    {
+        return null;
+    }
+
+    Node* node = NEW(Node, 1);
+    fill_base_node(node, token, AST_TYPE_TYPE_EXPR);
+    node->type_expr.kind = PRIMITIVE;
+    node->type_expr.basic.name = &token->str_lit.str;
+    return node;
+}
+
+static inline Node* create_type_node_array(ParseContext* pc)
+{
+    Token* left_bracket = expect_token(pc, TOKEN_ID_LEFT_BRACKET);
+    Node* elem_count_node = parse_expression(pc);
+    expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
+    Node* type_node = create_type_node(pc);
+
+    Node* node = NEW(Node, 1);
+    fill_base_node(node, left_bracket, AST_TYPE_TYPE_EXPR);
+    node->type_expr.kind = ARRAY;
+    node->type_expr.array.element_count_expr = elem_count_node;
+    node->type_expr.array.type = type_node;
+
+    return node;
+}
+
+static inline Node* create_type_node(ParseContext* pc)
+{
+    Token* token = get_token(pc);
+    TokenID type = token->id;
+    switch (type)
+    {
+        case TOKEN_ID_SYMBOL:
+            return create_basic_type_node(pc);
+        case TOKEN_ID_LEFT_BRACKET:
+            return create_type_node_array(pc);
+        default:
+            RED_NOT_IMPLEMENTED;
+            return null;
+    }
+}
+
 static inline Node* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
-    Token* type = expect_token(pc, TOKEN_ID_SYMBOL);
+    Node* symbol_node = create_symbol_node(name);
+    Node* type_node = create_type_node(pc);
     if (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
         expect_token(pc, TOKEN_ID_COMMA);
@@ -153,8 +203,8 @@ static inline Node* parse_param_decl(ParseContext* pc)
 
     Node* param = NEW(Node, 1);
     fill_base_node(param, name, AST_TYPE_PARAM_DECL);
-    param->param_decl.sym = create_symbol_node(name);
-    param->param_decl.type = create_type_node(type);
+    param->param_decl.sym = symbol_node;
+    param->param_decl.type = type_node;
     return param;
 }
 
@@ -196,7 +246,7 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     bool is_const = mut_token->id == TOKEN_ID_KEYWORD_CONST;
     Token* sym_name = expect_token(pc, TOKEN_ID_SYMBOL);
     // TODO: should flexibilize this in order to support type inferring in the future
-    Token* sym_type = expect_token(pc, TOKEN_ID_SYMBOL);
+    Node* sym_type_node = create_type_node(pc);
 
     // TODO: This means no value assigned, uninitialized (left to the backend?????)
     Node* sym_node = null;
@@ -207,7 +257,7 @@ static inline Node* parse_sym_decl(ParseContext* pc)
         fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
         sym_node->sym_decl.is_const = is_const;
         sym_node->sym_decl.sym = create_symbol_node(sym_name);
-        sym_node->sym_decl.type = create_type_node(sym_type);
+        sym_node->sym_decl.type = sym_type_node;
         return sym_node;
     }
 
@@ -219,8 +269,8 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
     sym_node->sym_decl.is_const = is_const;
     sym_node->sym_decl.sym = create_symbol_node(sym_name);
-    sym_node->sym_decl.type = create_type_node(sym_type);
-    sym_node->sym_decl.fn_handle = expression;
+    sym_node->sym_decl.type = sym_type_node;
+    sym_node->sym_decl.value = expression;
 
     return sym_node;
 }
@@ -255,6 +305,16 @@ static inline Node* parse_symbol_expr(ParseContext* pc)
     }
 
     Node* node = create_symbol_node(token);
+    Token* left_bracket = consume_token_if(pc, TOKEN_ID_LEFT_BRACKET);
+    if (!left_bracket)
+    {
+        return node;
+    }
+
+    Node* index_node = parse_expression(pc);
+    expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
+    node->sym_expr.index_node_if_array_expr = index_node;
+
     return node;
 }
 
@@ -373,10 +433,39 @@ static inline Node* parse_fn_call_expr(ParseContext* pc)
     consume_token(pc);
     consume_token(pc);
     // TODO: modify to admit arguments
+    Node* param_arr[256];
+    u8 param_count = 0;
+    while (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
+    {
+        param_arr[param_count] = parse_expression(pc);
+        param_count++;
+    }
     expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
     Node* node = NEW(Node, 1);
     fill_base_node(node, fn_expr_token, AST_TYPE_FN_CALL);
     node->fn_call.name = *token_buffer(fn_expr_token);
+    node->fn_call.args = NEW(Node*, param_count);
+    memcpy(node->fn_call.args, param_arr, sizeof(Node*) * param_count);
+    node->fn_call.arg_count = param_count;
+    return node;
+}
+
+static inline Node* parse_array_literal(ParseContext* pc)
+{
+    Token* left_bracket = expect_token(pc, TOKEN_ID_LEFT_BRACKET);
+    NodeBuffer node_buffer = ZERO_INIT;
+    Node* value;
+    while (get_token(pc)->id != TOKEN_ID_RIGHT_BRACKET && (value = parse_expression(pc)))
+    {
+        node_append(&node_buffer, value);
+        expect_token_if_not(pc, TOKEN_ID_COMMA, TOKEN_ID_RIGHT_BRACKET);
+    }
+    expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
+
+    Node* node = NEW(Node, 1);
+    fill_base_node(node, left_bracket, AST_TYPE_ARRAY_LIT);
+    node->array_lit.values = node_buffer;
+
     return node;
 }
 
@@ -386,6 +475,8 @@ static inline Node* parse_primary_expr(ParseContext* pc)
     TokenID id = t->id;
     switch (id)
     {
+        case TOKEN_ID_LEFT_BRACKET:
+            return parse_array_literal(pc);
         case TOKEN_ID_LEFT_BRACE:
             return parse_compound_st(pc);
         case TOKEN_ID_LEFT_PARENTHESIS:
@@ -404,6 +495,7 @@ static inline Node* parse_primary_expr(ParseContext* pc)
         case TOKEN_ID_INT_LIT:
             return parse_int_literal(pc);
         case TOKEN_ID_SYMBOL:
+            // TODO: fix
             if (get_token_i(pc, 1)->id == TOKEN_ID_LEFT_PARENTHESIS)
             {
                 return parse_fn_call_expr(pc);
@@ -461,12 +553,6 @@ static inline Node* parse_expression(ParseContext* pc)
     if (!left_expr)
     {
         return null;
-    }
-
-    // TODO: remove
-    if (left_expr->node_id == AST_TYPE_BIN_EXPR && left_expr->bin_expr.op == TOKEN_ID_EQ)
-    {
-        int k = 125123124;
     }
 
     return parse_right_expr(pc, &left_expr);
@@ -581,17 +667,19 @@ static inline Node* parse_fn_proto(ParseContext* pc)
 
     NodeBuffer param_list = parse_param_decl_list(pc);
 
-    Token* return_type = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    Token* return_type = get_token(pc);
     if (!return_type && (!(get_token(pc)->id == TOKEN_ID_SEMICOLON || get_token(pc)->id == TOKEN_ID_LEFT_BRACE)))
     {
         invalid_token_error(pc, get_token(pc));
     }
 
+    Node* return_type_node = create_type_node(pc);
+
     Node* node = NEW(Node, 1);
     fill_base_node(node, identifier, AST_TYPE_FN_PROTO);
     node->fn_proto.params = param_list;
     node->fn_proto.sym = create_symbol_node(identifier);
-    node->fn_proto.ret_type = create_type_node(return_type);
+    node->fn_proto.ret_type = return_type_node;
     return node;
 }
 

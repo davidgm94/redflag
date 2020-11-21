@@ -247,3 +247,19 @@ test_fn_function_caller = () s32
 {
     return test_callee();
 }
+
+test_callee_args = (n s32) s32 
+{
+    return 5 * n;
+}
+
+test_fn_function_caller_args = (n s32) s32
+{
+    return test_callee_args(n);
+}
+
+test_array = (i s32) s32
+{
+    var a [3]s32 = [0, 1, 2];
+    return a[i];
+}

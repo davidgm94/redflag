@@ -9,3 +9,5 @@ main.o
 main.exe
 *.obj
 *.exe
+
+dependencies/llvm-debug/

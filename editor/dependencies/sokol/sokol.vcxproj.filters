@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\sokol.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\sokol_app.h" />
+    <ClInclude Include="src\sokol_gfx.h" />
+    <ClInclude Include="src\sokol_glue.h" />
+    <ClInclude Include="src\sokol_imgui.h" />
+    <ClInclude Include="src\sokol_time.h" />
+  </ItemGroup>
+</Project>

@@ -1,12 +1,18 @@
 #pragma once
 
+typedef enum LoadStoreCfg
+{
+    LOAD,
+    STORE,
+} LoadStoreCfg;
+typedef struct IRSymDeclStatement IRSymDeclStatement;
+typedef struct IRExpression IRExpression;
 
 typedef struct IRParamDecl
 {
     RedType type;
     SB* name;
 } IRParamDecl;
-
 
 typedef struct IRConstValue
 {
@@ -62,6 +68,7 @@ typedef enum IRExpressionType
 {
     IR_EXPRESSION_TYPE_VOID = 0,
     IR_EXPRESSION_TYPE_INT_LIT,
+    IR_EXPRESSION_TYPE_ARRAY_LIT,
     IR_EXPRESSION_TYPE_SYM_EXPR,
     IR_EXPRESSION_TYPE_BIN_EXPR,
     IR_EXPRESSION_TYPE_FN_CALL_EXPR,
@@ -72,30 +79,30 @@ typedef struct IRIntLiteral
     BigInt bigint;
 } IRIntLiteral;
 
+typedef struct IRArrayLiteral
+{
+    IRExpression* expressions;
+    u64 expression_count;
+} IRArrayLiteral;
+
 typedef enum IRSymExprType
 {
     IR_SYM_EXPR_TYPE_SYM,
     IR_SYM_EXPR_TYPE_PARAM,
 } IRSymExprType;
 
-typedef enum LoadStoreCfg
-{
-    LOAD,
-    STORE,
-} LoadStoreCfg;
-typedef struct IRSymDeclStatement IRSymDeclStatement;
 typedef struct IRSymExpr
 {
-    IRSymExprType type;
     union
     {
         IRSymDeclStatement* sym_decl;
         IRParamDecl* param_decl;
     };
+    IRExpression* index_expr_if_array_suffix;
+    IRSymExprType type;
     LoadStoreCfg use_type;
 } IRSymExpr;
 
-typedef struct IRExpression IRExpression;
 
 typedef struct IRBinaryExpr
 {
@@ -108,7 +115,7 @@ typedef struct IRFunctionCallExpr
 {
     // TODO: change for fn prototype pointer
     SB name;
-    IRSymExpr* args;
+    IRExpression* args;
     u8 arg_count;
 } IRFunctionCallExpr;
 
@@ -118,6 +125,7 @@ typedef struct IRExpression
     union
     {
         IRIntLiteral int_literal;
+        IRArrayLiteral array_literal;
         IRSymExpr sym_expr;
         IRBinaryExpr bin_expr;
         IRFunctionCallExpr fn_call_expr;
@@ -188,4 +196,4 @@ typedef struct RedModuleIR
 
 RedModuleIR transform_ast_to_ir(RedModuleTree* ast);
 
-
+RedType ast_to_ir_find_expression_type(IRExpression* expression);
