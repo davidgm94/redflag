@@ -1,4 +1,4 @@
 #pragma once
 
-typedef struct RedModuleIR RedModuleIR;
-void llvm_gen_machine_code(RedModuleIR* ir_tree);
+typedef struct IRModule IRModule;
+void llvm_gen_machine_code(IRModule* ir_tree);

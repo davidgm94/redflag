@@ -263,3 +263,24 @@ test_array = (i s32) s32
     var a [3]s32 = [0, 1, 2];
     return a[i];
 }
+
+test_array_elem_assign = () s32
+{
+    var arr [2]s32;
+    arr[0] = 5;
+    return arr[0];
+}
+
+test_foo_struct = struct
+{
+    a s32;
+    b s32;
+}
+
+test_first_struct = () test_foo_struct
+{
+    var foo test_foo_struct;
+    foo.a = 5;
+    foo.b = 3;
+    return foo;
+}

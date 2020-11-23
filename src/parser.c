@@ -20,30 +20,30 @@
 #include <stdio.h>
 
 
-static inline void copy_base_node(Node* dst, const Node* src, ASTType id)
+static inline void copy_base_node(ASTNode* dst, const ASTNode* src, AST_ID id)
 {
     dst->node_id = id;
     dst->node_line = src->node_line;
     dst->node_column = src->node_column;
-    static_assert(offsetof(Node, sym_decl) == (sizeof(dst->node_id) + sizeof(dst->node_line) + sizeof(dst->node_column) + sizeof(dst->node_padding)), "Base node size has been incorrectly modified");
+    static_assert(offsetof(ASTNode, sym_decl) == (sizeof(dst->node_id) + sizeof(dst->node_line) + sizeof(dst->node_column) + sizeof(dst->node_padding)), "Base node size has been incorrectly modified");
 }
 
-static inline void fill_base_node(Node* bn, Token* t, ASTType id)
+static inline void fill_base_node(ASTNode* bn, Token* t, AST_ID id)
 {
     bn->node_id = id;
     bn->node_line = t->start_line;
     bn->node_column = t->start_column;
 }
 
-static inline ASTType get_node_type(Node* n)
+static inline AST_ID get_node_type(ASTNode* n)
 {
     return n->node_id;
 }
 
 
-static inline Node* create_symbol_node(Token* t)
+static inline ASTNode* create_symbol_node(Token* t)
 {
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, t, AST_TYPE_SYM_EXPR);
     node->sym_expr.name = &t->str_lit.str;
     return node;
@@ -140,11 +140,12 @@ static inline void put_back_token(ParseContext* pc)
 #endif
 }
 
-static inline Node* parse_expression(ParseContext* pc);
-static inline Node* parse_compound_st(ParseContext* pc);
-static inline Node* create_type_node(ParseContext* pc);
+static inline ASTNode* parse_expression(ParseContext* pc);
+static inline ASTNode* parse_primary_expr(ParseContext* pc);
+static inline ASTNode* parse_compound_st(ParseContext* pc);
+static inline ASTNode* create_type_node(ParseContext* pc);
 
-static inline Node* create_basic_type_node(ParseContext* pc)
+static inline ASTNode* create_basic_type_node(ParseContext* pc)
 {
     Token* token = consume_token_if(pc, TOKEN_ID_SYMBOL);
     if (!token)
@@ -152,37 +153,74 @@ static inline Node* create_basic_type_node(ParseContext* pc)
         return null;
     }
 
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, token, AST_TYPE_TYPE_EXPR);
-    node->type_expr.kind = PRIMITIVE;
-    node->type_expr.basic.name = &token->str_lit.str;
+    node->type_expr.kind = TYPE_KIND_PRIMITIVE;
+    node->type_expr.name = &token->str_lit.str;
     return node;
 }
 
-static inline Node* create_type_node_array(ParseContext* pc)
+static inline ASTNode* create_type_node_array(ParseContext* pc)
 {
     Token* left_bracket = expect_token(pc, TOKEN_ID_LEFT_BRACKET);
-    Node* elem_count_node = parse_expression(pc);
+    ASTNode* elem_count_node = parse_expression(pc);
     expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
-    Node* type_node = create_type_node(pc);
+    ASTNode* type_node = create_type_node(pc);
 
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, left_bracket, AST_TYPE_TYPE_EXPR);
-    node->type_expr.kind = ARRAY;
+    node->type_expr.kind = TYPE_KIND_ARRAY;
     node->type_expr.array.element_count_expr = elem_count_node;
     node->type_expr.array.type = type_node;
 
     return node;
 }
 
-static inline Node* create_type_node(ParseContext* pc)
+const char* primitive_types[] =
+{
+    "u8", "u16", "u32", "u64",
+    "s8", "s16", "s32", "s64",
+    "f32", "f64",
+};
+
+static bool is_basic_type(Token* type_token)
+{
+    char* type_str = type_token->str_lit.str.ptr;
+    for (u32 i = 0; i < array_length(primitive_types); i++)
+    {
+        if (strcmp(type_str, primitive_types[i]) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static inline ASTNode* create_complex_type_node(ParseContext* pc)
+{
+    Token* token = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, token, AST_TYPE_TYPE_EXPR);
+    node->type_expr.kind = TYPE_KIND_COMPLEX_TO_BE_DETERMINED;
+    node->type_expr.name = &token->str_lit.str;
+    return node;
+}
+
+static inline ASTNode* create_type_node(ParseContext* pc)
 {
     Token* token = get_token(pc);
     TokenID type = token->id;
     switch (type)
     {
         case TOKEN_ID_SYMBOL:
-            return create_basic_type_node(pc);
+            if (is_basic_type(token))
+            {
+                return create_basic_type_node(pc);
+            }
+            else
+            {
+                return create_complex_type_node(pc);
+            }
         case TOKEN_ID_LEFT_BRACKET:
             return create_type_node_array(pc);
         default:
@@ -191,32 +229,32 @@ static inline Node* create_type_node(ParseContext* pc)
     }
 }
 
-static inline Node* parse_param_decl(ParseContext* pc)
+static inline ASTNode* parse_param_decl(ParseContext* pc)
 {
     Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
-    Node* symbol_node = create_symbol_node(name);
-    Node* type_node = create_type_node(pc);
+    ASTNode* symbol_node = create_symbol_node(name);
+    ASTNode* type_node = create_type_node(pc);
     if (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
         expect_token(pc, TOKEN_ID_COMMA);
     }
 
-    Node* param = NEW(Node, 1);
+    ASTNode* param = NEW(ASTNode, 1);
     fill_base_node(param, name, AST_TYPE_PARAM_DECL);
     param->param_decl.sym = symbol_node;
     param->param_decl.type = type_node;
     return param;
 }
 
-static inline NodeBuffer parse_param_decl_list(ParseContext* pc)
+static inline ASTNodeBuffer parse_param_decl_list(ParseContext* pc)
 {
     // Left parenthesis is already consumed
     //expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
 
-    NodeBuffer nb = ZERO_INIT;
+    ASTNodeBuffer nb = ZERO_INIT;
     while (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
-        Node* param = parse_param_decl(pc);
+        ASTNode* param = parse_param_decl(pc);
         if (param)
         {
             node_append(&nb, param);
@@ -231,7 +269,7 @@ static inline NodeBuffer parse_param_decl_list(ParseContext* pc)
     return nb;
 }
 
-static inline Node* parse_sym_decl(ParseContext* pc)
+static inline ASTNode* parse_sym_decl(ParseContext* pc)
 {
     Token* mut_token = consume_token_if(pc, TOKEN_ID_KEYWORD_CONST);
     if (!mut_token)
@@ -246,14 +284,14 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     bool is_const = mut_token->id == TOKEN_ID_KEYWORD_CONST;
     Token* sym_name = expect_token(pc, TOKEN_ID_SYMBOL);
     // TODO: should flexibilize this in order to support type inferring in the future
-    Node* sym_type_node = create_type_node(pc);
+    ASTNode* sym_type_node = create_type_node(pc);
 
     // TODO: This means no value assigned, uninitialized (left to the backend?????)
-    Node* sym_node = null;
+    ASTNode* sym_node = null;
     Token* semicolon = consume_token_if(pc, TOKEN_ID_SEMICOLON);
     if (semicolon)
     {
-        sym_node = NEW(Node, 1);
+        sym_node = NEW(ASTNode, 1);
         fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
         sym_node->sym_decl.is_const = is_const;
         sym_node->sym_decl.sym = create_symbol_node(sym_name);
@@ -262,10 +300,10 @@ static inline Node* parse_sym_decl(ParseContext* pc)
     }
 
     expect_token(pc, TOKEN_ID_EQ);
-    Node* expression = parse_expression(pc);
+    ASTNode* expression = parse_expression(pc);
     expect_token(pc, TOKEN_ID_SEMICOLON);
 
-    sym_node = NEW(Node, 1);
+    sym_node = NEW(ASTNode, 1);
     fill_base_node(sym_node, mut_token, AST_TYPE_SYM_DECL);
     sym_node->sym_decl.is_const = is_const;
     sym_node->sym_decl.sym = create_symbol_node(sym_name);
@@ -281,7 +319,7 @@ Branch (if-else)
 return expression
 variable assignment (bin op?)
 */
-static inline Node* parse_int_literal(ParseContext* pc)
+static inline ASTNode* parse_int_literal(ParseContext* pc)
 {
     Token* token = consume_token_if(pc, TOKEN_ID_INT_LIT);
     if (!token)
@@ -289,14 +327,14 @@ static inline Node* parse_int_literal(ParseContext* pc)
         return null;
     }
 
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, token, AST_TYPE_INT_LIT);
     node->int_lit.bigint = token_bigint(token);
 
     return node;
 }
 
-static inline Node* parse_symbol_expr(ParseContext* pc)
+static inline ASTNode* parse_symbol_expr(ParseContext* pc)
 {
     Token* token = consume_token_if(pc, TOKEN_ID_SYMBOL);
     if (!token)
@@ -304,32 +342,36 @@ static inline Node* parse_symbol_expr(ParseContext* pc)
         return null;
     }
 
-    Node* node = create_symbol_node(token);
-    Token* left_bracket = consume_token_if(pc, TOKEN_ID_LEFT_BRACKET);
-    if (!left_bracket)
-    {
-        return node;
-    }
+    ASTNode* node = create_symbol_node(token);
 
-    Node* index_node = parse_expression(pc);
-    expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
-    node->sym_expr.index_node_if_array_expr = index_node;
+    if (consume_token_if(pc, TOKEN_ID_LEFT_BRACKET))
+    {
+        ASTNode* array_access = parse_expression(pc);
+        expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
+        node->sym_expr.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS;
+        node->sym_expr.subscript = array_access;
+    }
+    else if (consume_token_if(pc, TOKEN_ID_DOT))
+    {
+        ASTNode* field_access = parse_primary_expr(pc);
+        node->sym_expr.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS;
+        node->sym_expr.subscript = field_access;
+    }
 
     return node;
 }
 
-static inline Node* parse_primary_expr(ParseContext* pc);
-static inline Node* parse_branch_block(ParseContext* pc)
+static inline ASTNode* parse_branch_block(ParseContext* pc)
 {
     Token* if_token = expect_token(pc, TOKEN_ID_KEYWORD_IF);
 
-    Node* condition_node = parse_expression(pc);
+    ASTNode* condition_node = parse_expression(pc);
     if (!condition_node)
     {
         return null;
     }
 
-    Node* if_block = parse_expression(pc);
+    ASTNode* if_block = parse_expression(pc);
     if (!if_block)
     {
         RED_NOT_IMPLEMENTED;
@@ -339,7 +381,7 @@ static inline Node* parse_branch_block(ParseContext* pc)
     Token* else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE);
     if (!else_token)
     {
-        Node* branch_block = NEW(Node, 1);
+        ASTNode* branch_block = NEW(ASTNode, 1);
         fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
         branch_block->branch_expr.condition = condition_node;
         branch_block->branch_expr.if_block = if_block;
@@ -354,7 +396,7 @@ static inline Node* parse_branch_block(ParseContext* pc)
         // IF-ELSE BLOCK
 
         // parse else block
-        Node* else_block = parse_expression(pc);
+        ASTNode* else_block = parse_expression(pc);
         if (!else_block)
         {
             RED_NOT_IMPLEMENTED;
@@ -362,7 +404,7 @@ static inline Node* parse_branch_block(ParseContext* pc)
         }
         redassert(else_block->node_id == AST_TYPE_COMPOUND_STATEMENT);
 
-        Node* branch_block = NEW(Node, 1);
+        ASTNode* branch_block = NEW(ASTNode, 1);
         fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
         branch_block->branch_expr.condition = condition_node;
         branch_block->branch_expr.if_block = if_block;
@@ -384,46 +426,46 @@ static inline Node* parse_branch_block(ParseContext* pc)
     return null;
 }
 
-static inline Node* parse_return_statement(ParseContext* pc)
+static inline ASTNode* parse_return_statement(ParseContext* pc)
 {
     Token* ret_token = consume_token_if(pc, TOKEN_ID_KEYWORD_RETURN);
     if (!ret_token)
     {
         return null;
     }
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, ret_token, AST_TYPE_RETURN_STATEMENT);
     node->return_expr.expr = parse_expression(pc);
     expect_token(pc, TOKEN_ID_SEMICOLON);
     return node;
 }
 
-static inline Node* parse_while_expr(ParseContext* pc)
+static inline ASTNode* parse_while_expr(ParseContext* pc)
 {
     Token* token = expect_token(pc, TOKEN_ID_KEYWORD_WHILE);
     
-    Node* while_condition = parse_expression(pc);
+    ASTNode* while_condition = parse_expression(pc);
     if (!while_condition)
     {
         os_exit_with_message("Expected expression after while statement\n");
         return null;
     }
 
-    Node* while_block = parse_expression(pc);
+    ASTNode* while_block = parse_expression(pc);
     if (!while_block)
     {
         os_exit_with_message("Expected block after while statement and condition\n");
         return null;
     }
 
-    Node* while_node = NEW(Node, 1);
+    ASTNode* while_node = NEW(ASTNode, 1);
     fill_base_node(while_node, token, AST_TYPE_LOOP_EXPR);
     while_node->loop_expr.condition = while_condition;
     while_node->loop_expr.body = while_block;
     return while_node;
 }
 
-static inline Node* parse_fn_call_expr(ParseContext* pc)
+static inline ASTNode* parse_fn_call_expr(ParseContext* pc)
 {
     Token* fn_expr_token = get_token(pc);
     if (fn_expr_token->id != TOKEN_ID_SYMBOL || get_token_i(pc, 1)->id != TOKEN_ID_LEFT_PARENTHESIS)
@@ -433,7 +475,7 @@ static inline Node* parse_fn_call_expr(ParseContext* pc)
     consume_token(pc);
     consume_token(pc);
     // TODO: modify to admit arguments
-    Node* param_arr[256];
+    ASTNode* param_arr[256];
     u8 param_count = 0;
     while (get_token(pc)->id != TOKEN_ID_RIGHT_PARENTHESIS)
     {
@@ -441,20 +483,20 @@ static inline Node* parse_fn_call_expr(ParseContext* pc)
         param_count++;
     }
     expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, fn_expr_token, AST_TYPE_FN_CALL);
     node->fn_call.name = *token_buffer(fn_expr_token);
-    node->fn_call.args = NEW(Node*, param_count);
-    memcpy(node->fn_call.args, param_arr, sizeof(Node*) * param_count);
+    node->fn_call.args = NEW(ASTNode*, param_count);
+    memcpy(node->fn_call.args, param_arr, sizeof(ASTNode*) * param_count);
     node->fn_call.arg_count = param_count;
     return node;
 }
 
-static inline Node* parse_array_literal(ParseContext* pc)
+static inline ASTNode* parse_array_literal(ParseContext* pc)
 {
     Token* left_bracket = expect_token(pc, TOKEN_ID_LEFT_BRACKET);
-    NodeBuffer node_buffer = ZERO_INIT;
-    Node* value;
+    ASTNodeBuffer node_buffer = ZERO_INIT;
+    ASTNode* value;
     while (get_token(pc)->id != TOKEN_ID_RIGHT_BRACKET && (value = parse_expression(pc)))
     {
         node_append(&node_buffer, value);
@@ -462,14 +504,14 @@ static inline Node* parse_array_literal(ParseContext* pc)
     }
     expect_token(pc, TOKEN_ID_RIGHT_BRACKET);
 
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, left_bracket, AST_TYPE_ARRAY_LIT);
     node->array_lit.values = node_buffer;
 
     return node;
 }
 
-static inline Node* parse_primary_expr(ParseContext* pc)
+static inline ASTNode* parse_primary_expr(ParseContext* pc)
 {
     Token* t = get_token(pc);
     TokenID id = t->id;
@@ -482,7 +524,7 @@ static inline Node* parse_primary_expr(ParseContext* pc)
         case TOKEN_ID_LEFT_PARENTHESIS:
         {
             expect_token(pc, TOKEN_ID_LEFT_PARENTHESIS);
-            Node* node = parse_expression(pc);
+            ASTNode* node = parse_expression(pc);
             expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
             return node;
         }
@@ -512,7 +554,7 @@ static inline Node* parse_primary_expr(ParseContext* pc)
     }
 }
 
-static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
+static inline ASTNode* parse_right_expr(ParseContext* pc, ASTNode** left_expr)
 {
     while (true)
     {
@@ -526,13 +568,13 @@ static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
             return *left_expr;
         }
 
-        Node* right_expr = parse_expression(pc);
+        ASTNode* right_expr = parse_expression(pc);
         if (!right_expr)
         {
             return null;
         }
         
-        Node* node = NEW(Node, 1);
+        ASTNode* node = NEW(ASTNode, 1);
         copy_base_node(node, *left_expr, AST_TYPE_BIN_EXPR);
         node->bin_expr.op = token->id;
         node->bin_expr.left = *left_expr;
@@ -541,15 +583,15 @@ static inline Node* parse_right_expr(ParseContext* pc, Node** left_expr)
     }
 }
 
-//static inline Node* parse_sym_expr(ParseContext* pc)
+//static inline ASTNode* parse_sym_expr(ParseContext* pc)
 //{
 //    Token* t = consume_token_if(pc, TOKEN_ID_SYMBOL);
 //    if ()
 //}
 
-static inline Node* parse_expression(ParseContext* pc)
+static inline ASTNode* parse_expression(ParseContext* pc)
 {
-    Node* left_expr = parse_primary_expr(pc);
+    ASTNode* left_expr = parse_primary_expr(pc);
     if (!left_expr)
     {
         return null;
@@ -558,9 +600,9 @@ static inline Node* parse_expression(ParseContext* pc)
     return parse_right_expr(pc, &left_expr);
 }
 
-static inline Node* parse_fn_call_statement(ParseContext* pc)
+static inline ASTNode* parse_fn_call_statement(ParseContext* pc)
 {
-    Node* node = parse_fn_call_expr(pc);
+    ASTNode* node = parse_fn_call_expr(pc);
     if (!node)
     {
         return null;
@@ -569,9 +611,9 @@ static inline Node* parse_fn_call_statement(ParseContext* pc)
     return node;
 }
 
-static inline Node* parse_statement(ParseContext* pc)
+static inline ASTNode* parse_statement(ParseContext* pc)
 {
-    Node* node = parse_sym_decl(pc);
+    ASTNode* node = parse_sym_decl(pc);
     if (node)
     {
         return node;
@@ -603,7 +645,7 @@ static inline Node* parse_statement(ParseContext* pc)
     RED_NOT_IMPLEMENTED;
     return null;
 }
-static inline Node* parse_compound_st(ParseContext* pc)
+static inline ASTNode* parse_compound_st(ParseContext* pc)
 {
     Token* start_block = consume_token_if(pc, TOKEN_ID_LEFT_BRACE);
     if (!start_block)
@@ -611,7 +653,7 @@ static inline Node* parse_compound_st(ParseContext* pc)
         return nullptr;
     }
 
-    Node* block = NEW(Node, 1);
+    ASTNode* block = NEW(ASTNode, 1);
     fill_base_node(block, start_block, AST_TYPE_COMPOUND_STATEMENT);
 
     // Empty blocks are not allowed
@@ -622,7 +664,7 @@ static inline Node* parse_compound_st(ParseContext* pc)
 
     do
     {
-        Node* statement = parse_statement(pc);
+        ASTNode* statement = parse_statement(pc);
         if (statement)
         {
             node_append(&block->compound_statement.statements, statement);
@@ -637,7 +679,7 @@ static inline Node* parse_compound_st(ParseContext* pc)
     return block;
 }
 
-static inline Node* parse_fn_proto(ParseContext* pc)
+static inline ASTNode* parse_fn_proto(ParseContext* pc)
 {
     Token* identifier = get_token(pc);
     if (identifier->id != TOKEN_ID_SYMBOL)
@@ -665,7 +707,7 @@ static inline Node* parse_fn_proto(ParseContext* pc)
     consume_token(pc);
     consume_token(pc);
 
-    NodeBuffer param_list = parse_param_decl_list(pc);
+    ASTNodeBuffer param_list = parse_param_decl_list(pc);
 
     Token* return_type = get_token(pc);
     if (!return_type && (!(get_token(pc)->id == TOKEN_ID_SEMICOLON || get_token(pc)->id == TOKEN_ID_LEFT_BRACE)))
@@ -673,9 +715,9 @@ static inline Node* parse_fn_proto(ParseContext* pc)
         invalid_token_error(pc, get_token(pc));
     }
 
-    Node* return_type_node = create_type_node(pc);
+    ASTNode* return_type_node = create_type_node(pc);
 
-    Node* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, identifier, AST_TYPE_FN_PROTO);
     node->fn_proto.params = param_list;
     node->fn_proto.sym = create_symbol_node(identifier);
@@ -683,23 +725,23 @@ static inline Node* parse_fn_proto(ParseContext* pc)
     return node;
 }
 
-static inline Node* parse_fn_definition(ParseContext* pc)
+static inline ASTNode* parse_fn_definition(ParseContext* pc)
 {
-    Node* proto = parse_fn_proto(pc);
+    ASTNode* proto = parse_fn_proto(pc);
     if (!proto)
     {
         print("Error parsing function prototype for function (token %zu)\n", pc->current_token);
         return null;
     }
 
-    Node* body = parse_compound_st(pc);
+    ASTNode* body = parse_compound_st(pc);
     if (!body)
     {
         print("Error parsing function %s body\n", sb_ptr(proto->fn_proto.sym->sym_expr.name));
         return null;
     }
 
-    Node* fn_def = NEW(Node, 1);
+    ASTNode* fn_def = NEW(ASTNode, 1);
     copy_base_node(fn_def, proto, AST_TYPE_FN_DEF);
     fn_def->fn_def.proto = proto;
     fn_def->fn_def.body = body;
@@ -707,9 +749,100 @@ static inline Node* parse_fn_definition(ParseContext* pc)
     return fn_def;
 }
 
-bool parse_top_level_declaration(ParseContext* pc, RedModuleTree* module_ast)
+static inline bool is_container_start(ParseContext* pc, TokenID container_type)
 {
-    Node* node;
+    Token* sym_name = get_token(pc);
+    if (sym_name->id != TOKEN_ID_SYMBOL)
+    {
+        return false;
+    }
+    Token* eq = get_token_i(pc, 1);
+    if (eq->id != TOKEN_ID_EQ)
+    {
+        return false;
+    }
+
+    Token* struct_tok = get_token_i(pc, 2);
+    if (struct_tok->id != container_type)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static inline ASTNode* parse_container_field(ParseContext* pc)
+{
+    Token* name = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    if (!name)
+    {
+        return null;
+    }
+
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, name, AST_TYPE_FIELD_DECL);
+    node->field_decl.sym = create_symbol_node(name);
+    node->field_decl.type = create_type_node(pc);
+
+    return node;
+}
+
+static inline ASTNodeBuffer parse_container_fields(ParseContext* pc)
+{
+    ASTNodeBuffer fields = ZERO_INIT;
+    if (!consume_token_if(pc, TOKEN_ID_LEFT_BRACE))
+    {
+        os_exit_with_message("Expected opening brace in container declaration");
+    }
+
+    do
+    {
+        ASTNode* field = parse_container_field(pc);
+        if (field)
+        {
+            node_append(&fields, field);
+            expect_token(pc, TOKEN_ID_SEMICOLON);
+        }
+        else
+        {
+            os_exit_with_message("Can't parse field");
+        }
+    } while (get_token(pc)->id != TOKEN_ID_RIGHT_BRACE);
+
+    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+
+    return fields;
+}
+
+static inline ASTNode* parse_struct_decl(ParseContext* pc)
+{
+    if (!is_container_start(pc, TOKEN_ID_KEYWORD_STRUCT))
+    {
+        return null;
+    }
+
+    Token* first = consume_token(pc);
+    consume_token(pc);
+    consume_token(pc);
+
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, first, AST_TYPE_STRUCT_DECL);
+    node->struct_decl.fields = parse_container_fields(pc);
+    node->struct_decl.name = first->str_lit.str;
+
+    return node;
+}
+
+bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
+{
+    ASTNode* node;
+
+    if ((node = parse_struct_decl(pc)))
+    {
+        node_append(&module_ast->struct_decls, node);
+        return true;
+    }
+
     if ((node = parse_fn_definition(pc)))
     {
         node_append(&module_ast->fn_definitions, node);
@@ -719,13 +852,13 @@ bool parse_top_level_declaration(ParseContext* pc, RedModuleTree* module_ast)
     return false;
 }
 
-RedModuleTree parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb)
+RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb)
 {
     ParseContext pc = ZERO_INIT;
     pc.src_buffer = src_buffer;
     pc.token_buffer = tb;
 
-    RedModuleTree module_ast = ZERO_INIT;
+    RedAST module_ast = ZERO_INIT;
 
     while ((get_token(&pc))->id != TOKEN_ID_END_OF_FILE)
     {

@@ -426,17 +426,19 @@ GEN_BUFFER_STRUCT(Token)
 typedef usize Usize;
 GEN_BUFFER_STRUCT(Usize)
 typedef TokenBuffer TB;
-typedef struct Node Node;
-GEN_BUFFER_STRUCT_PTR(Node, Node*)
+typedef struct ASTNode ASTNode;
+GEN_BUFFER_STRUCT_PTR(ASTNode, ASTNode*)
 typedef u8 U8;
 GEN_BUFFER_STRUCT(U8)
 GEN_BUFFER_FUNCTIONS(u8, u8b, U8Buffer, u8)
 
-typedef struct RedModuleTree
+typedef struct RedAST
 {
-    NodeBuffer fn_definitions;
-} RedModuleTree;
-
+    ASTNodeBuffer struct_decls;
+    ASTNodeBuffer union_decls;
+    ASTNodeBuffer enum_decls;
+    ASTNodeBuffer fn_definitions;
+} RedAST;
 
 typedef struct UsizeBuffer UsizeBuffer;
 typedef struct LexingResult
@@ -495,241 +497,17 @@ static inline bool token_is_binop_char(TokenID op)
     return is_it;
 }
 
-typedef enum ASTType
-{
-    AST_TYPE_FN_DEF,
-    AST_TYPE_FN_PROTO,
-    AST_TYPE_TYPE_EXPR,
-    AST_TYPE_PARAM_DECL,
-    AST_TYPE_COMPOUND_STATEMENT,
-    AST_TYPE_RETURN_STATEMENT,
-    AST_TYPE_SYM_DECL,
-    AST_TYPE_SYM_EXPR,
-    AST_TYPE_BIN_EXPR,
-    AST_TYPE_FN_CALL,
-    AST_TYPE_BRANCH_EXPR,
-    AST_TYPE_LOOP_EXPR,
-    AST_TYPE_INT_LIT,
-    AST_TYPE_ARRAY_LIT,
-} ASTType;
-
-/* AST Kind
-* statement
-* compound statement
-* declare statement
-* expression statement
-* return statement
-* while statement
-* for statement
-* do statement
-* if statement
-* else if statement ??
-* else statement ??
-* switch statement
-* case statement
-* break statement
-* continue statement
-*/
-
-
-GEN_BUFFER_FUNCTIONS(node, nb, NodeBuffer, struct Node*)
-
-typedef struct Symbol
-{
-    SB* name;
-    Node* index_node_if_array_expr;
-} Symbol;
-
-typedef enum RedTypePrimitive
-{
-    RED_TYPE_PRIMITIVE_U8,
-    RED_TYPE_PRIMITIVE_U16,
-    RED_TYPE_PRIMITIVE_U32,
-    RED_TYPE_PRIMITIVE_U64,
-    RED_TYPE_PRIMITIVE_S8,
-    RED_TYPE_PRIMITIVE_S16,
-    RED_TYPE_PRIMITIVE_S32,
-    RED_TYPE_PRIMITIVE_S64,
-    RED_TYPE_PRIMITIVE_F32,
-    RED_TYPE_PRIMITIVE_F64,
-    RED_TYPE_PRIMITIVE_F128,
-    RED_TYPE_PRIMITIVE_POINTER,
-} RedTypePrimitive;
-
-static inline const char* primitive_type_str(RedTypePrimitive primitive_type_id)
-{
-    switch (primitive_type_id)
-    {
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U8);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U16);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S8);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S16);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F128);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_POINTER);
-        default:
-            RED_NOT_IMPLEMENTED;
-            return null;
-    }
-}
-
 typedef enum TypeKind
 {
-    INVALID,
-    VOID,
-    PRIMITIVE,
-    STRUCT,
-    UNION,
-    ENUM,
-    ARRAY,
-    FUNCTION,
+    TYPE_KIND_INVALID,
+    TYPE_KIND_VOID,
+    TYPE_KIND_PRIMITIVE,
+    TYPE_KIND_COMPLEX_TO_BE_DETERMINED,
+    TYPE_KIND_STRUCT,
+    TYPE_KIND_UNION,
+    TYPE_KIND_ENUM,
+    TYPE_KIND_ARRAY,
+    TYPE_KIND_FUNCTION,
 } TypeKind;
 
-typedef struct IRExpression IRExpression;
-typedef struct RedType
-{
-    TypeKind kind;
-    usize size;
 
-    union
-    {
-        RedTypePrimitive primitive;
-        struct RedTypeIdentifier* struct_components;
-        struct
-        {
-            struct RedType* return_type;
-            struct RedType** parameter_types;
-        } function;
-        struct
-        {
-            struct RedType* type;
-            IRExpression* elem_count_expr;
-        } array;
-    };
-} RedType;
-
-
-typedef struct BasicType
-{
-    SB* name;
-} BasicType;
-
-typedef struct ArrayType
-{
-    Node* type;
-    Node* element_count_expr;
-} ArrayType;
-
-typedef struct Type
-{
-    TypeKind kind;
-    union
-    {
-        BasicType basic;
-        ArrayType array;
-    };
-} Type;
-
-typedef struct ParamDecl
-{
-    Node* sym;
-    Node* type;
-} ParamDecl;
-
-typedef struct SymDecl
-{
-    Node* sym;
-    Node* type;
-    Node* value;
-    bool is_const;
-} SymDecl;
-
-typedef struct IntLit
-{
-    BigInt* bigint;
-} IntLit;
-
-typedef struct ArrayLit
-{
-    NodeBuffer values;
-} ArrayLit;
-
-typedef struct BinExpr
-{
-    TokenID op;
-    Node* left;
-    Node* right;
-} BinExpr;
-
-typedef struct RetExpr
-{
-    Node* expr;
-} RetExpr;
-
-typedef struct CompoundStatement
-{
-    NodeBuffer statements;
-} CompoundStatement;
-
-typedef struct BranchExpr
-{
-    Node* condition;
-    Node* if_block;
-    Node* else_block;
-} BranchExpr;
-
-typedef struct LoopExpr
-{
-    Node* condition;
-    Node* body;
-} LoopExpr;
-
-typedef struct FnCallExpr
-{
-    SB name;
-    Node** args;
-    u8 arg_count;
-} FnCallExpr;
-typedef struct FnProto
-{
-    NodeBuffer params;
-    Node* sym;
-    Node* ret_type;
-} FnProto;
-
-typedef struct FnDef
-{
-    Node* proto;
-    Node* body;
-} FnDef;
-
-typedef struct Node
-{
-    ASTType node_id;
-    u32 node_line;
-    u32 node_column;
-    u32 node_padding;
-
-    union
-    {
-        Symbol sym_expr;
-        Type type_expr;
-        ParamDecl param_decl;
-        SymDecl sym_decl;
-        IntLit int_lit;
-        ArrayLit array_lit;
-        BinExpr bin_expr;
-        RetExpr return_expr;
-        CompoundStatement compound_statement;
-        BranchExpr branch_expr;
-        LoopExpr loop_expr;
-        FnCallExpr fn_call;
-        FnProto fn_proto;
-        FnDef fn_def;
-    };
-} Node;

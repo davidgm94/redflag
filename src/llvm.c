@@ -38,6 +38,19 @@ typedef struct RedLLVMFn
     u8 param_count;
 } RedLLVMFn;
 
+GEN_BUFFER_STRUCT(LLVMTypeRef)
+GEN_BUFFER_FUNCTIONS(llvm_type, ltb, LLVMTypeRefBuffer, LLVMTypeRef)
+
+typedef struct LLVMTypeDeclarationBuffer LLVMTypeDeclarationBuffer;
+typedef struct LLVMTypeDeclaration
+{
+    LLVMTypeRef type;
+    LLVMTypeRefBuffer child_types;
+} LLVMTypeDeclaration;
+
+GEN_BUFFER_STRUCT(LLVMTypeDeclaration)
+GEN_BUFFER_FUNCTIONS(llvm_type_decl, ltb, LLVMTypeDeclarationBuffer, LLVMTypeDeclaration)
+
 typedef struct RedLLVMContext
 {
     LLVMContextRef context;
@@ -46,6 +59,8 @@ typedef struct RedLLVMContext
     LLVMValueRef function;
     IRFunctionDefinition* current_fn;
     RedLLVMFn llvm_current_fn;
+    LLVMTypeDeclarationBuffer type_declarations;
+    IRModule* ir_tree;
     /* Not used
     LLVMValueRef alloca_point;
     LLVMBasicBlockRef current_block;
@@ -67,20 +82,20 @@ static inline void llvm_debug_fn(LLVMValueRef fn)
 }
 static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpression* expression);
 
-static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, RedType* type)
+static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, IRType* type)
 {
     if (type)
     {
         TypeKind kind = type->kind;
         switch (kind)
         {
-            case PRIMITIVE:
-                redassert(type->primitive == RED_TYPE_PRIMITIVE_S32);
+            case TYPE_KIND_PRIMITIVE:
+                redassert(type->primitive_type == RED_TYPE_PRIMITIVE_S32);
                 return LLVMInt32TypeInContext(llvm->context);
-            case ARRAY:
+            case TYPE_KIND_ARRAY:
             {
-                LLVMTypeRef base_type = llvm_gen_type(llvm, type->array.type);
-                IRExpression* elem_count = type->array.elem_count_expr;
+                LLVMTypeRef base_type = llvm_gen_type(llvm, type->array_type.base_type);
+                IRExpression* elem_count = type->array_type.elem_count_expr;
                 IRExpressionType type = elem_count->type;
                 u64 arr_elem_count;
                 switch (type)
@@ -96,6 +111,22 @@ static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, RedType* type)
                 }
                 LLVMTypeRef array_type = LLVMArrayType(base_type, arr_elem_count);
                 return array_type;
+            }
+            case TYPE_KIND_STRUCT:
+            {
+                if (type->struct_type)
+                {
+                    u32 struct_count = llvm->ir_tree->struct_decls.len;
+                    if (struct_count > 0)
+                    {
+                        IRStructDecl* struct_decl_ptr = llvm->ir_tree->struct_decls.ptr;
+                        IRStructDecl* struct_decl = type->struct_type;
+                        u32 index = struct_decl - struct_decl_ptr;
+                        return llvm->type_declarations.ptr[index].type;
+                    }
+                }
+                RED_UNREACHABLE;
+                return null;
             }
             default:
                 RED_NOT_IMPLEMENTED;
@@ -119,7 +150,7 @@ static inline LLVMTypeRef llvm_gen_fn_type(RedLLVMContext* llvm, IRFunctionProto
 
         for (u32 i = 0; i < llvm->llvm_current_fn.param_count; i++)
         {
-            RedType* red_type = &proto->params[i].type;
+            IRType* red_type = &proto->params[i].type;
             llvm->llvm_current_fn.param_types[i] = llvm_gen_type(llvm, red_type);
             redassert(llvm->llvm_current_fn.param_types[i]);
         }
@@ -218,11 +249,139 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
             }
             break;
         }
+        case IR_EXPRESSION_TYPE_SUBSCRIPT_ACCESS:
+        {
+            IRSubscriptAccess* subscript_access = &expression->subscript_access;
+            IRSymbolSubscriptType subs_type = subscript_access->subscript_type;
+            TypeKind data_type = subscript_access->parent.type;
+            switch (subs_type)
+            {
+                case AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS:
+                {
+                    switch (data_type)
+                    {
+                        case TYPE_KIND_STRUCT:
+                        {
+                            IRFieldDecl* field_ptr = subscript_access->parent.struct_p->fields;
+                            u32 field_count = subscript_access->parent.struct_p->field_count;
+
+                            if (field_count > 0)
+                            {
+                                for (u32 i = 0; i < field_count; i++)
+                                {
+                                    IRFieldDecl* field = &field_ptr[i];
+                                    if (sb_cmp(field->name, subscript_access->name))
+                                    {
+                                        return LLVMConstInt(LLVMInt32TypeInContext(llvm->context), i, false);
+                                    }
+                                }
+                            }
+                            RED_NOT_IMPLEMENTED;
+                            break;
+                        }
+                        default:
+                            RED_NOT_IMPLEMENTED;
+                            break;
+                    }
+                }
+                default:
+                    RED_NOT_IMPLEMENTED;
+                    break;
+            }
+            if (subscript_access->subscript)
+            {
+                llvm_gen_expression(llvm, subscript_access->subscript);
+            }
+            return null;
+        }
         case IR_EXPRESSION_TYPE_SYM_EXPR:
         {
             IRSymExpr* sym_expr = &expression->sym_expr;
             IRSymExprType se_type = sym_expr->type;
-            if (!sym_expr->index_expr_if_array_suffix)
+            IRExpression* subscript = sym_expr->subscript;
+            if (subscript)
+            {
+                IRSymbolSubscriptType subscript_type = sym_expr->subscript->subscript_access.subscript_type;
+                switch (subscript_type)
+                {
+                    case AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS:
+                    {
+                        //RedType base_type = ast_to_ir_find_expression_type(expression);
+                        switch (se_type)
+                        {
+                            case IR_SYM_EXPR_TYPE_PARAM:
+                                RED_NOT_IMPLEMENTED;
+                                return null;
+                            case IR_SYM_EXPR_TYPE_SYM:
+                            {
+                                IRSymDeclStatement* sym = sym_expr->sym_decl;
+                                IRSymDeclStatement* base_ptr = llvm->current_fn->sym_declarations.ptr;
+                                u32 index = sym - base_ptr;
+                                LLVMValueRef arr_alloca = llvm->llvm_current_fn.alloca_buffer.ptr[index];
+                                LLVMValueRef zero = LLVMConstInt(LLVMIntTypeInContext(llvm->context, 32), 0, true);
+                                LLVMValueRef index_value = llvm_gen_expression(llvm, sym_expr->subscript);
+                                LLVMValueRef indices[2] =
+                                {
+                                    zero,
+                                    index_value,
+                                };
+                                //LLVMTypeRef llvm_base_type = llvm_gen_type(llvm, &base_type);
+                                ;
+                                //array_subscript_value = LLVMBuildInBoundsGEP2(llvm->builder, llvm_base_type, arr_alloca, indices, array_length(indices), "arr_subscript_access");
+                                LLVMValueRef array_subscript_value = LLVMBuildInBoundsGEP(llvm->builder, arr_alloca, indices, array_length(indices), "arridxaccess");
+                                switch (sym_expr->use_type)
+                                {
+                                    case LOAD:
+                                        return LLVMBuildLoad(llvm->builder, array_subscript_value, "arridxload");
+                                    case STORE:
+                                        // The store takes place in the assign statement
+                                        // TODO: this probably is buggy
+                                        return array_subscript_value;
+                                    default:
+                                        RED_NOT_IMPLEMENTED;
+                                        return null;
+                                }
+                            }
+                            default:
+                                RED_NOT_IMPLEMENTED;
+                                return null;
+                        }
+                    }
+                    case AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS:
+                        switch (se_type)
+                        {
+                            case IR_SYM_EXPR_TYPE_SYM:
+                            {
+                                IRSymDeclStatement* sym = sym_expr->sym_decl;
+                                IRSymDeclStatement* base_ptr = llvm->current_fn->sym_declarations.ptr;
+                                u32 index = sym - base_ptr;
+                                LLVMValueRef alloca = llvm->llvm_current_fn.alloca_buffer.ptr[index];
+                                LLVMValueRef zero = LLVMConstInt(LLVMIntTypeInContext(llvm->context, 32), 0, true);
+                                LLVMValueRef index_value = llvm_gen_expression(llvm, sym_expr->subscript);
+                                LLVMValueRef indices[2] =
+                                {
+                                    zero,
+                                    index_value,
+                                };
+
+                                return LLVMBuildInBoundsGEP(llvm->builder, alloca, indices, array_length(indices), "struct_field_access");
+                            }
+                            RED_NOT_IMPLEMENTED;
+                            break;
+                            default:
+                                RED_NOT_IMPLEMENTED;
+                                break;
+                        }
+                        RED_NOT_IMPLEMENTED;
+                        return null;
+                    default:
+                        RED_NOT_IMPLEMENTED;
+                        return null;
+                }
+                RED_NOT_IMPLEMENTED;
+                return null;
+            }
+            else
             {
                 switch (se_type)
                 {
@@ -236,7 +395,7 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
                                 return LLVMBuildLoad(llvm->builder, llvm->llvm_current_fn.param_alloc_arr[index], sb_ptr(param->name));
                             case STORE:
                                 //return LLVMBuildStore(llvm->builder, llvm->llvm_current_fn->param_arr[index], llvm->llvm_current_fn->param_alloc_arr[index]);
-                                RED_NOT_IMPLEMENTED;
+                                return llvm->llvm_current_fn.param_alloc_arr[index];
                                 break;
                             default:
                                 RED_NOT_IMPLEMENTED;
@@ -253,57 +412,15 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
                         {
                             case LOAD:
                                 return LLVMBuildLoad(llvm->builder, llvm->llvm_current_fn.alloca_buffer.ptr[index], sb_ptr(sym->name));
+                            case STORE:
+                                return llvm->llvm_current_fn.alloca_buffer.ptr[index];
                             default:
-                                RED_NOT_IMPLEMENTED;
-                                break;
+                                return null;
                         }
-                        return null;
                     }
                     default:
                         RED_NOT_IMPLEMENTED;
                         break;
-                }
-            }
-            else
-            {
-                RedType base_type = ast_to_ir_find_expression_type(expression);
-                switch (se_type)
-                {
-                    case IR_SYM_EXPR_TYPE_PARAM:
-                        RED_NOT_IMPLEMENTED;
-                        return null;
-                    case IR_SYM_EXPR_TYPE_SYM:
-                    {
-                        IRSymDeclStatement* sym = sym_expr->sym_decl;
-                        IRSymDeclStatement* base_ptr = llvm->current_fn->sym_declarations.ptr;
-                        u32 index = sym - base_ptr;
-                        LLVMValueRef arr_alloca = llvm->llvm_current_fn.alloca_buffer.ptr[index];
-                        LLVMValueRef zero = LLVMConstInt(LLVMIntTypeInContext(llvm->context, 32), 0, true);
-                        LLVMValueRef index_value = llvm_gen_expression(llvm, sym_expr->index_expr_if_array_suffix);
-                        LLVMValueRef indices[2] =
-                        {
-                            zero,
-                            index_value,
-                        };
-                        //LLVMTypeRef llvm_base_type = llvm_gen_type(llvm, &base_type);
-;
-                        //array_subscript_value = LLVMBuildInBoundsGEP2(llvm->builder, llvm_base_type, arr_alloca, indices, array_length(indices), "arr_subscript_access");
-                        LLVMValueRef array_subscript_value = LLVMBuildInBoundsGEP(llvm->builder, arr_alloca, indices, array_length(indices), "arridxaccess");
-                        switch (sym_expr->use_type)
-                        {
-                            case LOAD:
-                                return LLVMBuildLoad(llvm->builder, array_subscript_value, "arridxload");
-                            case STORE:
-                                RED_UNREACHABLE;
-                                return null;
-                            default:
-                                RED_NOT_IMPLEMENTED;
-                                return null;
-                        }
-                    }
-                    default:
-                        RED_NOT_IMPLEMENTED;
-                        return null;
                 }
             }
             break;
@@ -493,47 +610,13 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
         case IR_ST_TYPE_ASSIGN_ST:
         {
             IRSymAssignStatement* assign_st = &st->sym_assign_st;
-            //LLVMValueRefBuffer* alloca_bf = &llvm->llvm_current_fn.alloca_buffer;
-            //u32 alloca_count = alloca_bf->len;
-            //LLVMValueRef* alloca_it = alloca_bf->ptr;
-            //for (u32 i = 0; i < alloca_count; i++)
-            //{
-            //    LLVMValueRef alloca = alloca_it[i];
-            //    if (alloca =)
-            //}
-            IRSymExpr* sym_expr = &assign_st->left;
-            IRSymExprType sym_expr_type = sym_expr->type;
-            LLVMValueRef alloca = null;
-            switch (sym_expr_type)
-            {
-                case IR_SYM_EXPR_TYPE_SYM:
-                {
-                    IRSymDeclStatement* sym_decl = sym_expr->sym_decl;
-                    IRSymDeclStatement* sym_decl_base_ptr = llvm->current_fn->sym_declarations.ptr;
-                    u32 index = sym_decl - sym_decl_base_ptr;
-                    alloca = llvm->llvm_current_fn.alloca_buffer.ptr[index];
-                    break;
-                }
-                case IR_SYM_EXPR_TYPE_PARAM:
-                {
-                    IRParamDecl* param_decl = sym_expr->param_decl;
-                    IRParamDecl* param_decl_base_ptr = llvm->current_fn->proto.params;
-                    u32 index = param_decl - param_decl_base_ptr;
-                    alloca = llvm->llvm_current_fn.param_alloc_arr[index];
-                    break;
-                }
-                default:
-                    RED_NOT_IMPLEMENTED;
-                    break;
-            }
 
-            IRExpression* right_value = assign_st->right;
-            LLVMValueRef value = llvm_gen_expression(llvm, right_value);
-            redassert(value);
+            IRExpression* left_expr = assign_st->left;
+            LLVMValueRef left_value = llvm_gen_expression(llvm, left_expr);
+            IRExpression* right_expr = assign_st->right;
+            LLVMValueRef right_value = llvm_gen_expression(llvm, right_expr);
 
-            LLVMBuildStore(llvm->builder, value, alloca);
-
-            return null;
+            return LLVMBuildStore(llvm->builder, right_value, left_value);
         }
         case IR_ST_TYPE_LOOP_ST:
         {
@@ -561,6 +644,27 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             RED_NOT_IMPLEMENTED;
             return null;
     }
+}
+
+static inline LLVMTypeDeclaration llvm_gen_struct_type(RedLLVMContext* llvm, IRStructDecl* struct_decl)
+{
+    LLVMTypeDeclaration type_decl = ZERO_INIT;
+    u32 field_count = struct_decl->field_count;
+    IRFieldDecl* field_ptr = struct_decl->fields;
+    for (u32 i = 0; i < field_count; i++)
+    {
+        IRFieldDecl* field = &field_ptr[i];
+        llvm_type_append(&type_decl.child_types, llvm_gen_type(llvm, &field->type));
+    }
+    // TODO: Anonymous structs vs named structs
+#if 0
+    LLVMTypeRef type = LLVMStructTypeInContext(llvm->context, type_decl.child_types.ptr, type_decl.child_types.len, false);
+#else
+    LLVMTypeRef type = LLVMStructCreateNamed(llvm->context, sb_ptr(&struct_decl->name));
+    LLVMStructSetBody(type, type_decl.child_types.ptr, type_decl.child_types.len, false);
+#endif
+    type_decl.type = type;
+    return type_decl;
 }
 
 static inline void llvm_gen_fn_definition(RedLLVMContext* llvm)
@@ -668,10 +772,23 @@ static inline void llvm_setup_module(const char* module_name, const char* full_p
     LLVMSetTarget(ctx->module, ctx->default_target_triple);
 }
 
-void llvm_gen_machine_code(RedModuleIR* ir_tree)
+void llvm_gen_machine_code(IRModule* ir_tree)
 {
     RedLLVMContext ctx = llvm_init();
+    ctx.ir_tree = ir_tree;
     llvm_setup_module("red_module", "whatever", &ctx);
+
+    IRStructDeclBuffer* struct_decls = &ir_tree->struct_decls;
+    u64 struct_count = struct_decls->len;
+    if (struct_count > 0)
+    {
+        IRStructDecl* struct_decl_ptr = struct_decls->ptr;
+        for (usize i = 0; i < struct_count; i++)
+        {
+            IRStructDecl* struct_decl = &struct_decl_ptr[i];
+            llvm_type_decl_append(&ctx.type_declarations, llvm_gen_struct_type(&ctx, struct_decl));
+        }
+    }
 
     IRFunctionDefinitionBuffer* fn_defs = &ir_tree->fn_definitions;
     u32 fn_def_count = fn_defs->len;

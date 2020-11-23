@@ -20,15 +20,18 @@
 
 ### Feature list to implement
 
-* [ ] Arrays
-* [ ] Structs / Enums / Unions
-* [ ] Rest of primitive types
+* [x] Arrays
+* [x] Structs
+* [ ] Enums
+* [ ] Unions
 * [ ] Pointers
-* [ ] switch
 * [ ] else if
 * [ ] defer
 * [ ] for
+* [ ] switch
 * [ ] Global variables
+* [ ] pass language-custom arguments
+* [ ] Rest of primitive types
 * [ ] Debug information
 * [ ] Modules
 * [ ] Libraries

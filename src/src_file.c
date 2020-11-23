@@ -32,11 +32,11 @@ void add_source_file(SB* src_buffer, const char* path)
 #endif
 
     ExplicitTimer parser_dt = os_timer_start("Parse");
-    RedModuleTree ast = parse_translation_unit(src_buffer, &lexing_result.tokens);
+    RedAST ast = parse_translation_unit(src_buffer, &lexing_result.tokens);
     os_timer_end(&parser_dt);
 
     ExplicitTimer ir_dt = os_timer_start("IRGen");
-    RedModuleIR ir_tree = transform_ast_to_ir(&ast);
+    IRModule ir_tree = transform_ast_to_ir(&ast);
     os_timer_end(&ir_dt);
 
     ExplicitTimer llvm_dt = os_timer_start("LLVM");

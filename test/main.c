@@ -1,6 +1,6 @@
-extern int test_nested_loops(void);
+extern int test_array_elem_assign(void);
 #include <stdio.h>
 int main()
 {
-    printf("%d\n", test_nested_loops());
+    printf("%d\n", test_array_elem_assign());
 }
