@@ -200,24 +200,6 @@ typedef enum TokenID
     TOKEN_ID_MULTILINE_STRING_LIT,
 } TokenID;
 
-typedef enum RedTypeID
-{
-    RED_TYPE_INVALID,
-    RED_TYPE_VOID,
-    RED_TYPE_BOOL,
-    RED_TYPE_UNREACHABLE,
-    RED_TYPE_INT,
-    RED_TYPE_FLOAT,
-    RED_TYPE_POINTER,
-    RED_TYPE_ARRAY,
-    RED_TYPE_STRUCT,
-    RED_TYPE_ENUM,
-    RED_TYPE_UNION,
-    RED_TYPE_UNDEFINED,
-    RED_TYPE_NULL,
-    RED_TYPE_FUNCTION,
-} RedTypeID;
-
 void print(const char* format, ...);
 void logger(LogType log_type, const char *format, ...);
 

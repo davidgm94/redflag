@@ -17,6 +17,7 @@ typedef enum AST_ID
     AST_TYPE_INT_LIT,
     AST_TYPE_ARRAY_LIT,
     AST_TYPE_FIELD_DECL,
+    AST_TYPE_ENUM_FIELD,
     AST_TYPE_STRUCT_DECL,
     AST_TYPE_UNION_DECL,
     AST_TYPE_ENUM_DECL,
@@ -57,6 +58,31 @@ typedef struct ASTStructDecl
     ASTNodeBuffer fields;
 } ASTStructDecl, ASTUnionDecl;
 
+typedef struct ASTEnumField
+{
+    SB* name;
+    ASTNode* field_value;
+} ASTEnumField;
+
+typedef enum ASTEnumType
+{
+    ENUM_TYPE_U8,
+    ENUM_TYPE_U16,
+    ENUM_TYPE_U32,
+    ENUM_TYPE_U64,
+    ENUM_TYPE_S8,
+    ENUM_TYPE_S16,
+    ENUM_TYPE_S32,
+    ENUM_TYPE_S64,
+} ASTEnumType, IREnumType;
+
+typedef struct ASTEnumDecl
+{
+    SB* name;
+    ASTNodeBuffer fields;
+    ASTEnumType type;
+} ASTEnumDecl;
+
 typedef struct ASTType
 {
     TypeKind kind;
@@ -64,8 +90,10 @@ typedef struct ASTType
     union
     {
         ASTArrayType array;
-        ASTStructType structure;
+        ASTStructType struct_;
         ASTUnionType union_;
+        // probably buggy enum decl: subst for enum type
+        ASTEnumDecl enum_;
     };
 } ASTType;
 
@@ -129,6 +157,7 @@ typedef struct ASTFnCallExpr
     ASTNode** args;
     u8 arg_count;
 } ASTFnCallExpr;
+
 typedef struct ASTFnProto
 {
     ASTNodeBuffer params;
@@ -157,6 +186,8 @@ typedef struct ASTNode
         ASTFieldDecl field_decl;
         ASTStructDecl struct_decl;
         ASTUnionDecl union_decl;
+        ASTEnumField enum_field;
+        ASTEnumDecl enum_decl;
         ASTSymDecl sym_decl;
         ASTIntLit int_lit;
         ASTArrayLit array_lit;

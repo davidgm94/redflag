@@ -19,6 +19,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+typedef ASTNode Node;
+
 
 static inline void copy_base_node(ASTNode* dst, const ASTNode* src, AST_ID id)
 {
@@ -749,7 +751,7 @@ static inline ASTNode* parse_fn_definition(ParseContext* pc)
     return fn_def;
 }
 
-static inline bool is_container_start(ParseContext* pc, TokenID container_type)
+static inline bool is_complex_type_start(ParseContext* pc, TokenID container_type)
 {
     Token* sym_name = get_token(pc);
     if (sym_name->id != TOKEN_ID_SYMBOL)
@@ -814,9 +816,77 @@ static inline ASTNodeBuffer parse_container_fields(ParseContext* pc)
     return fields;
 }
 
+static inline ASTNode* parse_enum_field(ParseContext* pc, u32 count, bool* parse_enum_value)
+{
+    Token* name = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    if (!name)
+    {
+        return null;
+    }
+
+    ASTNode* value = null;
+    bool parsing_enum_value = (bool)consume_token_if(pc, TOKEN_ID_EQ);
+    if (parsing_enum_value)
+    {
+        if (count > 0 && !(*parse_enum_value))
+        {
+            os_exit_with_message("Enum coherence missing");
+            return null;
+        }
+        value = parse_expression(pc);
+    }
+    else
+    {
+        if (count > 0 && (*parse_enum_value))
+        {
+            os_exit_with_message("Enum coherence missing");
+            return null;
+        }
+    }
+
+    *parse_enum_value = parsing_enum_value;
+
+    ASTNode* node = NEW(Node, 1);
+    fill_base_node(node, name, AST_TYPE_ENUM_DECL);
+    node->enum_field.name = token_buffer(name);
+    node->enum_field.field_value = value;
+
+    return node;
+}
+
+static inline ASTNodeBuffer parse_enum_fields(ParseContext* pc)
+{
+    ASTNodeBuffer fields = ZERO_INIT;
+    if (!consume_token_if(pc, TOKEN_ID_LEFT_BRACE))
+    {
+        os_exit_with_message("Expected opening brace in container declaration");
+    }
+
+    u32 count = 0;
+    bool parse_enum_value = false;
+    do
+    {
+        ASTNode* field = parse_enum_field(pc, count, &parse_enum_value);
+        if (field)
+        {
+            count++;
+            node_append(&fields, field);
+            expect_token(pc, TOKEN_ID_SEMICOLON);
+        }
+        else
+        {
+            os_exit_with_message("Can't parse field");
+        }
+    } while (get_token(pc)->id != TOKEN_ID_RIGHT_BRACE);
+
+    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+
+    return fields;
+}
+
 static inline ASTNode* parse_struct_decl(ParseContext* pc)
 {
-    if (!is_container_start(pc, TOKEN_ID_KEYWORD_STRUCT))
+    if (!is_complex_type_start(pc, TOKEN_ID_KEYWORD_STRUCT))
     {
         return null;
     }
@@ -833,6 +903,27 @@ static inline ASTNode* parse_struct_decl(ParseContext* pc)
     return node;
 }
 
+static inline ASTNode* parse_enum_decl(ParseContext* pc)
+{
+    if (!is_complex_type_start(pc, TOKEN_ID_KEYWORD_ENUM))
+    {
+        return null;
+    }
+
+    Token* name = expect_token(pc, TOKEN_ID_SYMBOL);
+    expect_token(pc, TOKEN_ID_EQ);
+    expect_token(pc, TOKEN_ID_KEYWORD_ENUM);
+
+    ASTNode* node = NEW(Node, 1);
+    fill_base_node(node, name, AST_TYPE_ENUM_DECL);
+    // default enums are 32-bit
+    node->enum_decl.type = ENUM_TYPE_U32;
+    node->enum_decl.name = token_buffer(name);
+    node->enum_decl.fields = parse_enum_fields(pc);
+
+    return node;
+}
+
 bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
 {
     ASTNode* node;
@@ -840,6 +931,12 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     if ((node = parse_struct_decl(pc)))
     {
         node_append(&module_ast->struct_decls, node);
+        return true;
+    }
+
+    if ((node = parse_enum_decl(pc)))
+    {
+        node_append(&module_ast->enum_decls, node);
         return true;
     }
 

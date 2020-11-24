@@ -38,6 +38,8 @@ typedef struct RedLLVMFn
     u8 param_count;
 } RedLLVMFn;
 
+static LLVMTypeRef llvm_primitive_types[IR_TYPE_PRIMITIVE_COUNT];
+
 GEN_BUFFER_STRUCT(LLVMTypeRef)
 GEN_BUFFER_FUNCTIONS(llvm_type, ltb, LLVMTypeRefBuffer, LLVMTypeRef)
 
@@ -90,8 +92,11 @@ static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, IRType* type)
         switch (kind)
         {
             case TYPE_KIND_PRIMITIVE:
-                redassert(type->primitive_type == RED_TYPE_PRIMITIVE_S32);
-                return LLVMInt32TypeInContext(llvm->context);
+            {
+                IRTypePrimitive primitive_kind = type->primitive_type;
+                redassert(primitive_kind < IR_TYPE_PRIMITIVE_COUNT);
+                return llvm_primitive_types[primitive_kind];
+            }
             case TYPE_KIND_ARRAY:
             {
                 LLVMTypeRef base_type = llvm_gen_type(llvm, type->array_type.base_type);
@@ -127,6 +132,11 @@ static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, IRType* type)
                 }
                 RED_UNREACHABLE;
                 return null;
+            }
+            case TYPE_KIND_ENUM:
+            {
+                LLVMTypeRef enum_type = llvm_gen_type(llvm, &type->enum_type->type);
+                return enum_type;
             }
             default:
                 RED_NOT_IMPLEMENTED;
@@ -366,8 +376,33 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
 
                                 return LLVMBuildInBoundsGEP(llvm->builder, alloca, indices, array_length(indices), "struct_field_access");
                             }
-                            RED_NOT_IMPLEMENTED;
-                            break;
+                            case IR_SYM_EXPR_TYPE_ENUM:
+                            {
+                                IREnumDecl* enum_decl = sym_expr->enum_decl;
+                                redassert(enum_decl->type.kind == TYPE_KIND_PRIMITIVE);
+                                IRTypePrimitive primitive_type = enum_decl->type.primitive_type;
+                                // TODO: we should put this before LLVM Codegen
+                                // TODO: even better: for enums, don't store names but the value
+                                SB* field_name = sym_expr->subscript->subscript_access.name;
+
+                                u32 field_count = enum_decl->fields.len;
+                                IREnumField* field_ptr = enum_decl->fields.ptr;
+                                for (u32 i = 0; i < field_count; i++)
+                                {
+                                    IREnumField* field = &field_ptr[i];
+                                    if (sb_cmp(field->name, field_name))
+                                    {
+                                        switch (primitive_type)
+                                        {
+                                            case IR_TYPE_PRIMITIVE_U32:
+                                                return LLVMConstInt(llvm_primitive_types[IR_TYPE_PRIMITIVE_U32], field->value.unsigned64, false);
+                                            default:
+                                                RED_NOT_IMPLEMENTED;
+                                                break;
+                                        }
+                                    }
+                                }
+                            }
                             default:
                                 RED_NOT_IMPLEMENTED;
                                 break;
@@ -772,11 +807,29 @@ static inline void llvm_setup_module(const char* module_name, const char* full_p
     LLVMSetTarget(ctx->module, ctx->default_target_triple);
 }
 
+static inline void llvm_register_primitive_types(LLVMContextRef context)
+{
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_U8] = LLVMInt8TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_U16] = LLVMInt16TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_U32] = LLVMInt32TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_U64] = LLVMInt64TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_S8] = LLVMInt8TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_S16] = LLVMInt16TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_S32] = LLVMInt32TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_S64] = LLVMInt64TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_F32] = LLVMFloatTypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_F64] = LLVMDoubleTypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_F128] = LLVMFP128TypeInContext(context);
+    llvm_primitive_types[IR_TYPE_PRIMITIVE_BOOL] = LLVMInt1TypeInContext(context);
+}
+
 void llvm_gen_machine_code(IRModule* ir_tree)
 {
     RedLLVMContext ctx = llvm_init();
     ctx.ir_tree = ir_tree;
     llvm_setup_module("red_module", "whatever", &ctx);
+
+    llvm_register_primitive_types(ctx.context);
 
     IRStructDeclBuffer* struct_decls = &ir_tree->struct_decls;
     u64 struct_count = struct_decls->len;

@@ -284,3 +284,29 @@ test_first_struct = () test_foo_struct
     foo.b = 3;
     return foo;
 }
+
+enum_test = enum
+{
+    Foo1;
+    Foo2;
+    Foo3;
+}
+
+enum_test2 = enum
+{
+    Foo2_0 = 0;
+    Foo2_1 = 3;
+    Foo2_2 = 2;
+}
+
+test_first_enum = (a enum_test) s32
+{
+    if a == enum_test2.Foo2_1
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}

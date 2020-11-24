@@ -5,39 +5,44 @@ typedef struct IRExpression IRExpression;
 typedef struct IRType IRType;
 typedef struct IRStructDecl IRStructDecl;
 typedef struct IRFunctionPrototype IRFunctionPrototype;
+typedef struct IREnumDecl IREnumDecl;
 
 typedef enum IRTypePrimitive
 {
-    RED_TYPE_PRIMITIVE_U8,
-    RED_TYPE_PRIMITIVE_U16,
-    RED_TYPE_PRIMITIVE_U32,
-    RED_TYPE_PRIMITIVE_U64,
-    RED_TYPE_PRIMITIVE_S8,
-    RED_TYPE_PRIMITIVE_S16,
-    RED_TYPE_PRIMITIVE_S32,
-    RED_TYPE_PRIMITIVE_S64,
-    RED_TYPE_PRIMITIVE_F32,
-    RED_TYPE_PRIMITIVE_F64,
-    RED_TYPE_PRIMITIVE_F128,
-    RED_TYPE_PRIMITIVE_POINTER,
+    IR_TYPE_PRIMITIVE_U8,
+    IR_TYPE_PRIMITIVE_U16,
+    IR_TYPE_PRIMITIVE_U32,
+    IR_TYPE_PRIMITIVE_U64,
+    IR_TYPE_PRIMITIVE_S8,
+    IR_TYPE_PRIMITIVE_S16,
+    IR_TYPE_PRIMITIVE_S32,
+    IR_TYPE_PRIMITIVE_S64,
+    IR_TYPE_PRIMITIVE_F32,
+    IR_TYPE_PRIMITIVE_F64,
+    IR_TYPE_PRIMITIVE_F128,
+    IR_TYPE_PRIMITIVE_BOOL,
+    IR_TYPE_PRIMITIVE_COUNT,
+    IR_TYPE_PRIMITIVE_POINTER,
 } IRTypePrimitive;
+
+static_assert(IR_TYPE_PRIMITIVE_COUNT == 12, "Primitive type enum has been modified! Correct it");
 
 static inline const char* primitive_type_str(IRTypePrimitive primitive_type_id)
 {
     switch (primitive_type_id)
     {
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U8);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U16);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_U64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S8);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S16);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_S64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F32);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F64);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_F128);
-        CASE_TO_STR(RED_TYPE_PRIMITIVE_POINTER);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_U8);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_U16);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_U32);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_U64);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_S8);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_S16);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_S32);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_S64);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_F32);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_F64);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_F128);
+        CASE_TO_STR(IR_TYPE_PRIMITIVE_POINTER);
         default:
             RED_NOT_IMPLEMENTED;
             return null;
@@ -59,6 +64,7 @@ typedef struct IRType
     {
         IRTypePrimitive primitive_type;
         IRStructDecl* struct_type;
+        IREnumDecl* enum_type;
         IRFunctionPrototype* fn_type;
         IRArrayType array_type;
     };
@@ -84,6 +90,39 @@ typedef struct IRFieldDecl
     IRType type;
     SB* name;
 } IRFieldDecl;
+
+typedef struct IREnumField
+{
+    SB* name;
+    union
+    {
+        s64 signed64;
+        u64 unsigned64;
+        s32 signed32;
+        u32 unsigned32;
+        s16 signed16;
+        u16 unsigned16;
+        s8 signed8;
+        u8 unsigned8;
+    } value;
+    IREnumDecl* parent;
+} IREnumField;
+
+GEN_BUFFER_STRUCT(IREnumField)
+
+typedef struct IREnumDecl
+{
+    IRType type;
+    IREnumFieldBuffer fields;
+    SB* name;
+} IREnumDecl;
+
+typedef struct IRUnionDecl
+{
+    u64 foo;
+} IRUnionDecl;
+
+GEN_BUFFER_STRUCT(IRUnionDecl)
 
 typedef struct IRStructDecl
 {
@@ -168,6 +207,10 @@ typedef enum IRSymExprType
 {
     IR_SYM_EXPR_TYPE_SYM,
     IR_SYM_EXPR_TYPE_PARAM,
+    IR_SYM_EXPR_TYPE_ENUM,
+    IR_SYM_EXPR_TYPE_ENUM_FIELD,
+    IR_SYM_EXPR_TYPE_STRUCT,
+    IR_SYM_EXPR_TYPE_STRUCT_FIELD,
 } IRSymExprType;
 
 typedef struct IRSymExpr
@@ -176,6 +219,9 @@ typedef struct IRSymExpr
     {
         IRSymDeclStatement* sym_decl;
         IRParamDecl* param_decl;
+        IREnumField* enum_field;
+        IREnumDecl* enum_decl;
+        IRStructDecl* struct_decl;
     };
 
     IRExpression* subscript;
@@ -206,6 +252,7 @@ typedef struct IRSubscriptAccess
         union
         {
             IRStructDecl* struct_p;
+            IREnumDecl* enum_p;
         };
         TypeKind type;
     } parent;
@@ -284,10 +331,14 @@ typedef struct IRFunctionDefinition
 
 GEN_BUFFER_STRUCT(IRStructDecl)
 GEN_BUFFER_STRUCT(IRFunctionDefinition)
+GEN_BUFFER_STRUCT(IREnumDecl)
 
 typedef struct IRModule
 {
     IRStructDeclBuffer struct_decls;
+    IREnumDeclBuffer enum_decls;
+    IRUnionDeclBuffer union_decls;
+    
     IRFunctionDefinitionBuffer fn_definitions;
 } IRModule;
 
