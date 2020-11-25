@@ -19,8 +19,19 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-typedef ASTNode Node;
+typedef struct ParseContext
+{
+    SB* src_buffer;
+    TokenBuffer* token_buffer;
+    size_t current_token;
+    //RedType* owner;
+} ParseContext;
 
+static inline ASTNode* parse_expression(ParseContext* pc);
+static inline ASTNode* parse_primary_expr(ParseContext* pc);
+static inline ASTNode* parse_compound_st(ParseContext* pc);
+static inline ASTNode* create_type_node(ParseContext* pc);
+static inline ASTNode* parse_statement(ParseContext* pc);
 
 static inline void copy_base_node(ASTNode* dst, const ASTNode* src, AST_ID id)
 {
@@ -51,13 +62,6 @@ static inline ASTNode* create_symbol_node(Token* t)
     return node;
 }
 
-typedef struct ParseContext
-{
-    SB* src_buffer;
-    TokenBuffer* token_buffer;
-    size_t current_token;
-    //RedType* owner;
-} ParseContext;
 
 static void error(ParseContext* pc, Token* token, const char* format, ...)
 {
@@ -142,10 +146,6 @@ static inline void put_back_token(ParseContext* pc)
 #endif
 }
 
-static inline ASTNode* parse_expression(ParseContext* pc);
-static inline ASTNode* parse_primary_expr(ParseContext* pc);
-static inline ASTNode* parse_compound_st(ParseContext* pc);
-static inline ASTNode* create_type_node(ParseContext* pc);
 
 static inline ASTNode* create_basic_type_node(ParseContext* pc)
 {
@@ -211,7 +211,7 @@ static inline ASTNode* create_complex_type_node(ParseContext* pc)
 static inline ASTNode* create_type_node_pointer(ParseContext* pc)
 {
     Token* p_token = expect_token(pc, TOKEN_ID_AMPERSAND);
-    ASTNode* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, p_token, AST_TYPE_TYPE_EXPR);
     node->type_expr.kind = TYPE_KIND_POINTER;
     node->type_expr.pointer_.type = create_type_node(pc);
@@ -494,6 +494,43 @@ static inline ASTNode* parse_while_expr(ParseContext* pc)
     return while_node;
 }
 
+static inline ASTNode* parse_for_expr(ParseContext* pc)
+{
+    Token* for_token = expect_token(pc, TOKEN_ID_KEYWORD_FOR);
+    ASTNode* init_statement = parse_expression(pc);
+    if (!init_statement)
+    {
+        return null;
+    }
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+    ASTNode* condition = parse_expression(pc);
+    if (!condition)
+    {
+        return null;
+    }
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+    ASTNode* post_iteration_statement = parse_expression(pc);
+    if (!post_iteration_statement)
+    {
+        return null;
+    }
+
+    ASTNode* loop_body = parse_expression(pc);
+    if (!loop_body)
+    {
+        return null;
+    }
+    redassert(loop_body->node_id == AST_TYPE_COMPOUND_STATEMENT);
+    node_append(&loop_body->compound_statement.statements, post_iteration_statement);
+
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, for_token, AST_TYPE_LOOP_EXPR);
+    node->loop_expr.condition = condition;
+    node->loop_expr.body = loop_body;
+
+    return node;
+}
+
 static inline ASTNode* parse_fn_call_expr(ParseContext* pc)
 {
     Token* fn_expr_token = get_token(pc);
@@ -561,6 +598,8 @@ static inline ASTNode* parse_primary_expr(ParseContext* pc)
             return parse_branch_block(pc);
         case TOKEN_ID_KEYWORD_WHILE:
             return parse_while_expr(pc);
+        case TOKEN_ID_KEYWORD_FOR:
+            return parse_for_expr(pc);
         case TOKEN_ID_KEYWORD_RETURN:
             return parse_return_statement(pc);
         case TOKEN_ID_INT_LIT:
@@ -877,7 +916,7 @@ static inline ASTNode* parse_enum_field(ParseContext* pc, u32 count, bool* parse
 
     *parse_enum_value = parsing_enum_value;
 
-    ASTNode* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, name, AST_TYPE_ENUM_DECL);
     node->enum_field.name = token_buffer(name);
     node->enum_field.field_value = value;
@@ -945,7 +984,7 @@ static inline ASTNode* parse_enum_decl(ParseContext* pc)
     expect_token(pc, TOKEN_ID_EQ);
     expect_token(pc, TOKEN_ID_KEYWORD_ENUM);
 
-    ASTNode* node = NEW(Node, 1);
+    ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, name, AST_TYPE_ENUM_DECL);
     // default enums are 32-bit
     node->enum_decl.type = ENUM_TYPE_U32;

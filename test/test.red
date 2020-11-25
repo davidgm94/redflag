@@ -331,3 +331,16 @@ test_else_if = (n s32) s32
         return 0;
     }
 }
+
+test_for_loop = () s32
+{
+    var i s32;
+    var c s32;
+
+    for i = 0; i < 10; i = i + 1
+    {
+        c = i;
+    }
+
+    return c;
+}

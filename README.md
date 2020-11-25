@@ -25,14 +25,14 @@
 * [x] Enums
 * [x] Pointers
 * [x] else if
-* [ ] defer
-* [ ] for
+* [x] for
 * [ ] switch
-* [ ] Operator precedence / parenthesis expressions
 * [ ] Global variables
-* [ ] pass language-custom arguments
 * [ ] Rest of primitive types
-* [ ] Debug information
-* [ ] Modules
 * [ ] Libraries
+* [ ] Modules
+* [ ] Operator precedence / parenthesis expressions
+* [ ] Debug information
+* [ ] defer
+* [ ] pass language-custom arguments
 * [ ] Unions
