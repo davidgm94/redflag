@@ -22,9 +22,8 @@
 
 * [x] Arrays
 * [x] Structs
-* [ ] Enums
-* [ ] Unions
-* [ ] Pointers
+* [x] Enums
+* [x] Pointers
 * [ ] else if
 * [ ] defer
 * [ ] for
@@ -35,3 +34,4 @@
 * [ ] Debug information
 * [ ] Modules
 * [ ] Libraries
+* [ ] Unions

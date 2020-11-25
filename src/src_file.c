@@ -42,13 +42,4 @@ void add_source_file(SB* src_buffer, const char* path)
     ExplicitTimer llvm_dt = os_timer_start("LLVM");
     llvm_gen_machine_code(&ir_tree);
     os_timer_end(&llvm_dt);
-
-//#if RED_LLVM_BACKEND
-//    llvm_
-//#elif RED_C_BACKEND
-//    c_codegen(&fn_list);
-//#elif RED_SELF_BACKEND
-//#endif
-
-
 }

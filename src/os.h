@@ -188,3 +188,9 @@ static inline bool sb_cmp(SB* sb1, SB* sb2)
 
 void prints(const char* msg);
 void sb_vprintf(SB* sb, const char* format, va_list ap);
+
+u64 get_memory_usage(void);
+
+u64 get_total_allocations(void);
+
+u64 get_block_size(void);

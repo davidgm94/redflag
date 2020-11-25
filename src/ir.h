@@ -55,6 +55,11 @@ typedef struct IRArrayType
     IRExpression* elem_count_expr;
 } IRArrayType;
 
+typedef struct IRPointerType
+{
+    IRType* base_type;
+} IRPointerType;
+
 typedef struct IRType
 {
     TypeKind kind;
@@ -67,6 +72,7 @@ typedef struct IRType
         IREnumDecl* enum_type;
         IRFunctionPrototype* fn_type;
         IRArrayType array_type;
+        IRPointerType pointer_type;
     };
 } IRType;
 

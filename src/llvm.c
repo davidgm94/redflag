@@ -138,6 +138,16 @@ static inline LLVMTypeRef llvm_gen_type(RedLLVMContext* llvm, IRType* type)
                 LLVMTypeRef enum_type = llvm_gen_type(llvm, &type->enum_type->type);
                 return enum_type;
             }
+            case TYPE_KIND_POINTER:
+            {
+                LLVMTypeRef pointer_type = LLVMPointerType(llvm_gen_type(llvm, type->pointer_type.base_type), 0);
+                return pointer_type;
+            }
+            case TYPE_KIND_VOID:
+            {
+                LLVMTypeRef void_type = LLVMVoidTypeInContext(llvm->context);
+                return void_type;
+            }
             default:
                 RED_NOT_IMPLEMENTED;
                 return null;
@@ -648,10 +658,44 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
 
             IRExpression* left_expr = assign_st->left;
             LLVMValueRef left_value = llvm_gen_expression(llvm, left_expr);
+            IRExpressionType left_expr_type = left_expr->type;
+
+            // If pointer type, emit a load
+            switch (left_expr_type)
+            {
+                case IR_EXPRESSION_TYPE_SYM_EXPR:
+                {
+                    IRSymExprType left_expr_sym_expr_type = left_expr->sym_expr.type;
+                    switch (left_expr_sym_expr_type)
+                    {
+                        case IR_SYM_EXPR_TYPE_PARAM:
+                            if (left_expr->sym_expr.param_decl->type.kind == TYPE_KIND_POINTER)
+                            {
+                                left_value = LLVMBuildLoad(llvm->builder, left_value, "ptrload");
+                            }
+                            break;
+                        case IR_SYM_EXPR_TYPE_SYM:
+                            if (left_expr->sym_expr.sym_decl->type.kind == TYPE_KIND_POINTER)
+                            {
+                                left_value = LLVMBuildLoad(llvm->builder, left_value, "ptrload");
+                            }
+                            break;
+                        default:
+                            RED_NOT_IMPLEMENTED;
+                            break;
+                    }
+                    break;
+                }
+                default:
+                    RED_NOT_IMPLEMENTED;
+                    break;
+            }
+
             IRExpression* right_expr = assign_st->right;
             LLVMValueRef right_value = llvm_gen_expression(llvm, right_expr);
 
-            return LLVMBuildStore(llvm->builder, right_value, left_value);
+            LLVMValueRef store = LLVMBuildStore(llvm->builder, right_value, left_value);
+            return store;
         }
         case IR_ST_TYPE_LOOP_ST:
         {
@@ -736,6 +780,10 @@ static inline void llvm_gen_fn_definition(RedLLVMContext* llvm)
     {
         IRCompoundStatement* body = &llvm->current_fn->body;
         llvm_gen_compound_statement(llvm, body);
+        if (!llvm->llvm_current_fn.return_already_emitted && llvm->current_fn->proto.ret_type.kind == TYPE_KIND_VOID)
+        {
+            LLVMBuildRetVoid(llvm->builder);
+        }
     }
     else if (st_count == 0)
     {

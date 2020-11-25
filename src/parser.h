@@ -83,6 +83,11 @@ typedef struct ASTEnumDecl
     ASTEnumType type;
 } ASTEnumDecl;
 
+typedef struct ASTPointerType
+{
+    ASTNode* type;
+} ASTPointerType;
+
 typedef struct ASTType
 {
     TypeKind kind;
@@ -94,6 +99,7 @@ typedef struct ASTType
         ASTUnionType union_;
         // probably buggy enum decl: subst for enum type
         ASTEnumDecl enum_;
+        ASTPointerType pointer_;
     };
 } ASTType;
 

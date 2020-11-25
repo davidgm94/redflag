@@ -489,6 +489,7 @@ typedef enum TypeKind
     TYPE_KIND_UNION,
     TYPE_KIND_ENUM,
     TYPE_KIND_ARRAY,
+    TYPE_KIND_POINTER,
     TYPE_KIND_FUNCTION,
 } TypeKind;
 

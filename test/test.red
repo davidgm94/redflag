@@ -310,3 +310,8 @@ test_first_enum = (a enum_test) s32
         return 0;
     }
 }
+
+test_pointer = (n &s32)
+{
+    n = 3;
+}

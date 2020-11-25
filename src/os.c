@@ -476,6 +476,22 @@ static inline uptr top_address(void)
     return (uptr)m_page_allocator.blob + (m_page_allocator.allocated_block_count * block_size);
 }
 
+u64 get_memory_usage(void)
+{
+    return m_page_allocator.available_address - m_page_allocator.blob;
+}
+
+u64 get_total_allocations(void)
+{
+    redassert(m_page_allocator.allocated_block_count == 1);
+    return m_page_allocator.allocation_count;
+}
+
+u64 get_block_size(void)
+{
+    return block_size;
+}
+
 void* allocate_chunk(usize size)
 {
 #if RED_BUFFER_MEM_CHECK

@@ -208,6 +208,17 @@ static inline ASTNode* create_complex_type_node(ParseContext* pc)
     return node;
 }
 
+static inline ASTNode* create_type_node_pointer(ParseContext* pc)
+{
+    Token* p_token = expect_token(pc, TOKEN_ID_AMPERSAND);
+    ASTNode* node = NEW(Node, 1);
+    fill_base_node(node, p_token, AST_TYPE_TYPE_EXPR);
+    node->type_expr.kind = TYPE_KIND_POINTER;
+    node->type_expr.pointer_.type = create_type_node(pc);
+
+    return node;
+}
+
 static inline ASTNode* create_type_node(ParseContext* pc)
 {
     Token* token = get_token(pc);
@@ -225,6 +236,8 @@ static inline ASTNode* create_type_node(ParseContext* pc)
             }
         case TOKEN_ID_LEFT_BRACKET:
             return create_type_node_array(pc);
+        case TOKEN_ID_AMPERSAND:
+            return create_type_node_pointer(pc);
         default:
             RED_NOT_IMPLEMENTED;
             return null;
@@ -717,7 +730,11 @@ static inline ASTNode* parse_fn_proto(ParseContext* pc)
         invalid_token_error(pc, get_token(pc));
     }
 
-    ASTNode* return_type_node = create_type_node(pc);
+    ASTNode* return_type_node = NULL;
+    if (return_type->id != TOKEN_ID_LEFT_BRACE)
+    {
+        return_type_node = create_type_node(pc);
+    }
 
     ASTNode* node = NEW(ASTNode, 1);
     fill_base_node(node, identifier, AST_TYPE_FN_PROTO);

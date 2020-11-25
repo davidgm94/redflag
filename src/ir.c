@@ -207,6 +207,20 @@ static inline IRType ast_to_ir_resolve_complex_type(ASTNode* node, IRModule* ir_
     return (const IRType)ZERO_INIT;
 }
 
+static inline IRType ast_to_ir_resolve_pointer_type(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* module)
+{
+    ASTNode* pointer_type = node->type_expr.pointer_.type;
+    redassert(pointer_type->node_id == AST_TYPE_TYPE_EXPR);
+    IRType pointer_type_ir = ast_to_ir_resolve_type(pointer_type, parent_fn, module);
+    
+    IRType type;
+    type.kind = TYPE_KIND_POINTER;
+    type.pointer_type.base_type = NEW(IRType, 1);
+    *type.pointer_type.base_type = pointer_type_ir;
+
+    return type;
+}
+
 static inline IRType ast_to_ir_resolve_type(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* ir_tree)
 {
     redassert(node->node_id == AST_TYPE_TYPE_EXPR);
@@ -223,6 +237,8 @@ static inline IRType ast_to_ir_resolve_type(ASTNode* node, IRFunctionDefinition*
             return ast_to_ir_resolve_enum_type(node, ir_tree);
         case TYPE_KIND_COMPLEX_TO_BE_DETERMINED:
             return ast_to_ir_resolve_complex_type(node, ir_tree);
+        case TYPE_KIND_POINTER:
+            return ast_to_ir_resolve_pointer_type(node, parent_fn, ir_tree);
         default:
             RED_NOT_IMPLEMENTED;
             return (const IRType)ZERO_INIT;
