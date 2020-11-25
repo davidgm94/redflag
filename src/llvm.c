@@ -569,7 +569,7 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             LLVMBasicBlockRef llvm_if_bb = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn.fn_handle, "if");
             redassert(llvm_if_bb);
             LLVMBasicBlockRef llvm_else_bb = null;
-            bool else_statement = st->branch_st.else_block.stmts.len > 0;
+            bool else_statement = st->branch_st.else_block;
             LLVMBasicBlockRef llvm_if_end_bb = null;
             if (else_statement)
             {
@@ -611,9 +611,10 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             {
                 LLVMPositionBuilderAtEnd(llvm->builder, llvm_else_bb);
 
-                llvm_gen_compound_statement(llvm, &branch_st->else_block);
+                llvm_gen_statement(llvm, branch_st->else_block);
 
                 return_emitted_in_all_branches_else = llvm->llvm_current_fn.return_already_emitted;
+
                 if (llvm->llvm_current_fn.return_already_emitted)
                 {
                     llvm->llvm_current_fn.return_already_emitted = false;
@@ -719,6 +720,9 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
 
             return null;
         }
+        case IR_ST_TYPE_COMPOUND_ST:
+            llvm_gen_compound_statement(llvm, &st->compound_st);
+            return null;
         default:
             RED_NOT_IMPLEMENTED;
             return null;

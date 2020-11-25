@@ -6,6 +6,8 @@ typedef struct IRType IRType;
 typedef struct IRStructDecl IRStructDecl;
 typedef struct IRFunctionPrototype IRFunctionPrototype;
 typedef struct IREnumDecl IREnumDecl;
+typedef struct IRStatement IRStatement;
+GEN_BUFFER_STRUCT(IRStatement)
 
 typedef enum IRTypePrimitive
 {
@@ -170,8 +172,6 @@ typedef struct IRFunctionPrototype
     u8 param_count;
 } IRFunctionPrototype;
 
-typedef struct IRStatement IRStatement;
-GEN_BUFFER_STRUCT(IRStatement)
 typedef struct IRCompoundStatement
 {
     IRStatementBuffer stmts;
@@ -290,7 +290,7 @@ typedef struct IRBranchStatement
 {
     IRExpression condition;
     IRCompoundStatement if_block;
-    IRCompoundStatement else_block;
+    IRStatement* else_block;
 } IRBranchStatement;
 
 typedef struct IRSymDeclStatement

@@ -378,6 +378,7 @@ static inline ASTNode* parse_symbol_expr(ParseContext* pc)
 
 static inline ASTNode* parse_branch_block(ParseContext* pc)
 {
+    ASTNode* branch_block = NULL;
     Token* if_token = expect_token(pc, TOKEN_ID_KEYWORD_IF);
 
     ASTNode* condition_node = parse_expression(pc);
@@ -396,7 +397,7 @@ static inline ASTNode* parse_branch_block(ParseContext* pc)
     Token* else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE);
     if (!else_token)
     {
-        ASTNode* branch_block = NEW(ASTNode, 1);
+        branch_block = NEW(ASTNode, 1);
         fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
         branch_block->branch_expr.condition = condition_node;
         branch_block->branch_expr.if_block = if_block;
@@ -405,8 +406,8 @@ static inline ASTNode* parse_branch_block(ParseContext* pc)
         return branch_block;
     }
 
-    Token* else_if_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
-    if (!else_if_token)
+    Token* else_if_token = get_token(pc);
+    if (else_if_token->id != TOKEN_ID_KEYWORD_IF)
     {
         // IF-ELSE BLOCK
 
@@ -419,7 +420,7 @@ static inline ASTNode* parse_branch_block(ParseContext* pc)
         }
         redassert(else_block->node_id == AST_TYPE_COMPOUND_STATEMENT);
 
-        ASTNode* branch_block = NEW(ASTNode, 1);
+        branch_block = NEW(ASTNode, 1);
         fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
         branch_block->branch_expr.condition = condition_node;
         branch_block->branch_expr.if_block = if_block;
@@ -428,17 +429,30 @@ static inline ASTNode* parse_branch_block(ParseContext* pc)
         return branch_block;
     }
 
-    while ((else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE)))
+    branch_block = NEW(ASTNode, 1);
+    fill_base_node(branch_block, if_token, AST_TYPE_BRANCH_EXPR);
+    branch_block->branch_expr.condition = condition_node;
+    branch_block->branch_expr.if_block = if_block;
+    ASTNode* branch_it = branch_block;
+    do
     {
-        else_if_token = consume_token_if(pc, TOKEN_ID_KEYWORD_IF);
-        if (else_if_token)
+        ASTNode* new_branch_block;
+        else_if_token = get_token(pc);
+        if (else_if_token->id == TOKEN_ID_KEYWORD_IF)
         {
-
+            new_branch_block = parse_branch_block(pc);
+            branch_it->branch_expr.else_block = new_branch_block;
+            branch_it = branch_it->branch_expr.else_block;
+        }
+        else
+        {
+            RED_UNREACHABLE;
+            return null;
         }
     }
+    while ((else_token = consume_token_if(pc, TOKEN_ID_KEYWORD_ELSE)));
         
-    RED_NOT_IMPLEMENTED;
-    return null;
+    return branch_block;
 }
 
 static inline ASTNode* parse_return_statement(ParseContext* pc)

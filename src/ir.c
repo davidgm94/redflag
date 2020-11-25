@@ -790,11 +790,22 @@ static inline IRBranchStatement ast_to_ir_branch_st(ASTNode* node, IRFunctionDef
     if (ast_else_block_node != null)
     {
         AST_ID ast_else_block_node_id = ast_else_block_node->node_id;
+        IRStatement* statement = NEW(IRStatement, 1);
+        result.else_block = statement;
+
         switch (ast_else_block_node_id)
         {
             case AST_TYPE_COMPOUND_STATEMENT:
             {
-                result.else_block = ast_to_ir_compound_st(ast_else_block_node, parent_fn, module);
+                //result.else_block = ast_to_ir_compound_st(ast_else_block_node, parent_fn, module);
+                statement->type = IR_ST_TYPE_COMPOUND_ST;
+                statement->compound_st = ast_to_ir_compound_st(ast_else_block_node, parent_fn, module);
+                break;
+            }
+            case AST_TYPE_BRANCH_EXPR:
+            {
+                statement->type = IR_ST_TYPE_BRANCH_ST;
+                statement->branch_st = ast_to_ir_branch_st(ast_else_block_node, parent_fn, module);
                 break;
             }
             default:
@@ -804,7 +815,7 @@ static inline IRBranchStatement ast_to_ir_branch_st(ASTNode* node, IRFunctionDef
     }
     else
     {
-        result.else_block = (IRCompoundStatement)ZERO_INIT;
+        result.else_block = null;
     }
 
     return result;
@@ -1130,8 +1141,19 @@ static inline void print_branch_st(IRBranchStatement* branch_st)
     print_expression(&branch_st->condition);
     print(")\n");
     print_compount_st(&branch_st->if_block);
-    print("else\n");
-    print_compount_st(&branch_st->else_block);
+    if (branch_st)
+    {
+        print("else\n");
+        switch (branch_st->else_block->type)
+        {
+            case IR_ST_TYPE_COMPOUND_ST:
+                print_compount_st(&branch_st->else_block->compound_st);
+            default:
+                RED_NOT_IMPLEMENTED;
+                break;
+        }
+
+    }
 }
 static inline void print_return_st(IRReturnStatement* return_st)
 {

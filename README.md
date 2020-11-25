@@ -24,10 +24,11 @@
 * [x] Structs
 * [x] Enums
 * [x] Pointers
-* [ ] else if
+* [x] else if
 * [ ] defer
 * [ ] for
 * [ ] switch
+* [ ] Operator precedence / parenthesis expressions
 * [ ] Global variables
 * [ ] pass language-custom arguments
 * [ ] Rest of primitive types

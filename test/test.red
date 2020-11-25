@@ -315,3 +315,19 @@ test_pointer = (n &s32)
 {
     n = 3;
 }
+
+test_else_if = (n s32) s32
+{
+    if  n == 5
+    {
+        return 1;
+    }
+    else if n == 3
+    {
+        return 2;
+    }
+    else
+    {
+        return 0;
+    }
+}
