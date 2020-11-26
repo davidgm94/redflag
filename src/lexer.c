@@ -127,7 +127,10 @@ void print_tokens(SB* src_buffer, TokenBuffer* tokens)
 /* TODO: SoA this*/
 static const struct RedKeyword red_keywords[] =
 {
+    { "and", TOKEN_ID_KEYWORD_AND, },
     { "const", TOKEN_ID_KEYWORD_CONST, },
+    { "default", TOKEN_ID_KEYWORD_DEFAULT, },
+    { "defer", TOKEN_ID_KEYWORD_DEFER, },
     { "else", TOKEN_ID_KEYWORD_ELSE, },
     { "enum", TOKEN_ID_KEYWORD_ENUM, },
     { "extern", TOKEN_ID_KEYWORD_EXTERN, },
@@ -135,6 +138,7 @@ static const struct RedKeyword red_keywords[] =
     { "for", TOKEN_ID_KEYWORD_FOR, },
     { "if", TOKEN_ID_KEYWORD_IF, },
     { "null", TOKEN_ID_KEYWORD_NULL, },
+    { "or", TOKEN_ID_KEYWORD_OR, },
     { "return", TOKEN_ID_KEYWORD_RETURN, },
     { "struct", TOKEN_ID_KEYWORD_STRUCT, },
     { "switch", TOKEN_ID_KEYWORD_SWITCH, },
@@ -1216,7 +1220,7 @@ const char* token_name(TokenID id)
         case TOKEN_ID_CMP_GREATER_OR_EQ: return ">=";
         case TOKEN_ID_CMP_LESS: return "<=";
         case TOKEN_ID_CMP_LESS_OR_EQ: return "<=";
-        case TOKEN_ID_COLON: return ";";
+        case TOKEN_ID_COLON: return ":";
         case TOKEN_ID_COMMA: return ",";
         case TOKEN_ID_DASH: return "-";
         case TOKEN_ID_DIV_EQ: return "/=";
@@ -1234,6 +1238,7 @@ const char* token_name(TokenID id)
         case TOKEN_ID_KEYWORD_CALL_CONV:
         case TOKEN_ID_KEYWORD_COMPTIME:
         case TOKEN_ID_KEYWORD_CONST:
+        case TOKEN_ID_KEYWORD_DEFAULT: return "default";
         case TOKEN_ID_KEYWORD_DEFER:
         case TOKEN_ID_KEYWORD_ELSE:
         case TOKEN_ID_KEYWORD_ENUM:
@@ -1285,6 +1290,7 @@ const char* token_name(TokenID id)
         case TOKEN_ID_SYMBOL: return "Symbol";
         case TOKEN_ID_TILDE: return "~";
         case TOKEN_ID_TIMES_EQ: return "*=";
+
         default:
             RED_NOT_IMPLEMENTED;
             break;

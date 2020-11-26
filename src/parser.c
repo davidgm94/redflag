@@ -577,6 +577,99 @@ static inline ASTNode* parse_array_literal(ParseContext* pc)
     return node;
 }
 
+static inline bool is_switch_case_start(ParseContext* pc)
+{
+    Token* token = get_token(pc);
+    TokenID id = token->id;
+
+    return id == TOKEN_ID_SYMBOL || id == TOKEN_ID_KEYWORD_DEFAULT || id == TOKEN_ID_INT_LIT;
+}
+
+static inline void parse_switch_case(ParseContext* pc, ASTNodeBuffer* switch_case_buffer)
+{
+    Token* case_token = get_token(pc);
+    //Token* case_token = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    //if (!case_token)
+    //{
+    //    case_token = consume_token_if(pc, TOKEN_ID_KEYWORD_DEFAULT);
+    //    if (!case_token)
+    //    {
+    //        case_token = consume_token_if(pc, TOKEN_ID_INT_LIT);
+    //        if (!case_token)
+    //        {
+    //            return null;
+    //        }
+    //    }
+    //}
+
+
+    // if case_expr is null, it is the default case
+    ASTNode* case_expr = parse_primary_expr(pc);
+    ASTNodeBuffer case_buffer = ZERO_INIT;
+    node_append(&case_buffer, case_expr);
+    if (case_expr)
+    {
+        while (consume_token_if(pc, TOKEN_ID_KEYWORD_OR))
+        {
+            case_expr = parse_primary_expr(pc);
+            if (!case_expr)
+            {
+                RED_UNREACHABLE;
+            }
+            node_append(&case_buffer, case_expr);
+        }
+    }
+    expect_token(pc, TOKEN_ID_COLON);
+
+    ASTNode* case_body = parse_expression(pc);
+    if (!case_body)
+    {
+        os_exit_with_message("No body in switch statement");
+    }
+
+    if (case_body->node_id != AST_TYPE_COMPOUND_STATEMENT)
+    {
+        ASTNode* one_st_body = case_body;
+        ASTNode* new_compound_st = NEW(ASTNode, 1);
+        copy_base_node(new_compound_st, one_st_body, AST_TYPE_COMPOUND_STATEMENT);
+        node_append(&new_compound_st->compound_statement.statements, one_st_body);
+        case_body = new_compound_st;
+    }
+
+    for (u32 i = 0; i < case_buffer.len; i++)
+    {
+        ASTNode* node = NEW(ASTNode, 1);
+        fill_base_node(node, case_token, AST_TYPE_SWITCH_CASE);
+        node->switch_case.case_value = case_buffer.ptr[i];
+        node->switch_case.case_body = case_body;
+        node_append(switch_case_buffer, node);
+    }
+}
+
+static inline ASTNode* parse_switch_statement(ParseContext* pc)
+{
+    Token* switch_token = expect_token(pc, TOKEN_ID_KEYWORD_SWITCH);
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, switch_token, AST_TYPE_SWITCH_STATEMENT);
+
+    ASTNode* expr_to_switch_on = parse_expression(pc);
+    if (!expr_to_switch_on)
+    {
+        return null;
+    }
+    node->switch_expr.expr_to_switch_on = expr_to_switch_on;
+
+    expect_token(pc, TOKEN_ID_LEFT_BRACE);
+
+    while (is_switch_case_start(pc))
+    {
+        parse_switch_case(pc, &node->switch_expr.cases);
+    }
+    expect_token(pc, TOKEN_ID_RIGHT_BRACE);
+
+    return node;
+}
+
 static inline ASTNode* parse_primary_expr(ParseContext* pc)
 {
     Token* t = get_token(pc);
@@ -596,6 +689,8 @@ static inline ASTNode* parse_primary_expr(ParseContext* pc)
         }
         case TOKEN_ID_KEYWORD_IF:
             return parse_branch_block(pc);
+        case TOKEN_ID_KEYWORD_SWITCH:
+            return parse_switch_statement(pc);
         case TOKEN_ID_KEYWORD_WHILE:
             return parse_while_expr(pc);
         case TOKEN_ID_KEYWORD_FOR:
@@ -615,6 +710,10 @@ static inline ASTNode* parse_primary_expr(ParseContext* pc)
                 return parse_symbol_expr(pc);
             }
         case TOKEN_ID_END_OF_FILE:
+            return null;
+        // default switch case, just return null
+        case TOKEN_ID_KEYWORD_DEFAULT:
+            consume_token(pc);
             return null;
         default:
             RED_NOT_IMPLEMENTED;
@@ -702,7 +801,7 @@ static inline ASTNode* parse_statement(ParseContext* pc)
     node = parse_expression(pc);
     if (node)
     {
-        bool add_semicolon = node->node_id != AST_TYPE_BRANCH_EXPR && node->node_id != AST_TYPE_COMPOUND_STATEMENT && node->node_id != AST_TYPE_LOOP_EXPR;
+        bool add_semicolon = node->node_id != AST_TYPE_BRANCH_EXPR && node->node_id != AST_TYPE_COMPOUND_STATEMENT && node->node_id != AST_TYPE_LOOP_EXPR && node->node_id != AST_TYPE_SWITCH_STATEMENT;
         if (add_semicolon)
         {
             expect_token(pc, TOKEN_ID_SEMICOLON);
@@ -1008,6 +1107,11 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     {
         node_append(&module_ast->enum_decls, node);
         return true;
+    }
+
+    if ((node = parse_sym_decl(pc)))
+    {
+        node_append(&module_ast->global_sym_decls, node);
     }
 
     if ((node = parse_fn_definition(pc)))

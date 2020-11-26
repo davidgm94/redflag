@@ -10,6 +10,7 @@ GEN_BUFFER_FUNCTIONS(ir_fn_def, fb, IRFunctionDefinitionBuffer, IRFunctionDefini
 GEN_BUFFER_FUNCTIONS(ir_struct, sb, IRStructDeclBuffer, IRStructDecl)
 GEN_BUFFER_FUNCTIONS(ir_enum_field, efb, IREnumFieldBuffer, IREnumField)
 GEN_BUFFER_FUNCTIONS(ir_enum, eb, IREnumDeclBuffer, IREnumDecl)
+GEN_BUFFER_FUNCTIONS(ir_case, cb, IRSwitchCaseBuffer, IRSwitchCase)
 
 const char* primitive_types_str[] =
 {
@@ -344,6 +345,24 @@ static inline IRSymExpr find_symbol(SB* symbol, IRModule* module, IRFunctionDefi
             return result;
         }
     }
+
+    IRSymDeclStatementBuffer* global_decl_bf = &module->global_sym_decls;
+    u64 global_decl_count = global_decl_bf->len;
+    IRSymDeclStatement* global_ptr = global_decl_bf->ptr;
+
+    for (u64 i = 0; i < global_decl_count; i++)
+    {
+        IRSymDeclStatement* global = &global_ptr[i];
+        if (sb_cmp(global->name, symbol))
+        {
+            IRSymExpr result = ZERO_INIT;
+            result.type = IR_SYM_EXPR_TYPE_GLOBAL_SYM;
+            result.global_sym_decl = global;
+            result.use_type = use_type;
+            return result;
+        }
+    }
+
     
     IRStructDeclBuffer* strb = &module->struct_decls;
     u64 struct_count = strb->len;
@@ -586,6 +605,8 @@ IRType ast_to_ir_find_expression_type(IRExpression* expression)
                         return sym_expr->param_decl->type;
                     case IR_SYM_EXPR_TYPE_SYM:
                         return sym_expr->sym_decl->type;
+                    case IR_SYM_EXPR_TYPE_GLOBAL_SYM:
+                        return sym_expr->global_sym_decl->type;
                     default:
                         RED_NOT_IMPLEMENTED;
                 }
@@ -821,13 +842,39 @@ static inline IRBranchStatement ast_to_ir_branch_st(ASTNode* node, IRFunctionDef
     return result;
 }
 
-static inline IRSymDeclStatement ast_to_ir_sym_decl_st(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* module)
+static inline IRSymDeclStatement ast_to_ir_sym_decl_st(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* module, bool global_symbol)
 {
     IRSymDeclStatement st;
     st.is_const = node->sym_decl.is_const;
     st.name = node->sym_decl.sym->sym_expr.name;
     st.value = ast_to_ir_expression(node->sym_decl.value, module, parent_fn, LOAD);
     st.type = ast_to_ir_resolve_type(node->sym_decl.type, parent_fn, module);
+
+    return st;
+}
+
+static inline IRSwitchStatement ast_to_ir_switch_st(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* module)
+{
+    IRSwitchStatement st = ZERO_INIT;
+    st.switch_expr = ast_to_ir_expression(node->switch_expr.expr_to_switch_on, module, parent_fn, LOAD);
+
+    ASTNodeBuffer* cases_buffer =  &node->switch_expr.cases;
+    u32 case_count = cases_buffer->len;
+    if (case_count > 0)
+    {
+        ASTNode** ptr = cases_buffer->ptr;
+        for (u32 i = 0; i < case_count; i++)
+        {
+            ASTNode* case_node = ptr[i];
+            ASTSwitchCase* switch_case = &case_node->switch_case;
+            ASTNode* ast_case_body = switch_case->case_body;
+            ASTNode* ast_case_expr = switch_case->case_value;
+            IRSwitchCase ir_switch_case;
+            ir_switch_case.case_expr = ast_to_ir_expression(ast_case_expr, module, parent_fn, LOAD);
+            ir_switch_case.case_body = ast_to_ir_compound_st(ast_case_body, parent_fn, module);
+            ir_case_append(&st.cases, ir_switch_case);
+        }
+    }
 
     return st;
 }
@@ -856,13 +903,17 @@ static inline IRCompoundStatement ast_to_ir_compound_st(ASTNode* node, IRFunctio
                     st_it->type = IR_ST_TYPE_BRANCH_ST;
                     st_it->branch_st = ast_to_ir_branch_st(st_node, parent_fn, module);
                     break;
+                case AST_TYPE_SWITCH_STATEMENT:
+                    st_it->type = IR_ST_TYPE_SWITCH_ST;
+                    st_it->switch_st = ast_to_ir_switch_st(st_node, parent_fn, module);
+                    break;
                 case AST_TYPE_RETURN_STATEMENT:
                     st_it->type = IR_ST_TYPE_RETURN_ST;
                     st_it->return_st = ast_to_ir_return_st(st_node, module, parent_fn);
                     break;
                 case AST_TYPE_SYM_DECL:
                     st_it->type = IR_ST_TYPE_SYM_DECL_ST;
-                    st_it->sym_decl_st = ast_to_ir_sym_decl_st(st_node, parent_fn, module);
+                    st_it->sym_decl_st = ast_to_ir_sym_decl_st(st_node, parent_fn, module, false);
                     decl_append(&parent_fn->sym_declarations, st_it->sym_decl_st);
                     break;
                 case AST_TYPE_BIN_EXPR:
@@ -897,7 +948,19 @@ static inline IRCompoundStatement ast_to_ir_compound_st(ASTNode* node, IRFunctio
     return result;
 }
 
-IRFunctionPrototype ast_to_ir_fn_proto(ASTNode* node, IRModule* module)
+static void ast_to_ir_global_symbols(IRModule* module, ASTNodeBuffer* globals_buffer)
+{
+    u64 global_count = globals_buffer->len;
+    ASTNode** ptr = globals_buffer->ptr;
+    for (u64 i = 0; i < global_count; i++)
+    {
+        ASTNode* ast_global = ptr[i];
+        IRSymDeclStatement global_decl = ast_to_ir_sym_decl_st(ast_global, NULL, module, true);
+        decl_append(&module->global_sym_decls, global_decl);
+    }
+}
+
+static IRFunctionPrototype ast_to_ir_fn_proto(ASTNode* node, IRModule* module)
 {
     redassert(node->node_id == AST_TYPE_FN_PROTO);
 
@@ -965,7 +1028,7 @@ IRFunctionPrototype ast_to_ir_fn_proto(ASTNode* node, IRModule* module)
 
 static inline IRFunctionDefinition* ir_find_fn_definition(IRFunctionDefinitionBuffer* fn_definitions, SB* fn_name);
 
-static inline void ast_to_ir_fn_definitions(IRModule* ir_module, ASTNodeBuffer* fb)
+static void ast_to_ir_fn_definitions(IRModule* ir_module, ASTNodeBuffer* fb)
 {
     for (usize i = 0; i < fb->len; i++)
     {
@@ -1385,6 +1448,7 @@ IRModule transform_ast_to_ir(RedAST* ast)
 {
     IRModule ir_tree = ZERO_INIT;
     ast_to_ir_type_declarations(&ir_tree, ast);
+    ast_to_ir_global_symbols(&ir_tree, &ast->global_sym_decls);
     ast_to_ir_fn_definitions(&ir_tree, &ast->fn_definitions);
 
 #if RED_IR_VERBOSE

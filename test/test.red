@@ -344,3 +344,37 @@ test_for_loop = () s32
 
     return c;
 }
+
+test_switch = (a s32) s32
+{
+    switch a
+    {
+        1: return a;
+        2:
+        {
+            a = a + 1;
+            return a;
+        }
+        3: return a + 2;
+        4 or 5: return a * 3;
+        default: return a - 1;
+    }
+}
+
+var global_var s32 = 5;
+
+test_global_var = () s32
+{
+    return global_var;
+}
+
+test_global_var_assign = ()
+{
+    global_var = 7;
+}
+
+test_global_var_assign_and_ret = () s32
+{
+    global_var = 6;
+    return global_var;
+}

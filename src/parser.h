@@ -8,6 +8,8 @@ typedef enum AST_ID
     AST_TYPE_PARAM_DECL,
     AST_TYPE_COMPOUND_STATEMENT,
     AST_TYPE_RETURN_STATEMENT,
+    AST_TYPE_SWITCH_STATEMENT,
+    AST_TYPE_SWITCH_CASE,
     AST_TYPE_SYM_DECL,
     AST_TYPE_SYM_EXPR,
     AST_TYPE_BIN_EXPR,
@@ -151,6 +153,18 @@ typedef struct ASTBranchExpr
     ASTNode* else_block;
 } ASTBranchExpr;
 
+typedef struct ASTSwitchCase
+{
+    ASTNode* case_value;
+    ASTNode* case_body;
+} ASTSwitchCase;
+
+typedef struct ASTSwitchExpr
+{
+    ASTNode* expr_to_switch_on;
+    ASTNodeBuffer cases;
+} ASTSwitchExpr;
+
 typedef struct ASTLoopExpr
 {
     ASTNode* condition;
@@ -201,6 +215,8 @@ typedef struct ASTNode
         ASTRetExpr return_expr;
         ASTCompoundStatement compound_statement;
         ASTBranchExpr branch_expr;
+        ASTSwitchCase switch_case;
+        ASTSwitchExpr switch_expr;
         ASTLoopExpr loop_expr;
         ASTFnCallExpr fn_call;
         ASTFnProto fn_proto;

@@ -158,6 +158,7 @@ typedef enum TokenID
     TOKEN_ID_KEYWORD_CALL_CONV,
     TOKEN_ID_KEYWORD_COMPTIME,
     TOKEN_ID_KEYWORD_CONST,
+    TOKEN_ID_KEYWORD_DEFAULT,
     TOKEN_ID_KEYWORD_DEFER,
     TOKEN_ID_KEYWORD_ELSE,
     TOKEN_ID_KEYWORD_ENUM,
@@ -419,6 +420,7 @@ typedef struct RedAST
     ASTNodeBuffer struct_decls;
     ASTNodeBuffer union_decls;
     ASTNodeBuffer enum_decls;
+    ASTNodeBuffer global_sym_decls;
     ASTNodeBuffer fn_definitions;
 } RedAST;
 
@@ -475,7 +477,9 @@ static inline bool token_is_binop_char(TokenID op)
         op == TOKEN_ID_CMP_GREATER ||
         op == TOKEN_ID_CMP_GREATER_OR_EQ ||
         op == TOKEN_ID_CMP_LESS ||
-        op == TOKEN_ID_CMP_LESS_OR_EQ;
+        op == TOKEN_ID_CMP_LESS_OR_EQ ||
+        op == TOKEN_ID_KEYWORD_OR ||
+        op == TOKEN_ID_KEYWORD_AND;
     return is_it;
 }
 

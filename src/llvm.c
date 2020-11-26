@@ -21,7 +21,7 @@
 static const u32 max_param_count = 100;
 
 GEN_BUFFER_STRUCT(LLVMValueRef)
-GEN_BUFFER_FUNCTIONS(alloca, ab, LLVMValueRefBuffer, LLVMValueRef)
+GEN_BUFFER_FUNCTIONS(llvm_value, vb, LLVMValueRefBuffer, LLVMValueRef)
 
 typedef struct RedLLVMFn
 {
@@ -63,14 +63,8 @@ typedef struct RedLLVMContext
     RedLLVMFn llvm_current_fn;
     LLVMTypeDeclarationBuffer type_declarations;
     IRModule* ir_tree;
-    /* Not used
-    LLVMValueRef alloca_point;
-    LLVMBasicBlockRef current_block;
+    LLVMValueRefBuffer global_sym_buffer;
 
-    bool current_block_is_target;
-    LLVMBasicBlockRef expr_block_exit;
-    LLVMValueRef return_out;
-    */
     LLVMTargetRef target;
     char* default_target_triple;
     LLVMTargetMachineRef target_machine;
@@ -451,7 +445,7 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
                     {
                         IRSymDeclStatement* sym = sym_expr->sym_decl;
                         IRSymDeclStatement* base_ptr = llvm->current_fn->sym_declarations.ptr;
-                        u32 index = sym - base_ptr;
+                        u64 index = sym - base_ptr;
 
                         switch (sym_expr->use_type)
                         {
@@ -460,6 +454,25 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
                             case STORE:
                                 return llvm->llvm_current_fn.alloca_buffer.ptr[index];
                             default:
+                                RED_NOT_IMPLEMENTED;
+                                return null;
+                        }
+                    }
+                    case IR_SYM_EXPR_TYPE_GLOBAL_SYM:
+                    {
+                        IRSymDeclStatement* global_sym = sym_expr->global_sym_decl;
+                        IRSymDeclStatement* base_ptr = llvm->ir_tree->global_sym_decls.ptr;
+                        u64 index = global_sym - base_ptr;
+
+                        switch (sym_expr->use_type)
+                        {
+                            case LOAD:
+                                return LLVMBuildLoad(llvm->builder, llvm->global_sym_buffer.ptr[index], sb_ptr(global_sym->name));
+                                /* TODO: probably buggy */
+                            case STORE:
+                                return llvm->global_sym_buffer.ptr[index];
+                            default:
+                                RED_NOT_IMPLEMENTED;
                                 return null;
                         }
                     }
@@ -535,6 +548,12 @@ static inline void llvm_gen_compound_statement(RedLLVMContext* llvm, IRCompoundS
         RED_UNREACHABLE;
     }
 }
+
+typedef struct LLVMSwitchCases
+{
+    LLVMBasicBlockRef bb;
+    LLVMValueRef block;
+} LLVMSwitchCases;
 
 static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement* st)
 {
@@ -640,12 +659,81 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
 
             return null;
         }
+        case IR_ST_TYPE_SWITCH_ST:
+        {
+            IRSwitchStatement* sw_st = &st->switch_st;
+            IRSwitchCaseBuffer* swcb = &sw_st->cases;
+            u32 sw_case_count = swcb->len;
+            IRSwitchCase* sw_case_ptr = swcb->ptr;
+            IRSwitchCase* sw_default = null;
+
+            for (u32 i = 0; i < sw_case_count; i++)
+            {
+                IRSwitchCase* sw_case = &sw_case_ptr[i];
+                // If default
+                if (sw_case->case_expr.type == IR_EXPRESSION_TYPE_VOID)
+                {
+                    sw_default = sw_case;
+                    break;
+                }
+            }
+
+            LLVMValueRef sw_expr = llvm_gen_expression(llvm, &sw_st->switch_expr);
+
+            //LLVMBasicBlockRef sw_def_bb = sw_default ? LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn.fn_handle, "default_sw_case") : null;
+            //LLVMBasicBlockRef sw_end_bb = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn.fn_handle, "sw_end");
+            LLVMBasicBlockRef sw_def_bb = sw_default ? LLVMCreateBasicBlockInContext(llvm->context, "default_sw_case") : null;
+            LLVMBasicBlockRef sw_end_bb = LLVMCreateBasicBlockInContext(llvm->context, "sw_end");
+            LLVMValueRef llvm_switch = LLVMBuildSwitch(llvm->builder, sw_expr, sw_def_bb ? sw_def_bb : sw_end_bb, sw_case_count);
+
+            bool return_emitted_in_all_branches = true;
+            for (u32 i = 0; i < sw_case_count; i++)
+            {
+                IRSwitchCase* sw_case = &sw_case_ptr[i];
+                // If not default
+                if (sw_case->case_expr.type != IR_EXPRESSION_TYPE_VOID)
+                {
+                    llvm->llvm_current_fn.return_already_emitted = false;
+                    LLVMBasicBlockRef case_bb = LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn.fn_handle, "sw_case");
+                    LLVMPositionBuilderAtEnd(llvm->builder, case_bb);
+                    llvm_gen_compound_statement(llvm, &sw_case->case_body);
+                    if (!llvm->llvm_current_fn.return_already_emitted)
+                    {
+                        return_emitted_in_all_branches = false;
+                        LLVMBuildBr(llvm->builder, sw_end_bb);
+                    }
+                    LLVMAddCase(llvm_switch, llvm_gen_expression(llvm, &sw_case->case_expr), case_bb);
+                }
+            }
+
+            if (sw_def_bb)
+            {
+                LLVMAppendExistingBasicBlock(llvm->llvm_current_fn.fn_handle, sw_def_bb);
+                llvm->llvm_current_fn.return_already_emitted = false;
+                LLVMPositionBuilderAtEnd(llvm->builder, sw_def_bb);
+                llvm_gen_compound_statement(llvm, &sw_default->case_body);
+                if (!llvm->llvm_current_fn.return_already_emitted)
+                {
+                    return_emitted_in_all_branches = false;
+                    LLVMBuildBr(llvm->builder, sw_end_bb);
+                }
+            }
+
+            LLVMAppendExistingBasicBlock(llvm->llvm_current_fn.fn_handle, sw_end_bb);
+            LLVMPositionBuilderAtEnd(llvm->builder, sw_end_bb);
+            if (return_emitted_in_all_branches)
+            {
+                LLVMBuildUnreachable(llvm->builder);
+            }
+
+            return llvm_switch;
+        }
         case IR_ST_TYPE_SYM_DECL_ST:
         {
             IRSymDeclStatement* decl_st = &st->sym_decl_st;
             LLVMTypeRef llvm_type = llvm_gen_type(llvm, &decl_st->type);
             LLVMValueRef alloca = LLVMBuildAlloca(llvm->builder, llvm_type, sb_ptr(decl_st->name));
-            alloca_append(&llvm->llvm_current_fn.alloca_buffer, alloca);
+            llvm_value_append(&llvm->llvm_current_fn.alloca_buffer, alloca);
             LLVMValueRef value_expression = llvm_gen_expression(llvm, &decl_st->value);
             if (value_expression)
             {
@@ -677,6 +765,12 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
                             break;
                         case IR_SYM_EXPR_TYPE_SYM:
                             if (left_expr->sym_expr.sym_decl->type.kind == TYPE_KIND_POINTER)
+                            {
+                                left_value = LLVMBuildLoad(llvm->builder, left_value, "ptrload");
+                            }
+                            break;
+                        case IR_SYM_EXPR_TYPE_GLOBAL_SYM:
+                            if (left_expr->sym_expr.global_sym_decl->type.kind == TYPE_KIND_POINTER)
                             {
                                 left_value = LLVMBuildLoad(llvm->builder, left_value, "ptrload");
                             }
@@ -748,6 +842,24 @@ static inline LLVMTypeDeclaration llvm_gen_struct_type(RedLLVMContext* llvm, IRS
 #endif
     type_decl.type = type;
     return type_decl;
+}
+
+static inline LLVMValueRef llvm_gen_global_sym(RedLLVMContext* llvm, IRSymDeclStatement* sym_decl)
+{
+    LLVMValueRef result = LLVMAddGlobal(llvm->module, llvm_gen_type(llvm, &sym_decl->type), sb_ptr(sym_decl->name));
+    if (sym_decl->value.type != IR_EXPRESSION_TYPE_VOID)
+    {
+        LLVMSetInitializer(result, llvm_gen_expression(llvm, &sym_decl->value));
+    }
+    else
+    {
+        LLVMSetInitializer(result, LLVMConstNull(llvm_gen_type(llvm, &sym_decl->type)));
+    }
+
+    LLVMSetGlobalConstant(result, sym_decl->is_const);
+    LLVMSetVisibility(result, LLVMDefaultVisibility);
+
+    return result;
 }
 
 static inline void llvm_gen_fn_definition(RedLLVMContext* llvm)
@@ -885,14 +997,20 @@ void llvm_gen_machine_code(IRModule* ir_tree)
 
     IRStructDeclBuffer* struct_decls = &ir_tree->struct_decls;
     u64 struct_count = struct_decls->len;
-    if (struct_count > 0)
+    IRStructDecl* struct_decl_ptr = struct_decls->ptr;
+    for (usize i = 0; i < struct_count; i++)
     {
-        IRStructDecl* struct_decl_ptr = struct_decls->ptr;
-        for (usize i = 0; i < struct_count; i++)
-        {
-            IRStructDecl* struct_decl = &struct_decl_ptr[i];
-            llvm_type_decl_append(&ctx.type_declarations, llvm_gen_struct_type(&ctx, struct_decl));
-        }
+        IRStructDecl* struct_decl = &struct_decl_ptr[i];
+        llvm_type_decl_append(&ctx.type_declarations, llvm_gen_struct_type(&ctx, struct_decl));
+    }
+
+    IRSymDeclStatementBuffer* global_sym_decls = &ir_tree->global_sym_decls;
+    u64 global_sym_decl_count = global_sym_decls->len;
+    IRSymDeclStatement* global_ptr = global_sym_decls->ptr;
+    for (u64 i = 0; i < global_sym_decl_count; i++)
+    {
+        IRSymDeclStatement* sym_decl = &global_ptr[i];
+        llvm_value_append(&ctx.global_sym_buffer, llvm_gen_global_sym(&ctx, sym_decl));
     }
 
     IRFunctionDefinitionBuffer* fn_defs = &ir_tree->fn_definitions;

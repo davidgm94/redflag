@@ -7,7 +7,10 @@ typedef struct IRStructDecl IRStructDecl;
 typedef struct IRFunctionPrototype IRFunctionPrototype;
 typedef struct IREnumDecl IREnumDecl;
 typedef struct IRStatement IRStatement;
+typedef struct IRSymDeclStatement IRSymDeclStatement;
+typedef struct IRExpression IRExpression;
 GEN_BUFFER_STRUCT(IRStatement)
+GEN_BUFFER_STRUCT(IRSymDeclStatement)
 
 typedef enum IRTypePrimitive
 {
@@ -84,8 +87,6 @@ typedef enum IRLoadStoreCfg
     LOAD,
     STORE,
 } IRLoadStoreCfg;
-typedef struct IRSymDeclStatement IRSymDeclStatement;
-typedef struct IRExpression IRExpression;
 
 typedef struct IRParamDecl
 {
@@ -182,6 +183,7 @@ typedef enum IRStatementType
     IR_ST_TYPE_COMPOUND_ST,
     IR_ST_TYPE_RETURN_ST,
     IR_ST_TYPE_BRANCH_ST,
+    IR_ST_TYPE_SWITCH_ST,
     IR_ST_TYPE_SYM_DECL_ST,
     IR_ST_TYPE_ASSIGN_ST,
     IR_ST_TYPE_LOOP_ST,
@@ -213,6 +215,7 @@ typedef enum IRSymExprType
 {
     IR_SYM_EXPR_TYPE_SYM,
     IR_SYM_EXPR_TYPE_PARAM,
+    IR_SYM_EXPR_TYPE_GLOBAL_SYM,
     IR_SYM_EXPR_TYPE_ENUM,
     IR_SYM_EXPR_TYPE_ENUM_FIELD,
     IR_SYM_EXPR_TYPE_STRUCT,
@@ -224,6 +227,7 @@ typedef struct IRSymExpr
     union
     {
         IRSymDeclStatement* sym_decl;
+        IRSymDeclStatement* global_sym_decl;
         IRParamDecl* param_decl;
         IREnumField* enum_field;
         IREnumDecl* enum_decl;
@@ -293,6 +297,20 @@ typedef struct IRBranchStatement
     IRStatement* else_block;
 } IRBranchStatement;
 
+typedef struct IRSwitchCase
+{
+    IRExpression case_expr;
+    IRCompoundStatement case_body;
+} IRSwitchCase;
+
+GEN_BUFFER_STRUCT(IRSwitchCase)
+
+typedef struct IRSwitchStatement
+{
+    IRExpression switch_expr;
+    IRSwitchCaseBuffer cases;
+} IRSwitchStatement;
+
 typedef struct IRSymDeclStatement
 {
     IRType type;
@@ -321,13 +339,13 @@ typedef struct IRStatement
         IRCompoundStatement compound_st;
         IRReturnStatement return_st;
         IRBranchStatement branch_st;
+        IRSwitchStatement switch_st;
         IRSymDeclStatement sym_decl_st;
         IRSymAssignStatement sym_assign_st;
         IRLoopStatement loop_st;
     };
 } IRStatement;
 
-GEN_BUFFER_STRUCT(IRSymDeclStatement)
 typedef struct IRFunctionDefinition
 {
     IRFunctionPrototype proto;
@@ -344,6 +362,7 @@ typedef struct IRModule
     IRStructDeclBuffer struct_decls;
     IREnumDeclBuffer enum_decls;
     IRUnionDeclBuffer union_decls;
+    IRSymDeclStatementBuffer global_sym_decls;
     
     IRFunctionDefinitionBuffer fn_definitions;
 } IRModule;
