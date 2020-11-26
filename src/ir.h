@@ -81,7 +81,6 @@ typedef struct IRType
     };
 } IRType;
 
-
 typedef enum IRLoadStoreCfg
 {
     LOAD,
@@ -203,6 +202,7 @@ typedef enum IRExpressionType
 typedef struct IRIntLiteral
 {
     BigInt bigint;
+    IRTypePrimitive type;
 } IRIntLiteral;
 
 typedef struct IRArrayLiteral

@@ -489,7 +489,8 @@ static inline LLVMValueRef llvm_gen_expression(RedLLVMContext* llvm, IRExpressio
             redassert(int_lit->bigint.digit_count == 1);
             u64 n = int_lit->bigint.digit;
             // TODO: fix type
-            return LLVMConstInt(LLVMInt32TypeInContext(llvm->context), n, int_lit->bigint.is_negative);
+            redassert(int_lit->type < IR_TYPE_PRIMITIVE_COUNT);
+            return LLVMConstInt(llvm_primitive_types[int_lit->type], n, int_lit->bigint.is_negative);
         }
         case IR_EXPRESSION_TYPE_ARRAY_LIT:
         {
@@ -569,6 +570,12 @@ static inline LLVMValueRef llvm_gen_statement(RedLLVMContext* llvm, IRStatement*
             {
                 LLVMValueRef ret_value = llvm_gen_expression(llvm, expr);
                 redassert(ret_value);
+                LLVMTypeRef expr_type = LLVMTypeOf(ret_value);
+                bool type_mismatch = expr_type != llvm->llvm_current_fn.ret_type;
+                if (type_mismatch)
+                {
+                    ret_value = LLVMBuildBitCast(llvm->builder, ret_value, llvm->llvm_current_fn.ret_type, "cast");
+                }
                 ret = LLVMBuildRet(llvm->builder, ret_value);
             }
             else
@@ -901,10 +908,10 @@ static inline void llvm_gen_fn_definition(RedLLVMContext* llvm)
             LLVMBuildRetVoid(llvm->builder);
         }
     }
-    else if (st_count == 0)
+    else if (st_count == 0 && llvm->current_fn->proto.ret_type.kind == TYPE_KIND_VOID)
     {
-        LLVMValueRef ret_value = LLVMConstInt(LLVMInt32TypeInContext(llvm->context), 0, false);
-        LLVMBuildRet(llvm->builder, ret_value);
+        LLVMAppendBasicBlockInContext(llvm->context, llvm->llvm_current_fn.fn_handle, "entry");
+        LLVMBuildRetVoid(llvm->builder);
     }
     else
     {

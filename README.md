@@ -12,7 +12,7 @@
 * [x] for
 * [x] switch
 * [x] Global variables
-* [ ] Rest of primitive types
+* [x] Implemented signed and unsigned types
 * [ ] Libraries
 * [ ] Modules
 * [ ] Operator precedence / parenthesis expressions

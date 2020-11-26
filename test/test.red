@@ -378,3 +378,33 @@ test_global_var_assign_and_ret = () s32
     global_var = 6;
     return global_var;
 }
+
+test_u8 = (u_8 u8) u8
+{
+    return u_8 - 1;
+}
+
+test_u32 = (u u32) u32
+{
+    return u * 3;
+}
+
+test_s64 = (s_64 s64) s64
+{
+    return s_64 + 1;
+}
+
+test_u64 = (u_64 u64) u64
+{
+    return u_64 + 1;
+}
+
+test_u16 = (u_16 u16) u16
+{
+    return u_16 + 5;
+}
+
+test_s16 = (s_16 s16) s16
+{
+    return s_16 + 5;
+}
