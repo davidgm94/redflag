@@ -27,6 +27,8 @@ typedef struct ParseContext
     //RedType* owner;
 } ParseContext;
 
+static SB raw_str_name = { 0 };
+
 static inline ASTNode* parse_expression(ParseContext* pc);
 static inline ASTNode* parse_primary_expr(ParseContext* pc);
 static inline ASTNode* parse_compound_st(ParseContext* pc);
@@ -219,6 +221,18 @@ static inline ASTNode* create_type_node_pointer(ParseContext* pc)
     return node;
 }
 
+static inline ASTNode* create_type_node_raw_string_type(ParseContext* pc)
+{
+    Token* str_token = expect_token(pc, TOKEN_ID_KEYWORD_RAW_STRING);
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, str_token, AST_TYPE_TYPE_EXPR);
+    // TODO: buggy
+    node->type_expr.kind = TYPE_KIND_RAW_STRING;
+    node->type_expr.name = token_buffer(str_token);
+
+    return node;
+}
+
 static inline ASTNode* create_type_node(ParseContext* pc)
 {
     Token* token = get_token(pc);
@@ -238,6 +252,8 @@ static inline ASTNode* create_type_node(ParseContext* pc)
             return create_type_node_array(pc);
         case TOKEN_ID_AMPERSAND:
             return create_type_node_pointer(pc);
+        case TOKEN_ID_KEYWORD_RAW_STRING:
+            return create_type_node_raw_string_type(pc);
         default:
             RED_NOT_IMPLEMENTED;
             return null;
@@ -346,6 +362,19 @@ static inline ASTNode* parse_int_literal(ParseContext* pc)
     fill_base_node(node, token, AST_TYPE_INT_LIT);
     node->int_lit.bigint = token_bigint(token);
 
+    return node;
+}
+static inline ASTNode* parse_string_literal(ParseContext* pc)
+{
+    Token* str_lit_token = expect_token(pc, TOKEN_ID_STRING_LIT);
+    if (!str_lit_token)
+    {
+        return null;
+    }
+
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, str_lit_token, AST_TYPE_STRING_LIT);
+    node->string_lit.str_lit = token_buffer(str_lit_token);
     return node;
 }
 
@@ -699,6 +728,8 @@ static inline ASTNode* parse_primary_expr(ParseContext* pc)
             return parse_return_statement(pc);
         case TOKEN_ID_INT_LIT:
             return parse_int_literal(pc);
+        case TOKEN_ID_STRING_LIT:
+            return parse_string_literal(pc);
         case TOKEN_ID_SYMBOL:
             // TODO: fix
             if (get_token_i(pc, 1)->id == TOKEN_ID_LEFT_PARENTHESIS)
@@ -1128,6 +1159,8 @@ RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb)
     ParseContext pc = ZERO_INIT;
     pc.src_buffer = src_buffer;
     pc.token_buffer = tb;
+
+    sb_strcpy(&raw_str_name, "u8");
 
     RedAST module_ast = ZERO_INIT;
 

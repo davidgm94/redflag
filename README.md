@@ -13,6 +13,7 @@
 * [x] switch
 * [x] Global variables
 * [x] Implemented signed and unsigned types
+* [x] Strings
 * [ ] Libraries
 * [ ] Modules
 * [ ] Operator precedence / parenthesis expressions

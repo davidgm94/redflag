@@ -139,6 +139,7 @@ static const struct RedKeyword red_keywords[] =
     { "if", TOKEN_ID_KEYWORD_IF, },
     { "null", TOKEN_ID_KEYWORD_NULL, },
     { "or", TOKEN_ID_KEYWORD_OR, },
+    { "rawstring", TOKEN_ID_KEYWORD_RAW_STRING, },
     { "return", TOKEN_ID_KEYWORD_RETURN, },
     { "struct", TOKEN_ID_KEYWORD_STRUCT, },
     { "switch", TOKEN_ID_KEYWORD_SWITCH, },

@@ -17,6 +17,7 @@ typedef enum AST_ID
     AST_TYPE_BRANCH_EXPR,
     AST_TYPE_LOOP_EXPR,
     AST_TYPE_INT_LIT,
+    AST_TYPE_STRING_LIT,
     AST_TYPE_ARRAY_LIT,
     AST_TYPE_FIELD_DECL,
     AST_TYPE_ENUM_FIELD,
@@ -42,6 +43,11 @@ typedef struct ASTSymbol
         ASTSymbolSubscriptType subscript_type;
     };
 } ASTSymbol;
+
+typedef struct ASTStringLit
+{
+    SB* str_lit;
+} ASTStringLit;
 
 typedef struct ASTArrayType
 {
@@ -210,6 +216,7 @@ typedef struct ASTNode
         ASTEnumDecl enum_decl;
         ASTSymDecl sym_decl;
         ASTIntLit int_lit;
+        ASTStringLit string_lit;
         ASTArrayLit array_lit;
         ASTBinExpr bin_expr;
         ASTRetExpr return_expr;

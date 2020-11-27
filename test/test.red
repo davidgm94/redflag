@@ -408,3 +408,9 @@ test_s16 = (s_16 s16) s16
 {
     return s_16 + 5;
 }
+
+test_first_string = () rawstring
+{
+    const s rawstring = "Hello world\n";
+    return s;
+}

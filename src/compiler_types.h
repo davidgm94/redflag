@@ -177,6 +177,7 @@ typedef enum TokenID
     TOKEN_ID_KEYWORD_OR,
     TOKEN_ID_KEYWORD_PACKED,
     TOKEN_ID_KEYWORD_PUB,
+    TOKEN_ID_KEYWORD_RAW_STRING,
     TOKEN_ID_KEYWORD_RETURN,
     TOKEN_ID_KEYWORD_SECTION,
     TOKEN_ID_KEYWORD_STRUCT,
@@ -441,7 +442,7 @@ static inline struct StringBuffer* token_buffer(Token* token)
     {
         return NULL;
     }
-    redassert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL);
+    redassert(token->id == TOKEN_ID_STRING_LIT || token->id == TOKEN_ID_MULTILINE_STRING_LIT || token->id == TOKEN_ID_SYMBOL || token->id == TOKEN_ID_KEYWORD_RAW_STRING);
     return &token->str_lit.str;
 }
 
@@ -494,6 +495,7 @@ typedef enum TypeKind
     TYPE_KIND_ENUM,
     TYPE_KIND_ARRAY,
     TYPE_KIND_POINTER,
+    TYPE_KIND_RAW_STRING,
     TYPE_KIND_FUNCTION,
 } TypeKind;
 

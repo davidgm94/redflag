@@ -171,6 +171,7 @@ typedef struct IRFunctionPrototype
     IRFunctionConfig fn_cfg;
     u8 param_count;
 } IRFunctionPrototype;
+GEN_BUFFER_STRUCT(IRFunctionPrototype)
 
 typedef struct IRCompoundStatement
 {
@@ -193,6 +194,7 @@ typedef enum IRExpressionType
     IR_EXPRESSION_TYPE_VOID = 0,
     IR_EXPRESSION_TYPE_INT_LIT,
     IR_EXPRESSION_TYPE_ARRAY_LIT,
+    IR_EXPRESSION_TYPE_STRING_LIT,
     IR_EXPRESSION_TYPE_SYM_EXPR,
     IR_EXPRESSION_TYPE_BIN_EXPR,
     IR_EXPRESSION_TYPE_FN_CALL_EXPR,
@@ -210,6 +212,11 @@ typedef struct IRArrayLiteral
     IRExpression* expressions;
     u64 expression_count;
 } IRArrayLiteral;
+
+typedef struct IRStringLiteral
+{
+    SB* str_lit;
+} IRStringLiteral;
 
 typedef enum IRSymExprType
 {
@@ -277,6 +284,7 @@ typedef struct IRExpression
     {
         IRIntLiteral int_literal;
         IRArrayLiteral array_literal;
+        IRStringLiteral string_literal;
         IRSymExpr sym_expr;
         IRBinaryExpr bin_expr;
         IRFunctionCallExpr fn_call_expr;
@@ -348,7 +356,7 @@ typedef struct IRStatement
 
 typedef struct IRFunctionDefinition
 {
-    IRFunctionPrototype proto;
+    IRFunctionPrototype* proto;
     IRCompoundStatement body;
     IRSymDeclStatementBuffer sym_declarations;
 } IRFunctionDefinition;
@@ -363,7 +371,8 @@ typedef struct IRModule
     IREnumDeclBuffer enum_decls;
     IRUnionDeclBuffer union_decls;
     IRSymDeclStatementBuffer global_sym_decls;
-    
+   
+    IRFunctionPrototypeBuffer fn_prototypes;
     IRFunctionDefinitionBuffer fn_definitions;
 } IRModule;
 
