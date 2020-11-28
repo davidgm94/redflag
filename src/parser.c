@@ -927,6 +927,30 @@ static inline ASTNode* parse_fn_proto(ParseContext* pc)
     return node;
 }
 
+static inline ASTNode* parse_fn_decl(ParseContext* pc)
+{
+    Token* extern_token = consume_token_if(pc, TOKEN_ID_KEYWORD_EXTERN);
+    if (!extern_token)
+    {
+        return null;
+    }
+
+    ASTNode* proto = parse_fn_proto(pc);
+    if (!proto)
+    {
+        print("Error parsing function prototype for function (token %zu)\n", pc->current_token);
+        return null;
+    }
+
+    expect_token(pc, TOKEN_ID_SEMICOLON);
+    ASTNode* node = NEW(ASTNode, 1);
+    copy_base_node(node, proto, AST_TYPE_FN_DEF);
+    node->fn_def.proto = proto;
+    node->fn_def.body = NULL;
+
+    return node;
+}
+
 static inline ASTNode* parse_fn_definition(ParseContext* pc)
 {
     ASTNode* proto = parse_fn_proto(pc);
@@ -1143,6 +1167,11 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     if ((node = parse_sym_decl(pc)))
     {
         node_append(&module_ast->global_sym_decls, node);
+    }
+
+    if ((node = parse_fn_decl(pc)))
+    {
+        node_append(&module_ast->fn_definitions, node);
     }
 
     if ((node = parse_fn_definition(pc)))

@@ -26,14 +26,8 @@ static const u32 max_param_count = 256;
 
 typedef struct LocalStringLLVM
 {
-    // TODO: add more kinds?
-    union
-    {
-        IRSymDeclStatement* decl_ptr;
-    };
-    LLVMTypeRef type;
-    LLVMValueRef alloca;
-    LLVMValueRef global;
+    IRSymDeclStatement* decl_ptr;
+    LLVMValueRef value;
 } LocalStringLLVM;
 
 typedef struct FnProtoLLVM
@@ -250,6 +244,24 @@ static inline void llvm_verify_module(LLVMModuleRef module)
         prints("\nVerified module\n");
 #endif
     }
+}
+
+// add extra checks
+static_assert(sizeof(IRFunctionCallExpr) == sizeof(IRFunctionCallStatement), "Types must be the same");
+// This works both for fn call expression and fn call statement
+static inline LLVMValueRef llvm_gen_fn_call(ContextLLVM context, ModuleLLVM* module, IRFunctionCallExpr* fn_call)
+{
+    LLVMValueRef fn = LLVMGetNamedFunction(module->handle, sb_ptr(fn_call->fn->name));
+    LLVMValueRef arg_values[256];
+    LLVMValueRef* arg_ptr = fn_call->arg_count > 0 ? arg_values : NULL;
+    for (u32 i = 0; i < fn_call->arg_count; i++)
+    {
+        redassert(i < 256);
+        IRExpression* arg_expr = &fn_call->args[i];
+        arg_values[i] = llvm_gen_expression(context, module, arg_expr, NULL);
+    }
+    LLVMValueRef fn_call_value = LLVMBuildCall(context.builder, fn, arg_ptr, fn_call->arg_count, sb_ptr(fn_call->fn->name));
+    return fn_call_value;
 }
 
 static inline LLVMValueRef llvm_gen_expression(ContextLLVM context, ModuleLLVM* module, IRExpression* expression, IRType* expected_type)
@@ -472,16 +484,7 @@ static inline LLVMValueRef llvm_gen_expression(ContextLLVM context, ModuleLLVM* 
                         {
                             LocalStringLLVM* local_string = find_local_string(&module->current_fn->local_string_buffer, sym);
                             redassert(local_string);
-#if 0
-                            LLVMValueRef str_cast = LLVMBuildBitCast(context.builder, local_string->alloca, local_string->type, "str_cast");
-                            //LLVMValueRef ptr_to_global = LLVMBuildInBoundsGEP2(context.builder, local_string->type, local_string->global, NULL, 0, "get_ptr");
-                            LLVMValueRef ptr_to_global = LLVMBuildInBoundsGEP(context.builder, local_string->global, 0, 0, "ptr_to_global");
-                            LLVMBuildMemCpy(context.builder, str_cast, 1, ptr_to_global, 1, LLVMConstInt(llvm_primitive_types[IR_TYPE_PRIMITIVE_U32], strlen(sym->value.string_literal.str_lit->ptr) + 1, false));
-                            LLVMValueRef result = LLVMBuildInBoundsGEP2(context.builder, local_string->type, local_string->alloca, 0, 0, "boo");
-                            return result;
-#else
-                            return local_string->alloca;
-#endif
+                            return local_string->value;
                         }
                         else
                         {
@@ -547,20 +550,17 @@ static inline LLVMValueRef llvm_gen_expression(ContextLLVM context, ModuleLLVM* 
             LLVMValueRef llvm_array_lit = LLVMConstArray(lit_type, lit_arr, lit_count);
             return llvm_array_lit;
         }
+        case IR_EXPRESSION_TYPE_STRING_LIT:
+        {
+            IRStringLiteral* string_lit = &expression->string_literal;
+            LLVMValueRef string_lit_llvm = LLVMBuildGlobalStringPtr(context.builder, sb_ptr(string_lit->str_lit), "string_lit");
+            return string_lit_llvm;
+        }
         case IR_EXPRESSION_TYPE_FN_CALL_EXPR:
         {
             IRFunctionCallExpr* fn_call = &expression->fn_call_expr;
-            LLVMValueRef fn = LLVMGetNamedFunction(module->handle, sb_ptr(&fn_call->name));
-            LLVMValueRef arg_values[256];
-            LLVMValueRef* arg_ptr = fn_call->arg_count > 0 ? arg_values : NULL;
-            for (u32 i = 0; i < fn_call->arg_count; i++)
-            {
-                redassert(i < 256);
-                IRExpression* arg_expr = &fn_call->args[i];
-                arg_values[i] = llvm_gen_expression(context, module, arg_expr, NULL);
-            }
-            LLVMValueRef fn_call_value = LLVMBuildCall(context.builder, fn, arg_ptr, fn_call->arg_count, sb_ptr(&fn_call->name));
-            return fn_call_value;
+            LLVMValueRef fn_call_llvm = llvm_gen_fn_call(context, module, fn_call);
+            return fn_call_llvm;
         }
         case IR_EXPRESSION_TYPE_VOID:
             return null;
@@ -780,20 +780,9 @@ static inline LLVMValueRef llvm_gen_statement(ContextLLVM context, ModuleLLVM* m
             IRSymDeclStatement* decl_st = &st->sym_decl_st;
             if (decl_st->type.kind == TYPE_KIND_RAW_STRING)
             {
-#if 0
-                const char* str_name = sb_ptr(decl_st->name);
-                const char* str_lit = sb_ptr(decl_st->value.string_literal.str_lit);
-                LLVMValueRef string = LLVMBuildGlobalString(context.builder, str_lit, str_name);
-                LLVMTypeRef string_type = LLVMArrayType(llvm_primitive_types[IR_TYPE_PRIMITIVE_U8], strlen(str_lit) + 1);
-                LLVMValueRef alloca = LLVMBuildAlloca(context.builder, string_type, "str_alloca");
-                local_str_append(&llvm->llvm_current_fn.local_string_buffer, (const LLVMLocalString) { .decl_ptr = decl_st, .alloca = alloca, .type = string_type, .global = string});
-
-                return string;
-#else
                 LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(context.builder, sb_ptr(decl_st->value.string_literal.str_lit), sb_ptr(decl_st->name));
-                local_str_append(&module->current_fn->local_string_buffer, (const LocalStringLLVM) { .decl_ptr = decl_st, .alloca = str_ptr });
+                local_str_append(&module->current_fn->local_string_buffer, (const LocalStringLLVM) { .decl_ptr = decl_st, .value = str_ptr });
                 return str_ptr;
-#endif
             }
             else
             {
@@ -881,6 +870,12 @@ static inline LLVMValueRef llvm_gen_statement(ContextLLVM context, ModuleLLVM* m
 
             return null;
         }
+        case IR_ST_TYPE_FN_CALL_ST:
+        {
+            IRFunctionCallStatement* fn_call_st = &st->fn_call_st;
+            LLVMValueRef fn_call_llvm = llvm_gen_fn_call(context, module, fn_call_st);
+            return fn_call_llvm;
+        }
         case IR_ST_TYPE_COMPOUND_ST:
             llvm_gen_compound_statement(context, module, &st->compound_st);
             return null;
@@ -901,12 +896,8 @@ static inline TypeDeclarationLLVM llvm_gen_struct_type(ContextLLVM context, Modu
         llvm_type_append(&type_decl.child_types, llvm_gen_type(context, module, &field->type));
     }
     // TODO: Anonymous structs vs named structs
-#if 0
-    LLVMTypeRef type = LLVMStructTypeInContext(llvm->context, type_decl.child_types.ptr, type_decl.child_types.len, false);
-#else
     LLVMTypeRef type = LLVMStructCreateNamed(context.handle, sb_ptr(&struct_decl->name));
     LLVMStructSetBody(type, type_decl.child_types.ptr, type_decl.child_types.len, false);
-#endif
     type_decl.type = type;
     return type_decl;
 }

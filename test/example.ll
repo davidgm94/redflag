@@ -1,9 +1,9 @@
-define i32 @test_array_elem_assign() {
+@string_lit = private unnamed_addr constant [13 x i8] c"Hello world\0A\00", align 1
+
+declare i32 @puts(i8*)
+
+define void @test_libc_stdio() {
 entry:
-  %arr = alloca [2 x i32], align 4
-  %arridxaccess = getelementptr inbounds [2 x i32], [2 x i32]* %arr, i32 0, i32 0
-  store i32 5, i32* %arridxaccess, align 4
-  %arridxaccess1 = getelementptr inbounds [2 x i32], [2 x i32]* %arr, i32 0, i32 0
-  %arridxload = load i32, i32* %arridxaccess1, align 4
-  ret i32 %arridxload
+  %puts = call i32 @puts(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @string_lit, i32 0, i32 0))
+  ret void
 }

@@ -22,6 +22,7 @@ const char* primitive_types_str[] =
 };
 
 static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRLoadStoreCfg use_type, IRType* expected_type);
+static inline IRFunctionPrototype* ast_to_ir_find_fn_proto(IRModule* module, SB* fn_name);
 
 static const IRType primitive_types[] = {
     [IR_TYPE_PRIMITIVE_U8] =
@@ -698,6 +699,32 @@ IRType ast_to_ir_find_expression_type(IRExpression* expression)
     }
 }
 
+static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn)
+{
+    IRFunctionCallExpr fn_call_expr = ZERO_INIT;
+    IRFunctionPrototype* called_fn = ast_to_ir_find_fn_proto(module, &node->fn_call.name);
+    redassert(called_fn);
+    fn_call_expr.fn = called_fn;
+    // TODO: change, because we will be supporting arguments
+    fn_call_expr.arg_count = node->fn_call.arg_count;
+    if (node->fn_call.arg_count > 0)
+    {
+        fn_call_expr.args = NEW(IRExpression, node->fn_call.arg_count);
+        for (u32 i = 0; i < node->fn_call.arg_count; i++)
+        {
+            // TODO: LOAD is probably buggy
+            // TODO: this is buggy for sure
+            fn_call_expr.args[i] = ast_to_ir_expression(node->fn_call.args[i], module, parent_fn, LOAD, NULL);
+        }
+    }
+    else
+    {
+        fn_call_expr.args = NULL;
+    }
+
+    return fn_call_expr;
+}
+
 static inline IRReturnStatement ast_to_ir_return_st(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn)
 {
     redassert(node->node_id == AST_TYPE_RETURN_STATEMENT);
@@ -759,23 +786,7 @@ static inline IRReturnStatement ast_to_ir_return_st(ASTNode* node, IRModule* mod
         case AST_TYPE_FN_CALL:
         {
             ret_st.expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
-            ret_st.expression.fn_call_expr.name = expr_node->fn_call.name;
-            // TODO: change, because we will be supporting arguments
-            ret_st.expression.fn_call_expr.arg_count = expr_node->fn_call.arg_count;
-            if (expr_node->fn_call.arg_count > 0)
-            {
-                ret_st.expression.fn_call_expr.args = NEW(IRExpression, expr_node->fn_call.arg_count);
-                for (u32 i = 0; i < expr_node->fn_call.arg_count; i++)
-                {
-                    // TODO: LOAD is probably buggy
-                    // TODO: this is buggy for sure
-                    ret_st.expression.fn_call_expr.args[i] = ast_to_ir_expression(expr_node->fn_call.args[i], module, parent_fn, LOAD, &ret_type);
-                }
-            }
-            else
-            {
-                ret_st.expression.fn_call_expr.args = NULL;
-            }
+            ret_st.expression.fn_call_expr = ast_to_ir_fn_call_expr(expr_node, module, parent_fn);
             return ret_st;
         }
         default:
@@ -1033,6 +1044,12 @@ static inline IRCompoundStatement ast_to_ir_compound_st(ASTNode* node, IRFunctio
                     bool_type.kind = TYPE_KIND_PRIMITIVE;
                     st_it->loop_st.condition = ast_to_ir_expression(st_node->loop_expr.condition, module, parent_fn, LOAD, &bool_type);
                     st_it->loop_st.body = ast_to_ir_compound_st(st_node->loop_expr.body, parent_fn, module);
+                    break;
+                }
+                case AST_TYPE_FN_CALL:
+                {
+                    st_it->type = IR_ST_TYPE_FN_CALL_ST;
+                    st_it->fn_call_st = ast_to_ir_fn_call_expr(st_node, module, parent_fn);
                     break;
                 }
                 default:

@@ -414,3 +414,9 @@ test_first_string = () rawstring
     const s rawstring = "Hello world\n";
     return s;
 }
+
+extern puts = (str &u8) s32;
+test_libc_stdio = ()
+{
+    puts("Hello world\n");
+}

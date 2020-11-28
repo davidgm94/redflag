@@ -186,6 +186,7 @@ typedef enum IRStatementType
     IR_ST_TYPE_SWITCH_ST,
     IR_ST_TYPE_SYM_DECL_ST,
     IR_ST_TYPE_ASSIGN_ST,
+    IR_ST_TYPE_FN_CALL_ST,
     IR_ST_TYPE_LOOP_ST,
 } IRStatementType;
 
@@ -256,10 +257,10 @@ typedef struct IRBinaryExpr
 typedef struct IRFunctionCallExpr
 {
     // TODO: change for fn prototype pointer
-    SB name;
+    IRFunctionPrototype* fn;
     IRExpression* args;
     u8 arg_count;
-} IRFunctionCallExpr;
+} IRFunctionCallExpr, IRFunctionCallStatement;
 
 typedef struct IRSubscriptAccess
 {
@@ -350,6 +351,7 @@ typedef struct IRStatement
         IRSwitchStatement switch_st;
         IRSymDeclStatement sym_decl_st;
         IRSymAssignStatement sym_assign_st;
+        IRFunctionCallStatement fn_call_st;
         IRLoopStatement loop_st;
     };
 } IRStatement;

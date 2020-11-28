@@ -1,6 +1,5 @@
-extern int test_array_elem_assign(void);
-#include <stdio.h>
+extern void test_libc_stdio(void);
 int main()
 {
-    printf("%d\n", test_array_elem_assign());
+    test_libc_stdio();
 }
