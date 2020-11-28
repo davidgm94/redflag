@@ -8,7 +8,7 @@
 #define RED_SELF_BACKEND 0
 #define RED_LLVM_EXPERIMENTS 1
 
-#define RED_RUN_NOT_PASSING 0
+#define RED_RUN_NOT_PASSING 1
 
 #define RED_JIT 1
 

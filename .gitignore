@@ -11,3 +11,4 @@ main.exe
 *.exe
 
 dependencies/llvm-debug/
+dependencies/lld-debug/

@@ -1,4 +1,5 @@
 *.exe binary
+*.lib binary
 *.value text eol=lf
 *.h text eol=lf
 *.cpp text eof=lf

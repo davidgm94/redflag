@@ -14,9 +14,10 @@
 * [x] Global variables
 * [x] Implemented signed and unsigned types
 * [x] Strings
-* [ ] Libraries
+* [x] Libraries
 * [ ] Modules
 * [ ] Operator precedence / parenthesis expressions
+* [ ] Fusion parser and IR and create a true IR
 * [ ] Debug information
 * [ ] defer
 * [ ] pass language-custom arguments

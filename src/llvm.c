@@ -18,6 +18,11 @@
 #include <llvm-c/Transforms/Utils.h>
 #include <llvm-c/Comdat.h>
 
+#include "microsoft_craziness.h"
+#include "lld.h"
+
+#include <stdio.h>
+
 //typedef struct TypeDeclarationBufferLLVM TypeDeclarationBufferLLVM;
 typedef struct TypeDeclarationLLVM TypeDeclarationLLVM;
 
@@ -219,7 +224,7 @@ static inline void llvm_verify_function(LLVMValueRef fn, const char* type, bool 
     }
 }
 
-static inline void llvm_verify_module(LLVMModuleRef module)
+static inline bool llvm_verify_module(LLVMModuleRef module)
 {
 #if 1
 #if RED_LLVM_VERBOSE
@@ -229,13 +234,14 @@ static inline void llvm_verify_module(LLVMModuleRef module)
 #endif
     char* error = NULL;
 #if RED_LLVM_VERBOSE
-    if (LLVMVerifyModule(module, LLVMPrintMessageAction, &error))
+    LLVMBool errors = LLVMVerifyModule(module, LLVMPrintMessageAction, &error);
+    if (errors)
 #else
     if (LLVMVerifyModule(module, LLVMReturnStatusAction, &error))
 #endif
     {
 #if RED_LLVM_VERBOSE
-        os_exit_with_message("\nModule verified: %s\n\n", error);
+        os_exit_with_message("\nFailed to verify module: %s\n\n", error);
 #endif
     }
     else
@@ -244,6 +250,8 @@ static inline void llvm_verify_module(LLVMModuleRef module)
         prints("\nVerified module\n");
 #endif
     }
+
+    return !errors;
 }
 
 // add extra checks
@@ -1074,43 +1082,39 @@ static inline void llvm_register_primitive_types(LLVMContextRef context)
     llvm_primitive_types[IR_TYPE_PRIMITIVE_BOOL] = LLVMInt1TypeInContext(context);
 }
 
-void llvm_gen_machine_code(IRModule* module_ir)
+bool llvm_gen_llvm_ir(ContextLLVM* context, ModuleLLVM* module)
 {
-    TargetLLVM target = target_create();
-    ContextLLVM context = context_create();
-    ModuleLLVM module = module_create(target, context.handle, "red_module", "badpath->fixme");
-    module.ir.ptr = module_ir;
+    ExplicitTimer ir_dt = os_timer_start("IRGen");
+    llvm_register_primitive_types(context->handle);
 
-    llvm_register_primitive_types(context.handle);
-
-    IRStructDeclBuffer* struct_decls = &module_ir->struct_decls;
+    IRStructDeclBuffer* struct_decls = &module->ir.ptr->struct_decls;
     u64 struct_count = struct_decls->len;
     IRStructDecl* struct_decl_ptr = struct_decls->ptr;
     for (usize i = 0; i < struct_count; i++)
     {
         IRStructDecl* struct_decl = &struct_decl_ptr[i];
-        llvm_type_decl_append(&module.type_declarations, llvm_gen_struct_type(context, &module, struct_decl));
+        llvm_type_decl_append(&module->type_declarations, llvm_gen_struct_type(*context, module, struct_decl));
     }
 
-    IRSymDeclStatementBuffer* global_sym_decls = &module_ir->global_sym_decls;
+    IRSymDeclStatementBuffer* global_sym_decls = &module->ir.ptr->global_sym_decls;
     u64 global_sym_decl_count = global_sym_decls->len;
     IRSymDeclStatement* global_ptr = global_sym_decls->ptr;
     for (u64 i = 0; i < global_sym_decl_count; i++)
     {
         IRSymDeclStatement* sym_decl = &global_ptr[i];
-        llvm_value_append(&module.global_sym_buffer, llvm_gen_global_sym(context, &module, sym_decl, LLVMExternalLinkage));
+        llvm_value_append(&module->global_sym_buffer, llvm_gen_global_sym(*context, module, sym_decl, LLVMExternalLinkage));
     }
 
-    IRFunctionPrototypeBuffer* fn_proto_buffer = &module_ir->fn_prototypes;
+    IRFunctionPrototypeBuffer* fn_proto_buffer = &module->ir.ptr->fn_prototypes;
     u64 fn_proto_count = fn_proto_buffer->len;
     IRFunctionPrototype* fn_proto_ptr = fn_proto_buffer->ptr;
     for (u64 i = 0; i < fn_proto_count; i++)
     {
         IRFunctionPrototype* fn_proto = &fn_proto_ptr[i];
-        llvm_fn_proto_append(&module.fn_proto_buffer, llvm_gen_fn_proto(context, &module, fn_proto));
+        llvm_fn_proto_append(&module->fn_proto_buffer, llvm_gen_fn_proto(*context, module, fn_proto));
     }
 
-    IRFunctionDefinitionBuffer* fn_defs = &module_ir->fn_definitions;
+    IRFunctionDefinitionBuffer* fn_defs = &module->ir.ptr->fn_definitions;
     u32 fn_def_count = fn_defs->len;
     for (usize i = 0; i < fn_def_count; i++)
     {
@@ -1118,12 +1122,96 @@ void llvm_gen_machine_code(IRModule* module_ir)
         IRFunctionDefinition* fn_def_it = &fn_defs->ptr[i];
         IRFunctionPrototype* fn_proto_ref = fn_def_it->proto;
         u64 proto_index = fn_proto_ref - fn_proto_ptr;
-        module.ir.current_fn = fn_def_it;
-        module.current_fn = &current_fn;
-        module.current_fn->proto = &module.fn_proto_buffer.ptr[proto_index];
-        redassert(module.current_fn->proto);
-        llvm_gen_fn_definition(context, &module);
+        module->ir.current_fn = fn_def_it;
+        module->current_fn = &current_fn;
+        module->current_fn->proto = &module->fn_proto_buffer.ptr[proto_index];
+        redassert(module->current_fn->proto);
+        llvm_gen_fn_definition(*context, module);
     }
 
-    llvm_verify_module(module.handle);
+    bool result = llvm_verify_module(module->handle);
+    os_timer_end(&ir_dt);
+    return result;
+}
+
+void llvm_gen_machine_code(IRModule* module_ir)
+{
+
+    ExplicitTimer llvm_init_dt = os_timer_start("MCI");
+    TargetLLVM target = target_create();
+    ContextLLVM context = context_create();
+    ModuleLLVM module = module_create(target, context.handle, "red_module", "badpath->fixme");
+    module.ir.ptr = module_ir;
+    os_timer_end(&llvm_init_dt);
+
+    if (!llvm_gen_llvm_ir(&context, &module))
+    {
+        print("Could not generate LLVM IR\n");
+        return;
+    }
+    else
+    {
+        print("LLVM IR generated successfully\n");
+    }
+
+    ExplicitTimer obj_gen_dt = os_timer_start("ObjWr");
+    char* error_message = NULL;
+    LLVMBool obj_gen_errors = LLVMTargetMachineEmitToFile(target.machine, module.handle, "red_module.obj", LLVMObjectFile, &error_message);
+    if (obj_gen_errors)
+    {
+        print("\nError generating machine code: \n%s\n\n", error_message);
+    }
+    else
+    {
+        print("\nMachine code was generated successfully in %s\n\n", "red_module.obj");
+    }
+    os_timer_end(&obj_gen_dt);
+
+    ExplicitTimer vs_sdk_find_dt = os_timer_start("VSSDK");
+    Find_Result result = find_visual_studio_and_windows_sdk();
+    usize windows_sdk_root_len = wcslen(result.windows_sdk_root);
+    usize windows_sdk_um_library_path_len = wcslen(result.windows_sdk_um_library_path);
+    usize windows_sdk_ucrt_library_path_len = wcslen(result.windows_sdk_ucrt_library_path);
+    usize vs_exe_path_len = wcslen(result.vs_exe_path);
+    usize vs_library_path_len = wcslen(result.vs_library_path);
+
+    SB* windows_sdk_root = sb_alloc();
+    SB* windows_sdk_um_path = sb_alloc();
+    sb_append_str(windows_sdk_um_path, "-libpath:");
+    SB* windows_sdk_ucrt_path = sb_alloc();
+    sb_append_str(windows_sdk_ucrt_path, "-libpath:");
+    SB* vs_lib_path = sb_alloc();
+    sb_append_str(vs_lib_path, "-libpath:");
+
+    char buffer[512];
+    wcstombs(buffer, result.windows_sdk_um_library_path, windows_sdk_um_library_path_len);
+    sb_append_str(windows_sdk_um_path, buffer);
+    wcstombs(buffer, result.windows_sdk_ucrt_library_path, windows_sdk_ucrt_library_path_len);
+    sb_append_str(windows_sdk_ucrt_path, buffer);
+    wcstombs(buffer, result.vs_library_path, vs_library_path_len);
+    sb_append_str(vs_lib_path, buffer);
+
+    free_resources(&result);
+    // TODO: Buggy shit. Find out what's going on
+    if (windows_sdk_ucrt_path->ptr[sb_len(windows_sdk_ucrt_path) - 1] == 1)
+    {
+        windows_sdk_ucrt_path->ptr[sb_len(windows_sdk_ucrt_path) - 1] = 0;
+    }
+
+    const char* linker_args[] =
+    {
+        "-subsystem:console", "-out:red_module.exe", sb_ptr(windows_sdk_um_path), sb_ptr(windows_sdk_ucrt_path), sb_ptr(vs_lib_path), "red_module.obj", "libcmtd.lib", "libucrtd.lib"
+    };
+    os_timer_end(&vs_sdk_find_dt);
+
+    print("Linker command:\n");
+    for (s32 i = 0; i < array_length(linker_args); i++)
+    {
+        print("%s ", linker_args[i]);
+    }
+    print("\n\n");
+    ExplicitTimer linker_dt = os_timer_start("Link");
+    lld_linker_driver(linker_args, array_length(linker_args), LLD_BINARY_FORMAT_COFF);
+    os_timer_end(&linker_dt);
+
 }

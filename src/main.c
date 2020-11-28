@@ -40,7 +40,7 @@ s32 main(s32 argc, char* argv[])
 #if RED_RUN_NOT_PASSING
         "not_passing.red",
 #else
-        "test.red",
+        "test.red", "first_hello_world.red",
 #endif
     };
 #if RED_CWD_VERBOSE
