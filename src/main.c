@@ -9,6 +9,7 @@
 #else
 #include "src_file.h"
 #endif
+
 typedef struct FileManager
 {
     SB** buffers;
@@ -38,9 +39,9 @@ s32 main(s32 argc, char* argv[])
     char* src_files[] =
     {
 #if RED_RUN_NOT_PASSING
-        "not_passing.red",
+        "main.red",
 #else
-        "test.red", "first_hello_world.red",
+        /*"test.red",*/ "jit_hello_world.red",
 #endif
     };
 #if RED_CWD_VERBOSE

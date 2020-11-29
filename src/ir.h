@@ -170,6 +170,10 @@ typedef struct IRFunctionPrototype
     IRType ret_type;
     IRFunctionConfig fn_cfg;
     u8 param_count;
+    struct
+    {
+        usize line;
+    } debug;
 } IRFunctionPrototype;
 GEN_BUFFER_STRUCT(IRFunctionPrototype)
 

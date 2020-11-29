@@ -15,12 +15,13 @@
 * [x] Implemented signed and unsigned types
 * [x] Strings
 * [x] Libraries
-* [ ] Modules
-* [ ] Operator precedence / parenthesis expressions
-* [ ] Fusion parser and IR and create a true IR
 * [ ] Debug information
+* [ ] Operator precedence / parenthesis expressions
+* [ ] Implement directives (importing modules, libraries, etc.)
+* [ ] Modules
+* [ ] Fusion parser and IR and create a true IR
 * [ ] defer
-* [ ] pass language-custom arguments
+* [ ] create language native complex types
 * [ ] Unions
 
 ### URGENT PRIORITY

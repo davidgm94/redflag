@@ -2,6 +2,7 @@
 
 typedef enum AST_ID
 {
+    AST_TYPE_DIRECTIVE,
     AST_TYPE_FN_DEF,
     AST_TYPE_FN_PROTO,
     AST_TYPE_TYPE_EXPR,
@@ -27,6 +28,17 @@ typedef enum AST_ID
 } AST_ID;
 
 GEN_BUFFER_FUNCTIONS(node, nb, ASTNodeBuffer, struct ASTNode*)
+
+typedef enum ASTDirectiveType
+{
+    IMPORT,
+} ASTDirectiveType;
+
+typedef struct ASTDirective
+{
+    ASTDirectiveType type;
+    ASTNode* arg;
+} ASTDirective;
 
 typedef enum ASTSymbolSubscriptType
 {
@@ -206,6 +218,7 @@ typedef struct ASTNode
 
     union
     {
+        ASTDirective directive;
         ASTSymbol sym_expr;
         ASTType type_expr;
         ASTParamDecl param_decl;

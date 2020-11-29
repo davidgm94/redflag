@@ -18,5 +18,6 @@ const char* token_name(TokenID token_enum);
 bool valid_symbol_starter(char c);
 bool is_red_keyword_sb(SB* src_buffer);
 bool is_red_keyword_id(TokenID token_id);
+void token_buffer_append_buffer(TokenBuffer* dst, TokenBuffer* src);
 
 #endif //REDFLAG_LEXER_H

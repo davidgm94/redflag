@@ -1188,9 +1188,6 @@ LexingResult lex_file(SB* src_buffer)
         {
             l.position = 0;
         }
-        begin_token(&l, TOKEN_ID_END_OF_FILE);
-        end_token(&l);
-        redassert(!l.current_token);
     }
 
     return l.result;
@@ -1297,4 +1294,18 @@ const char* token_name(TokenID id)
             break;
     }
     return NULL;
+}
+
+void token_buffer_append_buffer(TokenBuffer* dst, TokenBuffer* src)
+{
+    if (src && src->len > 0)
+    {
+        u64 token_count = src->len;
+        Token* ptr = src->ptr;
+        for (u64 i = 0; i < token_count; i++)
+        {
+            Token token = ptr[i];
+            tokb_append(dst, token);
+        }
+    }
 }

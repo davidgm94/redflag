@@ -23,6 +23,7 @@ const char* primitive_types_str[] =
 
 static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRLoadStoreCfg use_type, IRType* expected_type);
 static inline IRFunctionPrototype* ast_to_ir_find_fn_proto(IRModule* module, SB* fn_name);
+static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn);
 
 static const IRType primitive_types[] = {
     [IR_TYPE_PRIMITIVE_U8] =
@@ -594,6 +595,10 @@ static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module,
                 expression.type = IR_EXPRESSION_TYPE_BIN_EXPR;
                 expression.bin_expr = ast_to_ir_binary_expr(&node->bin_expr, module, parent_fn, expected_type);
                 return expression;
+            case AST_TYPE_FN_CALL:
+                expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
+                expression.fn_call_expr = ast_to_ir_fn_call_expr(node, module, parent_fn);
+                return expression;
             default:
                 RED_NOT_IMPLEMENTED;
                 return (IRExpression)ZERO_INIT;
@@ -714,7 +719,7 @@ static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule*
         {
             // TODO: LOAD is probably buggy
             // TODO: this is buggy for sure
-            fn_call_expr.args[i] = ast_to_ir_expression(node->fn_call.args[i], module, parent_fn, LOAD, NULL);
+            fn_call_expr.args[i] = ast_to_ir_expression(node->fn_call.args[i], module, parent_fn, LOAD, &called_fn->params[i].type);
         }
     }
     else
@@ -1135,6 +1140,7 @@ static IRFunctionPrototype ast_to_ir_fn_proto(ASTNode* node, IRModule* module)
         .param_count = param_count,
         .params = params,
         .ret_type = ret_red_type,
+        .debug.line = node->node_line,
     };
 
     return ir_proto;

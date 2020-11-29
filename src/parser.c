@@ -82,6 +82,10 @@ static inline void invalid_token_error(ParseContext* pc, Token* token)
 
 static inline Token* get_token_i(ParseContext* pc, size_t i)
 {
+    if (pc->current_token + i >= pc->token_buffer->len)
+    {
+        return null;
+    }
     return &pc->token_buffer->ptr[pc->current_token + i];
 }
 
@@ -1148,10 +1152,60 @@ static inline ASTNode* parse_enum_decl(ParseContext* pc)
     return node;
 }
 
+static bool parse_directive(ParseContext* pc)
+{
+    Token* hash_token = consume_token_if(pc, TOKEN_ID_HASH);
+    if (!hash_token)
+    {
+        return false;
+    }
+
+    Token* directive_name = consume_token_if(pc, TOKEN_ID_SYMBOL);
+    if (!directive_name)
+    {
+        return false;
+    }
+
+    if (!(strcmp(token_buffer(directive_name)->ptr, "import") == 0))
+    {
+        return false;
+    }
+
+    Token* file_str = consume_token_if(pc, TOKEN_ID_STRING_LIT);
+    if (!file_str)
+    {
+        os_exit_with_message("Error parsing import filename");
+        return false;
+    }
+
+    char filename_buffer[256];
+    strcpy(filename_buffer, token_buffer(file_str)->ptr);
+    strcat(filename_buffer, ".red");
+
+    StringBuffer* file = os_file_load(filename_buffer);
+    if (!file)
+    {
+        os_exit_with_message("Can't find file %s\n", filename_buffer);
+        return false;
+    }
+
+    u64 token_count = pc->token_buffer->len;
+    LexingResult lex_result = lex_file(file);
+    token_buffer_append_buffer(pc->token_buffer, &lex_result.tokens);
+    u64 token_count_after_importing_file = pc->token_buffer->len;
+    redassert(token_count < token_count_after_importing_file);
+
+    return true;
+}
+
 bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
 {
-    ASTNode* node;
+    if (parse_directive(pc))
+    {
+        return true;
+    }
 
+    ASTNode* node;
     if ((node = parse_struct_decl(pc)))
     {
         node_append(&module_ast->struct_decls, node);
@@ -1193,7 +1247,7 @@ RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb)
 
     RedAST module_ast = ZERO_INIT;
 
-    while ((get_token(&pc))->id != TOKEN_ID_END_OF_FILE)
+    while (get_token(&pc))
     {
         bool result = parse_top_level_declaration(&pc, &module_ast);
         if (!result)
