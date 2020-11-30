@@ -1,9 +1,7 @@
-#import "imported_module"
-
-extern putchar = (c s8) s32;
+extern putchar = (c s32) s32;
 main = () s32
 {
-    const ch s8 = file_function(48);
-    putchar(ch);
+    var size s32 = #size(u32);
+    putchar(size + 48);
     return 0;
 }

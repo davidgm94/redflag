@@ -1243,7 +1243,7 @@ const char* token_name(TokenID id)
         case TOKEN_ID_KEYWORD_ERROR:
         case TOKEN_ID_KEYWORD_ERROR_DEFER:
         case TOKEN_ID_KEYWORD_EXPORT:
-        case TOKEN_ID_KEYWORD_EXTERN:
+        case TOKEN_ID_KEYWORD_EXTERN: return "extern";
         case TOKEN_ID_KEYWORD_FALSE:
         case TOKEN_ID_KEYWORD_FN:
         case TOKEN_ID_KEYWORD_FOR:
@@ -1309,3 +1309,4 @@ void token_buffer_append_buffer(TokenBuffer* dst, TokenBuffer* src)
         }
     }
 }
+

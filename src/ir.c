@@ -1,5 +1,6 @@
 
 #include "compiler_types.h"
+#include "bigint.h"
 #include "lexer.h"
 #include "ir.h"
 #include "os.h"
@@ -103,24 +104,27 @@ static const IRType primitive_types[] = {
 static inline IRType ast_to_ir_resolve_type(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* ir_module);
 static inline bool red_type_is_invalid(IRType* type)
 {
-    return memcmp(type, &(const IRType)ZERO_INIT, sizeof(IRType)) == 0;
+    return type->kind == TYPE_KIND_INVALID;
 }
 
-static inline IRType resolve_basic_type(ASTNode* node)
+static_assert(array_length(primitive_types) == array_length(primitive_types_str), "Error in primitive type count");
+static inline IRType resolve_basic_type_str(SB* type_name)
 {
-    redassert(node->type_expr.kind == TYPE_KIND_PRIMITIVE);
-    char* type_name = sb_ptr(node->type_expr.name);
-
-    static_assert(array_length(primitive_types) == array_length(primitive_types_str), "Error in primitive type count");
     for (s32 i = 0; i < array_length(primitive_types); i++)
     {
-        if (strcmp(type_name, primitive_types_str[i]) == 0)
+        if (strcmp(type_name->ptr, primitive_types_str[i]) == 0)
         {
             return primitive_types[i];
         }
     }
 
     return (const IRType)ZERO_INIT;
+}
+
+static inline IRType resolve_basic_type(ASTNode* node)
+{
+    redassert(node->type_expr.kind == TYPE_KIND_PRIMITIVE);
+    return resolve_basic_type_str(node->type_expr.name);
 }
 
 static inline IRType resolve_array_type(ASTNode* node, IRFunctionDefinition* parent_fn, IRModule* ir_module)
@@ -142,54 +146,60 @@ static inline IRType resolve_array_type(ASTNode* node, IRFunctionDefinition* par
     return type;
 }
 
-static inline IRType resolve_struct_type(ASTNode* node, IRModule* ir_tree)
+static inline IRType resolve_struct_type_str(SB* type_str, IRModule* module)
 {
-    IRStructDeclBuffer* struct_decls = &ir_tree->struct_decls;
+    IRStructDeclBuffer* struct_decls = &module->struct_decls;
     u64 struct_decl_count = struct_decls->len;
     IRStructDecl* struct_decl_ptr = struct_decls->ptr;
 
-    if (struct_decl_count > 0)
+    for (u64 i = 0; i < struct_decl_count; i++)
     {
-        for (u64 i = 0; i < struct_decl_count; i++)
+        IRStructDecl* struct_decl = &struct_decl_ptr[i];
+        SB* name = &struct_decl->name;
+        if (sb_cmp(type_str, name))
         {
-            IRStructDecl* struct_decl = &struct_decl_ptr[i];
-            SB* name = &struct_decl->name;
-            if (sb_cmp(name, node->type_expr.name))
-            {
-                IRType type = ZERO_INIT;
-                type.struct_type = struct_decl;
-                type.kind = TYPE_KIND_STRUCT;
-                type.size = 0;
-                return type;
-            }
+            IRType type = ZERO_INIT;
+            type.struct_type = struct_decl;
+            type.kind = TYPE_KIND_STRUCT;
+            type.size = 0;
+            return type;
         }
     }
 
     return (const IRType)ZERO_INIT;
 }
 
-static inline IRType ast_to_ir_resolve_enum_type(ASTNode* node, IRModule* module)
+static inline IRType resolve_struct_type(ASTNode* node, IRModule* ir_tree)
+{
+    return resolve_struct_type_str(node->type_expr.name, ir_tree);
+}
+
+static inline IRType resolve_enum_type_str(SB* type_str, IRModule* module)
 {
     IREnumDeclBuffer* eb = &module->enum_decls;
     u64 enum_count = eb->len;
-    if (enum_count > 0)
+    IREnumDecl* enum_decl_ptr = eb->ptr;
+    for (u64 i = 0; i < enum_count; i++)
     {
-        IREnumDecl* enum_decl_ptr = eb->ptr;
-        for (u64 i = 0; i < enum_count; i++)
+        IREnumDecl* enum_decl = &enum_decl_ptr[i];
+        SB* name = enum_decl->name;
+        if (sb_cmp(type_str, name))
         {
-            IREnumDecl* enum_decl = &enum_decl_ptr[i];
-            SB* name = enum_decl->name;
-            if (sb_cmp(name, node->type_expr.name))
-            {
-                IRType type = ZERO_INIT;
-                type.enum_type = enum_decl;
-                type.kind = TYPE_KIND_ENUM;
-                type.size = 0;
-                return type;
-            }
+            IRType type = ZERO_INIT;
+            type.enum_type = enum_decl;
+            type.kind = TYPE_KIND_ENUM;
+            type.size = 0;
+            return type;
         }
     }
+
     return (const IRType) { 0 };
+
+}
+
+static inline IRType ast_to_ir_resolve_enum_type(ASTNode* node, IRModule* module)
+{
+    return resolve_enum_type_str(node->type_expr.name, module);
 }
 
 static inline IRType ast_to_ir_resolve_union_type(ASTNode* node, IRModule* module)
@@ -268,6 +278,27 @@ static inline IRType ast_to_ir_resolve_type(ASTNode* node, IRFunctionDefinition*
     }
 }
 
+static inline IRType ast_to_ir_resolve_type_str(SB* type_name, IRModule* module)
+{
+    IRType type = resolve_basic_type_str(type_name);
+    if (!red_type_is_invalid(&type))
+    {
+        return type;
+    }
+    type = resolve_struct_type_str(type_name, module);
+    if (!red_type_is_invalid(&type))
+    {
+        return type;
+    }
+    type = resolve_enum_type_str(type_name, module);
+    if (!red_type_is_invalid(&type))
+    {
+        return type;
+    }
+
+    return (const IRType)ZERO_INIT;
+}
+
 static inline SB* param_name(ASTNode* node)
 {
     redassert(node->node_id == AST_TYPE_PARAM_DECL);
@@ -327,6 +358,45 @@ static inline bool type_matches(IRType* red_type, ASTNode* node)
 }
 
 static inline IRBinaryExpr ast_to_ir_binary_expr(ASTBinExpr* bin_expr, IRModule* module, IRFunctionDefinition* parent_fn, IRType* expected_type);
+
+static inline IRIntLiteral ast_to_ir_size_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRType* expected_type)
+{
+    IRIntLiteral int_lit = ZERO_INIT;
+    redassert(node->node_id == AST_TYPE_SIZE_EXPR);
+    ASTNode* expr_node = node->size_expr.expr;
+    IRType type;
+    switch (expr_node->node_id)
+    {
+        case AST_TYPE_TYPE_EXPR:
+            type = ast_to_ir_resolve_type(expr_node, parent_fn, module);
+            break;
+        default:
+        {
+            IRExpression expr = ast_to_ir_expression(expr_node, module, parent_fn, LOAD, expected_type);
+            type = ast_to_ir_find_expression_type(&expr);
+            if (red_type_is_invalid(&type))
+            {
+                os_exit_with_message("Type for size expression is invalid\n");
+            }
+            break;
+        }
+    }
+
+    BigInt_init_unsigned(&int_lit.bigint, type.size);
+    if (expected_type)
+    {
+        redassert(expected_type->kind = TYPE_KIND_PRIMITIVE);
+        int_lit.type = expected_type->primitive_type;
+    }
+    else
+    {
+        int_lit.type = IR_TYPE_PRIMITIVE_U64;
+    }
+
+
+    return int_lit;
+}
+
 static inline IRIntLiteral ast_to_ir_int_lit_expr(ASTNode* node, IRType* expected_type)
 {
     IRIntLiteral lit;
@@ -569,6 +639,7 @@ static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module,
                 expression.string_literal = ast_to_ir_string_lit(node, module, parent_fn);
                 return expression;
             case AST_TYPE_SYM_EXPR:
+                
                 expression.type = IR_EXPRESSION_TYPE_SYM_EXPR;
                 expression.sym_expr = find_symbol(node->sym_expr.name, module, parent_fn, use_type);
                 
@@ -598,6 +669,10 @@ static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module,
             case AST_TYPE_FN_CALL:
                 expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
                 expression.fn_call_expr = ast_to_ir_fn_call_expr(node, module, parent_fn);
+                return expression;
+            case AST_TYPE_SIZE_EXPR:
+                expression.type = IR_EXPRESSION_TYPE_INT_LIT;
+                expression.int_literal = ast_to_ir_size_expr(node, module, parent_fn, expected_type);
                 return expression;
             default:
                 RED_NOT_IMPLEMENTED;
@@ -708,6 +783,10 @@ static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule*
 {
     IRFunctionCallExpr fn_call_expr = ZERO_INIT;
     IRFunctionPrototype* called_fn = ast_to_ir_find_fn_proto(module, &node->fn_call.name);
+    if (!called_fn)
+    {
+        os_exit_with_message("Can't find function %s\n", sb_ptr(&node->fn_call.name));
+    }
     redassert(called_fn);
     fn_call_expr.fn = called_fn;
     // TODO: change, because we will be supporting arguments

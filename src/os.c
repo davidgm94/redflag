@@ -299,6 +299,7 @@ void sb_vprintf(SB* sb, const char* format, va_list ap)
 
 StringBuffer* os_file_load(const char *name)
 {
+    print("CWD: %s\n", sb_ptr(os_get_cwd()));
     s32 rc;
     FILE *file = fopen(name, "rb");
     if (!file)

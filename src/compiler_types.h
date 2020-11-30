@@ -6,7 +6,6 @@
 #include "types.h"
 #include <string.h>
 
-
 typedef struct StringBuffer
 {
     char* ptr;
@@ -423,18 +422,30 @@ typedef struct RedAST
     ASTNodeBuffer enum_decls;
     ASTNodeBuffer global_sym_decls;
     ASTNodeBuffer fn_definitions;
+    const char* name;
 } RedAST;
 
 typedef struct UsizeBuffer UsizeBuffer;
+
 typedef struct LexingResult
 {
     TokenBuffer tokens;
     UsizeBuffer line_offsets;
 
+    const char* module;
+
     StringBuffer error;
     size_t error_line;
     size_t error_column;
 } LexingResult;
+
+GEN_BUFFER_STRUCT(LexingResult)
+typedef struct LexingContext
+{
+    LexingResultBuffer modules;
+
+    LexingResult main_module;
+} LexingContext;
 
 static inline struct StringBuffer* token_buffer(Token* token)
 {
@@ -498,5 +509,4 @@ typedef enum TypeKind
     TYPE_KIND_RAW_STRING,
     TYPE_KIND_FUNCTION,
 } TypeKind;
-
 

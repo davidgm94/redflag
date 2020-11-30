@@ -19,15 +19,16 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+GEN_BUFFER_STRUCT(RedAST)
+GEN_BUFFER_FUNCTIONS(ast, astb, RedASTBuffer, RedAST)
+
 typedef struct ParseContext
 {
     SB* src_buffer;
     TokenBuffer* token_buffer;
     size_t current_token;
-    //RedType* owner;
+    RedASTBuffer modules;
 } ParseContext;
-
-static SB raw_str_name = { 0 };
 
 static inline ASTNode* parse_expression(ParseContext* pc);
 static inline ASTNode* parse_primary_expr(ParseContext* pc);
@@ -384,11 +385,18 @@ static inline ASTNode* parse_string_literal(ParseContext* pc)
 
 static inline ASTNode* parse_symbol_expr(ParseContext* pc)
 {
-    Token* token = consume_token_if(pc, TOKEN_ID_SYMBOL);
-    if (!token)
+    Token* token = get_token(pc);
+    if (token->id != TOKEN_ID_SYMBOL)
     {
         return null;
     }
+
+    // TODO: this should also take into account new types
+    if (is_basic_type(token))
+    {
+        return create_type_node(pc);
+    }
+    consume_token(pc);
 
     ASTNode* node = create_symbol_node(token);
 
@@ -703,6 +711,35 @@ static inline ASTNode* parse_switch_statement(ParseContext* pc)
     return node;
 }
 
+static inline ASTNode* parse_size_directive(ParseContext* pc, Token* dir_token)
+{
+    ASTNode* expression = parse_expression(pc);
+    if (!expression)
+    {
+        return null;
+    }
+
+    ASTNode* node = NEW(ASTNode, 1);
+    fill_base_node(node, dir_token, AST_TYPE_SIZE_EXPR);
+    node->size_expr.expr = expression;
+    return node;
+}
+
+static inline ASTNode* parse_compiler_directive(ParseContext* pc)
+{
+    expect_token(pc, TOKEN_ID_HASH);
+
+    Token* dir_token = expect_token(pc, TOKEN_ID_SYMBOL);
+
+    if (strcmp(sb_ptr(token_buffer(dir_token)), "size") == 0)
+    {
+        return parse_size_directive(pc, dir_token);
+    }
+
+    RED_NOT_IMPLEMENTED;
+    return null;
+}
+
 static inline ASTNode* parse_primary_expr(ParseContext* pc)
 {
     Token* t = get_token(pc);
@@ -750,6 +787,8 @@ static inline ASTNode* parse_primary_expr(ParseContext* pc)
         case TOKEN_ID_KEYWORD_DEFAULT:
             consume_token(pc);
             return null;
+        case TOKEN_ID_HASH:
+            return parse_compiler_directive(pc);
         default:
             RED_NOT_IMPLEMENTED;
             return null;
@@ -1152,7 +1191,49 @@ static inline ASTNode* parse_enum_decl(ParseContext* pc)
     return node;
 }
 
-static bool parse_directive(ParseContext* pc)
+static inline bool parser_add_module(ParseContext* pc, SB* module_filename)
+{
+    bool is_system = !(strstr(sb_ptr(module_filename), ".red"));
+    char file_path[1024] = "";
+    if (is_system)
+    {
+        strcat(file_path, "../lib/");
+    }
+    strcat(file_path, module_filename->ptr);
+    if (is_system)
+    {
+        strcat(file_path, ".red");
+    }
+
+    u32 module_count = pc->modules.len;
+    RedAST* module_ptr = pc->modules.ptr;
+
+    for (u32 i = 0; i < module_count; i++)
+    {
+        RedAST* module = &module_ptr[i];
+        if (strcmp(sb_ptr(module_filename), module->name) == 0)
+        {
+            return true;
+        }
+    }
+
+    SB* module_file = os_file_load(file_path);
+    if (!module_file)
+    {
+        os_exit_with_message("Can't find module %s\n", file_path);
+        return false;
+    }
+
+    LexingResult module_lex_result = lex_file(module_file);
+    redassert(module_lex_result.error.len == 0);
+    RedAST module_ast = parse_translation_unit(module_file, &module_lex_result.tokens, sb_ptr(module_filename));
+    ast_append(&pc->modules, module_ast);
+
+    return true;
+}
+
+// This is also a directive, but as it is in the top of the file, we don't count it as such
+static inline bool parse_import(ParseContext* pc)
 {
     Token* hash_token = consume_token_if(pc, TOKEN_ID_HASH);
     if (!hash_token)
@@ -1178,34 +1259,13 @@ static bool parse_directive(ParseContext* pc)
         return false;
     }
 
-    char filename_buffer[256];
-    strcpy(filename_buffer, token_buffer(file_str)->ptr);
-    strcat(filename_buffer, ".red");
-
-    StringBuffer* file = os_file_load(filename_buffer);
-    if (!file)
-    {
-        os_exit_with_message("Can't find file %s\n", filename_buffer);
-        return false;
-    }
-
-    u64 token_count = pc->token_buffer->len;
-    LexingResult lex_result = lex_file(file);
-    token_buffer_append_buffer(pc->token_buffer, &lex_result.tokens);
-    u64 token_count_after_importing_file = pc->token_buffer->len;
-    redassert(token_count < token_count_after_importing_file);
-
-    return true;
+    return parser_add_module(pc, token_buffer(file_str));
 }
 
 bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
 {
-    if (parse_directive(pc))
-    {
-        return true;
-    }
-
     ASTNode* node;
+
     if ((node = parse_struct_decl(pc)))
     {
         node_append(&module_ast->struct_decls, node);
@@ -1221,11 +1281,13 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     if ((node = parse_sym_decl(pc)))
     {
         node_append(&module_ast->global_sym_decls, node);
+        return true;
     }
 
     if ((node = parse_fn_decl(pc)))
     {
         node_append(&module_ast->fn_definitions, node);
+        return true;
     }
 
     if ((node = parse_fn_definition(pc)))
@@ -1237,15 +1299,16 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     return false;
 }
 
-RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb)
+RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name)
 {
     ParseContext pc = ZERO_INIT;
     pc.src_buffer = src_buffer;
     pc.token_buffer = tb;
 
-    sb_strcpy(&raw_str_name, "u8");
-
     RedAST module_ast = ZERO_INIT;
+    module_ast.name = module_name;
+
+    while (parse_import(&pc));
 
     while (get_token(&pc))
     {

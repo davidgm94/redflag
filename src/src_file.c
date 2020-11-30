@@ -10,7 +10,7 @@
 #include "ir.h"
 #include "llvm.h"
 
-void add_source_file(SB* src_buffer, const char* path)
+void add_source_file(SB* src_buffer, const char* filename)
 {
 #if RED_SRC_FILE_VERBOSE
     print("Src file:\n\n***\n\n%s\n\n***\n\n", sb_ptr(src_buffer));
@@ -32,7 +32,7 @@ void add_source_file(SB* src_buffer, const char* path)
 #endif
 
     ExplicitTimer parser_dt = os_timer_start("Parse");
-    RedAST ast = parse_translation_unit(src_buffer, &lexing_result.tokens);
+    RedAST ast = parse_translation_unit(src_buffer, &lexing_result.tokens, filename);
     os_timer_end(&parser_dt);
 
     ExplicitTimer ir_dt = os_timer_start("IRGen");

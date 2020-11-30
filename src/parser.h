@@ -2,11 +2,11 @@
 
 typedef enum AST_ID
 {
-    AST_TYPE_DIRECTIVE,
     AST_TYPE_FN_DEF,
     AST_TYPE_FN_PROTO,
     AST_TYPE_TYPE_EXPR,
     AST_TYPE_PARAM_DECL,
+    AST_TYPE_SIZE_EXPR,
     AST_TYPE_COMPOUND_STATEMENT,
     AST_TYPE_RETURN_STATEMENT,
     AST_TYPE_SWITCH_STATEMENT,
@@ -29,16 +29,6 @@ typedef enum AST_ID
 
 GEN_BUFFER_FUNCTIONS(node, nb, ASTNodeBuffer, struct ASTNode*)
 
-typedef enum ASTDirectiveType
-{
-    IMPORT,
-} ASTDirectiveType;
-
-typedef struct ASTDirective
-{
-    ASTDirectiveType type;
-    ASTNode* arg;
-} ASTDirective;
 
 typedef enum ASTSymbolSubscriptType
 {
@@ -122,6 +112,11 @@ typedef struct ASTType
         ASTPointerType pointer_;
     };
 } ASTType;
+
+typedef struct ASTSizeExpr
+{
+    ASTNode* expr;
+} ASTSizeExpr;
 
 typedef struct ASTParamDecl
 {
@@ -218,7 +213,6 @@ typedef struct ASTNode
 
     union
     {
-        ASTDirective directive;
         ASTSymbol sym_expr;
         ASTType type_expr;
         ASTParamDecl param_decl;
@@ -228,6 +222,7 @@ typedef struct ASTNode
         ASTEnumField enum_field;
         ASTEnumDecl enum_decl;
         ASTSymDecl sym_decl;
+        ASTSizeExpr size_expr;
         ASTIntLit int_lit;
         ASTStringLit string_lit;
         ASTArrayLit array_lit;
@@ -244,4 +239,4 @@ typedef struct ASTNode
     };
 } ASTNode;
 
-RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb);
+RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name);
