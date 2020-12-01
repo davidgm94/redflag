@@ -14,11 +14,12 @@
 * [x] Global variables
 * [x] Implemented signed and unsigned types
 * [x] Strings
-* [x] Libraries
+* [x] Size directive
+* [-] Modules
+* [ ] Libraries
 * [ ] Debug information
 * [ ] Operator precedence / parenthesis expressions
 * [ ] Implement directives (importing modules, libraries, etc.)
-* [ ] Modules
 * [ ] Fusion parser and IR and create a true IR
 * [ ] defer
 * [ ] create language native complex types

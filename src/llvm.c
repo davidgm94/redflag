@@ -41,6 +41,31 @@ DLLEXPORT s32 printstring(char* string)
 typedef struct TypeDeclarationLLVM TypeDeclarationLLVM;
 
 static LLVMTypeRef llvm_primitive_types[IR_TYPE_PRIMITIVE_COUNT];
+
+#define DW_ATE_address 0x1
+#define DW_ATE_boolean 0x2
+#define DW_ATE_complex_float 0x3
+#define DW_ATE_float 0x4
+#define DW_ATE_signed 0x5
+#define DW_ATE_signed_char 0x6
+#define DW_ATE_unsigned 0x7
+#define DW_ATE_unsigned_char 0x8
+static const LLVMDWARFTypeEncoding dwarf_encodings[IR_TYPE_PRIMITIVE_COUNT] =
+{
+    DW_ATE_unsigned_char,
+    DW_ATE_unsigned,
+    DW_ATE_unsigned,
+    DW_ATE_unsigned,
+    DW_ATE_signed_char,
+    DW_ATE_signed,
+    DW_ATE_signed,
+    DW_ATE_signed,
+    DW_ATE_float,
+    DW_ATE_float,
+    DW_ATE_complex_float, //buggy
+    DW_ATE_boolean,
+};
+
 static const u32 max_param_count = 256;
 
 typedef struct LocalStringLLVM
@@ -51,6 +76,10 @@ typedef struct LocalStringLLVM
 
 typedef struct FnProtoLLVM
 {
+    struct
+    {
+        LLVMMetadataRef param_types[max_param_count];
+    } debug;
     LLVMTypeRef param_types[max_param_count];
     LLVMTypeRef return_type;
     LLVMTypeRef fn_type;
@@ -957,6 +986,19 @@ static inline FnProtoLLVM llvm_gen_fn_proto(ContextLLVM context, ModuleContext* 
     {
         IRType* red_type = &ir_proto->params[i].type;
         proto.param_types[i] = llvm_gen_type(context, module, red_type);
+        if (context.debug.builder)
+        {
+            switch (red_type->kind)
+            {
+                case TYPE_KIND_PRIMITIVE:
+                    proto.debug.param_types[i] = LLVMDIBuilderCreateBasicType(context.debug.builder, primitive_type_str(red_type->primitive_type), strlen(primitive_type_str(red_type->primitive_type)), red_type->size * 8, dwarf_encodings[red_type->primitive_type], 0);
+                    redassert(proto.debug.param_types[i]);
+                    break;
+                default:
+                    RED_NOT_IMPLEMENTED;
+                    break;
+            }
+        }
         redassert(proto.param_types[i]);
     }
 
@@ -968,17 +1010,6 @@ static inline FnProtoLLVM llvm_gen_fn_proto(ContextLLVM context, ModuleContext* 
     LLVMSetLinkage(proto.handle, LLVMExternalLinkage);
     LLVMSetVisibility(proto.handle, LLVMDefaultVisibility);
 
-    //if (context.debug.builder)
-    //{
-    //    LLVMDIFlags flags = LLVMDIFlagZero;
-    //    // TODO: we need an extern decl for only prototyped functions for LLVMDIFlagPrototyped ????????????????????????
-    //    flags |= LLVMDIFlagPublic;
-    //    flags |= LLVMDIFlagPrototyped;
-    //    LLVMDIBuilderCreateBasicType
-
-    //    LLVMDIBuilderCreateSubroutineType(context.debug.builder, context.debug.file, )
-    //    LLVMDIBuilderCreateFunction(context.debug.builder, context.debug.file, sb_ptr(ir_proto->name), sb_len(ir_proto->name), sb_ptr(ir_proto->name), sb_len(ir_proto->name), context.debug.file, ir_proto->debug.line, 
-    //}
 
     llvm_verify_function(proto.handle, "prototype", true);
 
@@ -991,9 +1022,10 @@ static inline void llvm_gen_fn_definition(ContextLLVM context, ModuleContext* mo
     context.builder = LLVMCreateBuilderInContext(context.handle);
     LLVMPositionBuilderAtEnd(context.builder, entry);
 
-    u8 param_count = module->current_fn->proto->param_count;
+    IRFunctionPrototype* ir_proto = module->ir.current_fn->proto;
+    u8 param_count = ir_proto->param_count;
     LLVMValueRef* params = null;
-    IRParamDecl* ir_params = module->ir.current_fn->proto->params;
+    IRParamDecl* ir_params = ir_proto->params;
 
     redassert(param_count < max_param_count);
     if (param_count)
@@ -1030,6 +1062,16 @@ static inline void llvm_gen_fn_definition(ContextLLVM context, ModuleContext* mo
         RED_UNREACHABLE;
     }
 
+    if (context.debug.builder)
+    {
+        LLVMDIFlags flags = LLVMDIFlagZero;
+        // TODO: we need an extern decl for only prototyped functions for LLVMDIFlagPrototyped ????????????????????????
+        flags |= LLVMDIFlagPublic;
+        flags |= LLVMDIFlagPrototyped;
+
+        LLVMMetadataRef function_type = LLVMDIBuilderCreateSubroutineType(context.debug.builder, context.debug.file, module->current_fn->proto-> debug.param_types, module->current_fn->proto->param_count, 0);
+        LLVMMetadataRef di_function = LLVMDIBuilderCreateFunction(context.debug.builder, context.debug.file, sb_ptr(ir_proto->name), sb_len(ir_proto->name), sb_ptr(ir_proto->name), sb_len(ir_proto->name), context.debug.file, ir_proto->debug.line, function_type, false, true, ir_proto->debug.line, flags, false);
+    }
 #if RED_LLVM_VERBOSE
     llvm_verify_function(module->current_fn->proto->handle, "definition", false);
 #endif
@@ -1091,15 +1133,15 @@ static inline void module_create(ContextLLVM* context, TargetLLVM target, const 
     LLVMSetSourceFileName(context->module, path, strlen(path));
     LLVMSetTarget(context->module, target.triple);
 
-    //if (generate_debug_info)
-    //{
-    //    const char* flags = "";
-    //    s32 runtime_version = 1;
-    //    context->debug.builder = LLVMCreateDIBuilder(context->module);
-    //    context->debug.file = LLVMDIBuilderCreateFile(context->debug.builder, module_name, strlen(module_name), path, strlen(path));
-    //    LLVMMetadataRef compile_unit = LLVMDIBuilderCreateCompileUnit(context->debug.builder, LLVMDWARFSourceLanguageC11, context->debug.file, "red", strlen("red"), is_optimized, flags, strlen(flags), runtime_version, "", 0, LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
+    if (generate_debug_info)
+    {
+        const char* flags = "";
+        s32 runtime_version = 1;
+        context->debug.builder = LLVMCreateDIBuilder(context->module);
+        context->debug.file = LLVMDIBuilderCreateFile(context->debug.builder, module_name, strlen(module_name), path, strlen(path));
+        LLVMMetadataRef compile_unit = LLVMDIBuilderCreateCompileUnit(context->debug.builder, LLVMDWARFSourceLanguageC11, context->debug.file, "red", strlen("red"), is_optimized, flags, strlen(flags), runtime_version, "", 0, LLVMDWARFEmissionFull, 0, 0, 0, "", 0, "", 0);
 
-    //}
+    }
 }
 
 static inline void llvm_register_primitive_types(LLVMContextRef context)
@@ -1122,6 +1164,7 @@ bool llvm_gen_llvm_ir(ContextLLVM* context, ModuleContext* module)
 {
     ExplicitTimer ir_dt = os_timer_start("IRGen");
     llvm_register_primitive_types(context->handle);
+    LLVMAddModuleFlag(context->module, LLVMModuleFlagBehaviorWarning, "CodeView", strlen("CodeView"), LLVMValueAsMetadata(LLVMConstInt(llvm_primitive_types[IR_TYPE_PRIMITIVE_U32], 1, false)));
 
     IRStructDeclBuffer* struct_decls = &module->ir.ptr->struct_decls;
     u64 struct_count = struct_decls->len;
@@ -1244,7 +1287,7 @@ void llvm_gen_machine_code(IRModule* module_ir)
 
     const char* linker_args[] =
     {
-        "-subsystem:console", "-out:red_module.exe", sb_ptr(windows_sdk_um_path), sb_ptr(windows_sdk_ucrt_path), sb_ptr(vs_lib_path), "red_module.obj", "libcmtd.lib", "libucrtd.lib"
+        "-subsystem:console", "/debug", "-out:red_module.exe", sb_ptr(windows_sdk_um_path), sb_ptr(windows_sdk_ucrt_path), sb_ptr(vs_lib_path), "red_module.obj", "libcmtd.lib", "libucrtd.lib"
     };
     os_timer_end(&vs_sdk_find_dt);
 

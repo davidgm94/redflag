@@ -36,18 +36,18 @@ static inline const char* primitive_type_str(IRTypePrimitive primitive_type_id)
 {
     switch (primitive_type_id)
     {
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_U8);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_U16);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_U32);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_U64);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_S8);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_S16);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_S32);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_S64);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_F32);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_F64);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_F128);
-        CASE_TO_STR(IR_TYPE_PRIMITIVE_POINTER);
+        case (IR_TYPE_PRIMITIVE_U8): return "u8";
+        case (IR_TYPE_PRIMITIVE_U16): return "u16";
+        case (IR_TYPE_PRIMITIVE_U32): return "u32";
+        case (IR_TYPE_PRIMITIVE_U64): return "u64";
+        case (IR_TYPE_PRIMITIVE_S8): return "s8";
+        case (IR_TYPE_PRIMITIVE_S16): return "s16";
+        case (IR_TYPE_PRIMITIVE_S32): return "s32";
+        case (IR_TYPE_PRIMITIVE_S64): return "s64";
+        case (IR_TYPE_PRIMITIVE_F32): return "f32";
+        case (IR_TYPE_PRIMITIVE_F64): return "f64";
+        case (IR_TYPE_PRIMITIVE_F128): return "f128";
+        case (IR_TYPE_PRIMITIVE_POINTER):
         default:
             RED_NOT_IMPLEMENTED;
             return null;
