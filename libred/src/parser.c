@@ -1215,7 +1215,7 @@ static inline bool parser_add_module(ParseContext* pc, SB* module_filename)
     char file_path[1024] = "";
     if (is_system)
     {
-        strcat(file_path, "../lib/");
+        strcat(file_path, "../std/");
     }
     strcat(file_path, module_filename->ptr);
     if (is_system)

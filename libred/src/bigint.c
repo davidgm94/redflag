@@ -137,8 +137,8 @@ void BigInt_init_unsigned(BigInt* dst, u64 x)
 static bool add_u64_overflow(const u64 op1, const u64 op2, u64 *result)
 {
 #if _MSC_VER
-    RED_NOT_IMPLEMENTED;
-    return false;
+    *result = op1 + op2;
+    return *result < op1 || *result < op2;
 #else
     return __builtin_uaddll_overflow((unsigned long long)op1, (unsigned long long)op2, (unsigned long long int *)(result));
 #endif
@@ -147,8 +147,8 @@ static bool add_u64_overflow(const u64 op1, const u64 op2, u64 *result)
 static u64 sub_u64_overflow(const u64 op1, const u64 op2, u64 *result)
 {
 #if _MSC_VER
-    RED_NOT_IMPLEMENTED;
-    return 0;
+    *result = op1 - op2;
+    return *result > op1;
 #else
     return __builtin_usubll_overflow((unsigned long long)op1, (unsigned long long)op2, (unsigned long long*)result);
 #endif
