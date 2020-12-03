@@ -19,15 +19,14 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-GEN_BUFFER_STRUCT(RedAST)
-GEN_BUFFER_FUNCTIONS(ast, astb, RedASTBuffer, RedAST)
+GEN_BUFFER_FUNCTIONS(ast, astb, ASTModuleBuffer, ASTModule)
 
 typedef struct ParseContext
 {
     SB* src_buffer;
     TokenBuffer* token_buffer;
     size_t current_token;
-    RedASTBuffer modules;
+    ASTModuleBuffer modules;
 } ParseContext;
 
 static inline ASTNode* parse_expression(ParseContext* pc);
@@ -383,6 +382,21 @@ static inline ASTNode* parse_string_literal(ParseContext* pc)
     return node;
 }
 
+bool is_module_namespace(ParseContext* pc, const char* name)
+{
+    u32 module_count = pc->modules.len;
+    ASTModule* module_ptr = pc->modules.ptr;
+    for (u32 i = 0; i < module_count; i++)
+    {
+        ASTModule* module = &module_ptr[i];
+        if (strcmp(module->name, name) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 static inline ASTNode* parse_symbol_expr(ParseContext* pc)
 {
     Token* token = get_token(pc);
@@ -409,9 +423,18 @@ static inline ASTNode* parse_symbol_expr(ParseContext* pc)
     }
     else if (consume_token_if(pc, TOKEN_ID_DOT))
     {
-        ASTNode* field_access = parse_primary_expr(pc);
-        node->sym_expr.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS;
-        node->sym_expr.subscript = field_access;
+        if (is_module_namespace(pc, sb_ptr(node->sym_expr.name)))
+        {
+            ASTNode* module_access = parse_expression(pc);
+            node->sym_expr.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_MODULE_NAMESPACE;
+            node->sym_expr.subscript = module_access;
+        }
+        else
+        {
+            ASTNode* field_access = parse_primary_expr(pc);
+            node->sym_expr.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS;
+            node->sym_expr.subscript = field_access;
+        }
     }
 
     return node;
@@ -588,6 +611,7 @@ static inline ASTNode* parse_fn_call_expr(ParseContext* pc)
     {
         param_arr[param_count] = parse_expression(pc);
         param_count++;
+        consume_token_if(pc, TOKEN_ID_COMMA);
     }
     expect_token(pc, TOKEN_ID_RIGHT_PARENTHESIS);
     ASTNode* node = NEW(ASTNode, 1);
@@ -823,12 +847,6 @@ static inline ASTNode* parse_right_expr(ParseContext* pc, ASTNode** left_expr)
         *left_expr = node;
     }
 }
-
-//static inline ASTNode* parse_sym_expr(ParseContext* pc)
-//{
-//    Token* t = consume_token_if(pc, TOKEN_ID_SYMBOL);
-//    if ()
-//}
 
 static inline ASTNode* parse_expression(ParseContext* pc)
 {
@@ -1206,11 +1224,11 @@ static inline bool parser_add_module(ParseContext* pc, SB* module_filename)
     }
 
     u32 module_count = pc->modules.len;
-    RedAST* module_ptr = pc->modules.ptr;
+    ASTModule* module_ptr = pc->modules.ptr;
 
     for (u32 i = 0; i < module_count; i++)
     {
-        RedAST* module = &module_ptr[i];
+        ASTModule* module = &module_ptr[i];
         if (strcmp(sb_ptr(module_filename), module->name) == 0)
         {
             return true;
@@ -1226,7 +1244,7 @@ static inline bool parser_add_module(ParseContext* pc, SB* module_filename)
 
     LexingResult module_lex_result = lex_file(module_file);
     redassert(module_lex_result.error.len == 0);
-    RedAST module_ast = parse_translation_unit(module_file, &module_lex_result.tokens, sb_ptr(module_filename));
+    ASTModule module_ast = parse_translation_unit(module_file, &module_lex_result.tokens, sb_ptr(module_filename));
     ast_append(&pc->modules, module_ast);
 
     return true;
@@ -1262,7 +1280,7 @@ static inline bool parse_import(ParseContext* pc)
     return parser_add_module(pc, token_buffer(file_str));
 }
 
-bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
+bool parse_top_level_declaration(ParseContext* pc, ASTModule* module_ast)
 {
     ASTNode* node;
 
@@ -1299,23 +1317,24 @@ bool parse_top_level_declaration(ParseContext* pc, RedAST* module_ast)
     return false;
 }
 
-RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name)
+ASTModule parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name)
 {
     ParseContext pc = ZERO_INIT;
     pc.src_buffer = src_buffer;
     pc.token_buffer = tb;
 
-    RedAST module_ast = ZERO_INIT;
+    ASTModule module_ast = ZERO_INIT;
     module_ast.name = module_name;
 
     while (parse_import(&pc));
+    module_ast.modules = pc.modules;
 
     while (get_token(&pc))
     {
         bool result = parse_top_level_declaration(&pc, &module_ast);
         if (!result)
         {
-            os_exit(1);
+            os_exit_with_message("Error parsing top level declaration");
         }
     }
 

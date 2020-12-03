@@ -9,8 +9,10 @@ typedef struct IREnumDecl IREnumDecl;
 typedef struct IRStatement IRStatement;
 typedef struct IRSymDeclStatement IRSymDeclStatement;
 typedef struct IRExpression IRExpression;
+typedef struct IRModule IRModule;
 GEN_BUFFER_STRUCT(IRStatement)
 GEN_BUFFER_STRUCT(IRSymDeclStatement)
+GEN_BUFFER_STRUCT(IRModule)
 
 typedef enum IRTypePrimitive
 {
@@ -164,6 +166,7 @@ typedef struct IRFunctionConfig
 
 typedef struct IRFunctionPrototype
 {
+    IRModule* module;
     IRParamDecl* params;
     SB* name;
     // TODO: remove
@@ -232,6 +235,7 @@ typedef enum IRSymExprType
     IR_SYM_EXPR_TYPE_ENUM_FIELD,
     IR_SYM_EXPR_TYPE_STRUCT,
     IR_SYM_EXPR_TYPE_STRUCT_FIELD,
+    IR_SYM_EXPR_TYPE_MODULE_REF,
 } IRSymExprType;
 
 typedef struct IRSymExpr
@@ -244,6 +248,7 @@ typedef struct IRSymExpr
         IREnumField* enum_field;
         IREnumDecl* enum_decl;
         IRStructDecl* struct_decl;
+        IRModule* module_ref;
     };
 
     IRExpression* subscript;
@@ -269,14 +274,18 @@ typedef struct IRFunctionCallExpr
 typedef struct IRSubscriptAccess
 {
     SB* name;
-    struct
+    union
     {
-        union
+        struct
         {
-            IRStructDecl* struct_p;
-            IREnumDecl* enum_p;
+            union
+            {
+                IRStructDecl* struct_p;
+                IREnumDecl* enum_p;
+            };
+            TypeKind type;
         };
-        TypeKind type;
+        IRModule* module;
     } parent;
     IRExpression* subscript;
     IRSymbolSubscriptType subscript_type;
@@ -373,6 +382,7 @@ GEN_BUFFER_STRUCT(IREnumDecl)
 
 typedef struct IRModule
 {
+    IRModuleBuffer modules;
     IRStructDeclBuffer struct_decls;
     IREnumDeclBuffer enum_decls;
     IRUnionDeclBuffer union_decls;
@@ -380,8 +390,11 @@ typedef struct IRModule
    
     IRFunctionPrototypeBuffer fn_prototypes;
     IRFunctionDefinitionBuffer fn_definitions;
+
+    const char* name;
+    const char* prefix;
 } IRModule;
 
-IRModule transform_ast_to_ir(RedAST* ast);
+IRModule transform_ast_to_ir(ASTModule* ast);
 
 IRType ast_to_ir_find_expression_type(IRExpression* expression);

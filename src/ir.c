@@ -13,6 +13,7 @@ GEN_BUFFER_FUNCTIONS(ir_enum_field, efb, IREnumFieldBuffer, IREnumField)
 GEN_BUFFER_FUNCTIONS(ir_enum, eb, IREnumDeclBuffer, IREnumDecl)
 GEN_BUFFER_FUNCTIONS(ir_case, cb, IRSwitchCaseBuffer, IRSwitchCase)
 GEN_BUFFER_FUNCTIONS(ir_fn_proto, fpb, IRFunctionPrototypeBuffer, IRFunctionPrototype)
+GEN_BUFFER_FUNCTIONS(ir_module, mb, IRModuleBuffer, IRModule)
 
 const char* primitive_types_str[] =
 {
@@ -24,7 +25,7 @@ const char* primitive_types_str[] =
 
 static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRLoadStoreCfg use_type, IRType* expected_type);
 static inline IRFunctionPrototype* ast_to_ir_find_fn_proto(IRModule* module, SB* fn_name);
-static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn);
+static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRFunctionPrototype* called_fn);
 
 static const IRType primitive_types[] = {
     [IR_TYPE_PRIMITIVE_U8] =
@@ -421,6 +422,21 @@ static inline IRIntLiteral ast_to_ir_int_lit_expr(ASTNode* node, IRType* expecte
 
 static inline IRSymExpr find_symbol(SB* symbol, IRModule* module, IRFunctionDefinition* fn_definition, IRLoadStoreCfg use_type)
 {
+    IRModule* module_ptr = module->modules.ptr;
+    u32 module_count = module->modules.len;
+    for (u32 i = 0; i < module_count; i++)
+    {
+        IRModule* module_ref = &module_ptr[i];
+        if (strcmp(module_ref->name, sb_ptr(symbol)) == 0)
+        {
+            IRSymExpr result = ZERO_INIT;
+            result.type = IR_SYM_EXPR_TYPE_MODULE_REF;
+            result.module_ref = module_ref;
+            result.use_type = LOAD;
+            return result;
+        }
+    }
+
     IRFunctionPrototype* proto = fn_definition->proto;
     u8 param_count = proto->param_count;
     for (usize i = 0; i < param_count; i++)
@@ -639,27 +655,56 @@ static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module,
                 expression.string_literal = ast_to_ir_string_lit(node, module, parent_fn);
                 return expression;
             case AST_TYPE_SYM_EXPR:
-                
                 expression.type = IR_EXPRESSION_TYPE_SYM_EXPR;
-                expression.sym_expr = find_symbol(node->sym_expr.name, module, parent_fn, use_type);
+                // TODO: we should switch on the kind of expression that we are facing here
+                IRSymExpr expr = find_symbol(node->sym_expr.name, module, parent_fn, use_type);
                 
                 if (node->sym_expr.subscript)
                 {
                     switch (node->sym_expr.subscript_type)
                     {
                         case AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS:
+                            expression.sym_expr = expr;
                             ast_to_ir_field_use(node, &expression, parent_fn, use_type);
-                            break;
+                            return expression;
                         case AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS:
+                            expression.sym_expr = expr;
                             expression.sym_expr.subscript = NEW(IRExpression, 1);
                             expression.sym_expr.subscript->subscript_access.subscript_type = AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS;
                             *expression.sym_expr.subscript = ast_to_ir_expression(node->sym_expr.subscript, module, parent_fn, use_type, expected_type);
+                            return expression;
+                        case AST_SYMBOL_SUBSCRIPT_TYPE_MODULE_NAMESPACE:
+                        {
+                            //expression.
+                            IRModule* module_ref = expr.module_ref;
+                            ASTNode* subscript_node = node->sym_expr.subscript;
+                            AST_ID id = subscript_node->node_id;
+                            switch (id)
+                            {
+                                case AST_TYPE_FN_CALL:
+                                {
+                                    IRFunctionPrototype* called_fn = ast_to_ir_find_fn_proto(module_ref, &subscript_node->fn_call.name);
+                                    if (!called_fn)
+                                    {
+                                        RED_UNREACHABLE;
+                                    }
+
+                                    expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
+                                    expression.fn_call_expr = ast_to_ir_fn_call_expr(subscript_node, module, parent_fn, called_fn);
+                                    return expression;
+                                }
+                                default:
+                                    RED_NOT_IMPLEMENTED;
+                                    break;
+                            }
                             break;
+                        }
                         default:
                             RED_NOT_IMPLEMENTED;
                             break;
                     }
                 }
+                expression.sym_expr = expr;
 
                 return expression;
             case AST_TYPE_BIN_EXPR:
@@ -668,7 +713,7 @@ static inline IRExpression ast_to_ir_expression(ASTNode* node, IRModule* module,
                 return expression;
             case AST_TYPE_FN_CALL:
                 expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
-                expression.fn_call_expr = ast_to_ir_fn_call_expr(node, module, parent_fn);
+                expression.fn_call_expr = ast_to_ir_fn_call_expr(node, module, parent_fn, NULL);
                 return expression;
             case AST_TYPE_SIZE_EXPR:
                 expression.type = IR_EXPRESSION_TYPE_INT_LIT;
@@ -779,13 +824,16 @@ IRType ast_to_ir_find_expression_type(IRExpression* expression)
     }
 }
 
-static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn)
+static inline IRFunctionCallExpr ast_to_ir_fn_call_expr(ASTNode* node, IRModule* module, IRFunctionDefinition* parent_fn, IRFunctionPrototype* called_fn) // null by default, only in module
 {
     IRFunctionCallExpr fn_call_expr = ZERO_INIT;
-    IRFunctionPrototype* called_fn = ast_to_ir_find_fn_proto(module, &node->fn_call.name);
     if (!called_fn)
     {
-        os_exit_with_message("Can't find function %s\n", sb_ptr(&node->fn_call.name));
+        called_fn = ast_to_ir_find_fn_proto(module, &node->fn_call.name);
+        if (!called_fn)
+        {
+            os_exit_with_message("Can't find function %s\n", sb_ptr(&node->fn_call.name));
+        }
     }
     redassert(called_fn);
     fn_call_expr.fn = called_fn;
@@ -870,7 +918,7 @@ static inline IRReturnStatement ast_to_ir_return_st(ASTNode* node, IRModule* mod
         case AST_TYPE_FN_CALL:
         {
             ret_st.expression.type = IR_EXPRESSION_TYPE_FN_CALL_EXPR;
-            ret_st.expression.fn_call_expr = ast_to_ir_fn_call_expr(expr_node, module, parent_fn);
+            ret_st.expression.fn_call_expr = ast_to_ir_fn_call_expr(expr_node, module, parent_fn, NULL);
             return ret_st;
         }
         default:
@@ -1133,8 +1181,83 @@ static inline IRCompoundStatement ast_to_ir_compound_st(ASTNode* node, IRFunctio
                 case AST_TYPE_FN_CALL:
                 {
                     st_it->type = IR_ST_TYPE_FN_CALL_ST;
-                    st_it->fn_call_st = ast_to_ir_fn_call_expr(st_node, module, parent_fn);
+                    st_it->fn_call_st = ast_to_ir_fn_call_expr(st_node, module, parent_fn, NULL);
                     break;
+                }
+                case AST_TYPE_SYM_EXPR:
+                {
+                    IRExpression expr = ast_to_ir_expression(st_node, module, parent_fn, LOAD, NULL);
+                    switch (expr.type)
+                    {
+                        case IR_EXPRESSION_TYPE_FN_CALL_EXPR:
+                            st_it->type = IR_ST_TYPE_FN_CALL_ST;
+                            st_it->fn_call_st = expr.fn_call_expr;
+                            break;
+                        default:
+                            RED_NOT_IMPLEMENTED;
+                            break;
+                    }
+                    break;
+#if 0
+                    SB* name = st_node->sym_expr.name;
+                    if (st_node->sym_expr.subscript)
+                    {
+                        ASTNode* subs_node = st_node->sym_expr.subscript;
+                        ASTSymbolSubscriptType subs_type = st_node->sym_expr.subscript_type;
+                        switch (subs_type)
+                        {
+                            case AST_SYMBOL_SUBSCRIPT_TYPE_MODULE_NAMESPACE:
+                            {
+                                u32 module_count = module->modules.len;
+                                IRModule* module_it = module->modules.ptr;
+                                IRModule* found = NULL;
+                                for (u32 i = 0; i < module_count; i++)
+                                {
+                                    IRModule* ref_module = &module_it[i];
+                                    if (strcmp(ref_module->name, sb_ptr(name)) == 0)
+                                    {
+                                        found = ref_module;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    RED_UNREACHABLE;
+                                }
+
+                                AST_ID id = subs_node->node_id;
+                                switch (id)
+                                {
+                                    case AST_TYPE_FN_CALL:
+                                    {
+                                        IRFunctionPrototype* called_fn = ast_to_ir_find_fn_proto(found, &subs_node->fn_call.name);
+                                        if (!called_fn)
+                                        {
+                                            RED_UNREACHABLE;
+                                        }
+
+                                        st_it->type = IR_ST_TYPE_FN_CALL_ST;
+                                        st_it->fn_call_st = ast_to_ir_fn_call_expr(subs_node, module, parent_fn, called_fn);
+                                        break;
+                                    }
+                                    default:
+                                        RED_NOT_IMPLEMENTED;
+                                        break;
+                                }
+                                break;
+                            }
+                            default:
+                                RED_NOT_IMPLEMENTED;
+                                break;
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        RED_NOT_IMPLEMENTED;
+                    }
+                    break;
+#endif
                 }
                 default:
                     RED_NOT_IMPLEMENTED;
@@ -1215,6 +1338,7 @@ static IRFunctionPrototype ast_to_ir_fn_proto(ASTNode* node, IRModule* module)
 
     IRFunctionPrototype ir_proto =
     {
+        .module = module,
         .name = fn_name,
         .param_count = param_count,
         .params = params,
@@ -1630,7 +1754,19 @@ static inline void ast_to_ir_enum_decl(IREnumDecl* enum_decl, IRModule* module, 
     }
 }
 
-static inline void ast_to_ir_type_declarations(IRModule* ir_tree, RedAST* ast)
+static inline void ast_to_ir_modules(IRModule* module, ASTModuleBuffer* ast_modules)
+{
+    u32 module_count = ast_modules->len;
+    ASTModule* module_ptr = ast_modules->ptr;
+    for (u32 i = 0; i < module_count; i++)
+    {
+        ASTModule* ast_module = &module_ptr[i];
+        IRModule new_module = transform_ast_to_ir(ast_module);
+        ir_module_append(&module->modules, new_module);
+    }
+}
+
+static inline void ast_to_ir_type_declarations(IRModule* ir_tree, ASTModule* ast)
 {
     ASTNodeBuffer* struct_decls = &ast->struct_decls;
     u64 struct_count = struct_decls->len;
@@ -1662,17 +1798,19 @@ static inline void ast_to_ir_type_declarations(IRModule* ir_tree, RedAST* ast)
     }
 }
 
-IRModule transform_ast_to_ir(RedAST* ast)
+IRModule transform_ast_to_ir(ASTModule* ast)
 {
-    IRModule ir_tree = ZERO_INIT;
-    ast_to_ir_type_declarations(&ir_tree, ast);
-    ast_to_ir_global_symbols(&ir_tree, &ast->global_sym_decls);
-    ast_to_ir_fn_prototypes(&ir_tree, &ast->fn_definitions);
-    ast_to_ir_fn_definitions(&ir_tree, &ast->fn_definitions);
+    IRModule module = ZERO_INIT;
+    module.name = ast->name;
+    ast_to_ir_modules(&module, &ast->modules);
+    ast_to_ir_type_declarations(&module, ast);
+    ast_to_ir_global_symbols(&module, &ast->global_sym_decls);
+    ast_to_ir_fn_prototypes(&module, &ast->fn_definitions);
+    ast_to_ir_fn_definitions(&module, &ast->fn_definitions);
 
 #if RED_IR_VERBOSE
-    print_ir_tree(&ir_tree);
+    print_ir_tree(&module);
 #endif
 
-    return ir_tree;
+    return module;
 }

@@ -467,8 +467,7 @@ static inline void allocate_new_block()
     }
     else
     {
-        logger(LOG_TYPE_ERROR, "Block allocation failed!\n");
-        abort();
+        os_exit_with_message("Block allocation failed\n");
     }
 }
 
@@ -571,20 +570,6 @@ void* reallocate_chunk(void* allocated_address, usize size)
 }
 #include <stdarg.h>
 
-// TODO: Move to OS module
-static const char *log_type_to_str(LogType log_type)
-{
-    switch (log_type)
-    {
-        CASE_TO_STR(LOG_TYPE_INFO);
-        CASE_TO_STR(LOG_TYPE_WARN);
-        CASE_TO_STR(LOG_TYPE_ERROR);
-        default:
-            RED_UNREACHABLE;
-    }
-    return NULL;
-}
-
 void print(const char* format, ...)
 {
     va_list args;
@@ -596,15 +581,6 @@ void print(const char* format, ...)
 void prints(const char* msg)
 {
     (void)puts(msg);
-}
-
-void logger(LogType log_type, const char *format, ...)
-{
-    fprintf(stdout, "[%s] ", log_type_to_str(log_type));
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
 }
 
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...)

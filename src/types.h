@@ -41,13 +41,6 @@ typedef _Bool bool;
 #define min(a, b) (((a) <= (b)) ? (a) : (b))
 #define char_to_int(c) (((s32)c) - 48)
 
-typedef enum LogType
-{
-    LOG_TYPE_INFO,
-    LOG_TYPE_WARN,
-    LOG_TYPE_ERROR,
-} LogType;
-
 void red_panic(const char* file, size_t line, const char* function, const char* format, ...);
 void os_abort();
 void os_exit(s32 code);
@@ -67,3 +60,11 @@ void os_exit(s32 code);
 #else
 #define redassert(_expr)
 #endif
+
+typedef struct StringBuffer
+{
+    char* ptr;
+    u32 len; /* length */
+    u32 cap; /* capacity */
+} SB, StringBuffer;
+

@@ -6,13 +6,6 @@
 #include "types.h"
 #include <string.h>
 
-typedef struct StringBuffer
-{
-    char* ptr;
-    u32 len; /* length */
-    u32 cap; /* capacity */
-} SB, StringBuffer;
-
 typedef enum Error
 {
     ERROR_NONE,
@@ -202,7 +195,6 @@ typedef enum TokenID
 } TokenID;
 
 void print(const char* format, ...);
-void logger(LogType log_type, const char *format, ...);
 
 #define NEW(T, count) (T*)(allocate_chunk(count * sizeof(T)))
 #define RENEW(T, old_ptr, count) (T*)(reallocate_chunk(old_ptr, count * sizeof(T)))
@@ -415,15 +407,18 @@ typedef u8 U8;
 GEN_BUFFER_STRUCT(U8)
 GEN_BUFFER_FUNCTIONS(u8, u8b, U8Buffer, u8)
 
-typedef struct RedAST
+typedef struct ASTModule ASTModule;
+GEN_BUFFER_STRUCT(ASTModule)
+typedef struct ASTModule
 {
+    ASTModuleBuffer modules;
     ASTNodeBuffer struct_decls;
     ASTNodeBuffer union_decls;
     ASTNodeBuffer enum_decls;
     ASTNodeBuffer global_sym_decls;
     ASTNodeBuffer fn_definitions;
     const char* name;
-} RedAST;
+} ASTModule;
 
 typedef struct UsizeBuffer UsizeBuffer;
 
@@ -508,5 +503,6 @@ typedef enum TypeKind
     TYPE_KIND_POINTER,
     TYPE_KIND_RAW_STRING,
     TYPE_KIND_FUNCTION,
+    TYPE_KIND_MODULE_NAMESPACE,
 } TypeKind;
 

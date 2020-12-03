@@ -34,6 +34,7 @@ typedef enum ASTSymbolSubscriptType
 {
     AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS,
     AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS,
+    AST_SYMBOL_SUBSCRIPT_TYPE_MODULE_NAMESPACE,
 } ASTSymbolSubscriptType, IRSymbolSubscriptType;
 
 typedef struct ASTSymbol
@@ -239,4 +240,4 @@ typedef struct ASTNode
     };
 } ASTNode;
 
-RedAST parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name);
+ASTModule parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name);

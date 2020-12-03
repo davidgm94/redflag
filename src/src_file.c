@@ -32,7 +32,7 @@ void add_source_file(SB* src_buffer, const char* filename)
 #endif
 
     ExplicitTimer parser_dt = os_timer_start("Parse");
-    RedAST ast = parse_translation_unit(src_buffer, &lexing_result.tokens, filename);
+    ASTModule ast = parse_translation_unit(src_buffer, &lexing_result.tokens, filename);
     os_timer_end(&parser_dt);
 
     ExplicitTimer ir_dt = os_timer_start("IRGen");
