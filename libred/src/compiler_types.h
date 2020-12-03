@@ -1,0 +1,310 @@
+//
+// Created by david on 8/10/20.
+//
+#pragma once
+
+#include "types.h"
+#include "os.h"
+
+typedef enum Error
+{
+    ERROR_NONE,
+    ERROR_NO_MEM,
+    ERROR_INVALID_FORMAT,
+    ERROR_SEMANTIC_ANALYZEFAIL,
+    ERROR_ACCESS,
+    ERROR_INTERRUPTED,
+    ERROR_SYSTEM_RESOURCES,
+    ERROR_FILE_NOT_FOUND,
+    ERROR_FILE_SYSTEM,
+    ERROR_FILE_TOO_BIG,
+    ERROR_DIV_BY_ZERO,
+    ERROR_OVERFLOW,
+    ERROR_PATH_ALREADY_EXISTS,
+    ERROR_UNEXPECTED,
+    ERROR_EXACT_DIV_REMAINDER,
+    ERROR_NEGATIVE_DENOMINATOR,
+    ERROR_SHIFTED_OUT_ONEBITS,
+    ERROR_C_COMPILE_ERRORS,
+    ERROR_END_OF_FILE,
+    ERROR_IS_DIR,
+    ERROR_NOT_DIR,
+    ERROR_UNSUPPORTED_OPERATING_SYSTEM,
+    ERROR_SHARING_VIOLATION,
+    ERROR_PIPE_BUSY,
+    ERROR_PRIMITIVE_TYPE_NOTFOUND,
+    ERROR_CACHE_UNAVAILABLE,
+    ERROR_PATH_TOO_LONG,
+    ERROR_C_COMPILER__CANNOT_FIND_FILE,
+    ERROR_NO_C_COMPILER_INSTALLED,
+    ERROR_READING_DEP_FILE,
+    ERROR_INVALID_DEP_FILE,
+    ERROR_MISSING_ARCHITECTURE,
+    ERROR_MISSING_OPERATING_SYSTEM,
+    ERROR_UNKNOWN_ARCHITECTURE,
+    ERROR_UNKNOWN_OPERATING_SYSTEM,
+    ERROR_UNKNOWN_ABI,
+    ERROR_INVALID_FILENAME,
+    ERROR_DISK_QUOTA,
+    ERROR_DISK_SPACE,
+    ERROR_UNEXPECTED_WRITE_FAILURE,
+    ERROR_UNEXPECTED_SEEK_FAILURE,
+    ERROR_UNEXPECTED_FILE_TRUNCATION_FAILURE,
+    ERROR_UNIMPLEMENTED,
+    ERROR_OPERATION_ABORTED,
+    ERROR_BROKEN_PIPE,
+    ERROR_NO_SPACE_LEFT,
+    ERROR_NOT_LAZY,
+    ERROR_IS_ASYNC,
+    ERROR_IMPORT_OUTSIDE_PKG_PATH,
+    ERROR_UNKNOWN_CPU,
+    ERROR_UNKNOWN_CPU_FEATURE,
+    ERROR_INVALID_CPU_FEATURES,
+    ERROR_INVALID_LLVM_CPU_FEATURES_FORMAT,
+    ERROR_UNKNOWN_APPLICATION_BINARY_INTERFACE,
+    ERROR_AST_UNIT_FAILURE,
+    ERROR_BAD_PATH_NAME,
+    ERROR_SYM_LINK_LOOP,
+    ERROR_PROCESS_FD_QUOTA_EXCEEDED,
+    ERROR_SYSTEM_FD_QUOTA_EXCEEDED,
+    ERROR_NO_DEVICE,
+    ERROR_DEVICE_BUSY,
+    ERROR_UNABLE_TO_SPAWN_C_COMPILER,
+    ERROR_C_COMPILER_EXIT_CODE,
+    ERROR_C_COMPILER_CRASHED,
+    ERROR_C_COMPILER_CANNOT_FIND_HEADERS,
+    ERROR_LIB_C_RUNTIME_NOT_FOUND,
+    ERROR_LIB_C_STD_LIB_HEADER_NOT_FOUND,
+    ERROR_LIB_C_KERNEL32_LIB_NOT_FOUND,
+    ERROR_UNSUPPORTED_ARCHITECTURE,
+    ERROR_WINDOWS_SDK_NOT_FOUND,
+    ERROR_UNKNOWN_DYNAMIC_LINKER_PATH,
+    ERROR_TARGET_HAS_NO_DYNAMIC_LINKER,
+    ERROR_INVALID_ABI_VERSION,
+    ERROR_INVALID_OPERATING_SYSTEM_VERSION,
+    ERROR_UNKNOWN_CLANG_OPTION,
+    ERROR_NESTED_RESPONSE_FILE,
+    ERROR_ZIG_IS_THEC_COMPILER,
+    ERROR_FILE_BUSY,
+    ERROR_LOCKED,
+} Error;
+
+typedef enum Cmp
+{
+    CMP_LESS,
+    CMP_GREATER,
+    CMP_EQ
+} Cmp;
+
+typedef enum TokenID
+{
+    TOKEN_ID_AMPERSAND = '&',
+    TOKEN_ID_AT = '@',
+    TOKEN_ID_BANG = '!',
+    TOKEN_ID_BAR = '|',
+    TOKEN_ID_CARET = '^',
+    TOKEN_ID_CMP_GREATER = '>',
+    TOKEN_ID_CMP_LESS = '<',
+    TOKEN_ID_COLON = ':',
+    TOKEN_ID_COMMA = ',',
+    TOKEN_ID_DASH = '-',
+    TOKEN_ID_HASH = '#',
+    TOKEN_ID_EQ = '=',
+    TOKEN_ID_DOT = '.',
+    TOKEN_ID_LEFT_BRACE = '{',
+    TOKEN_ID_LEFT_BRACKET = '[',
+    TOKEN_ID_LEFT_PARENTHESIS = '(',
+    TOKEN_ID_QUESTION = '?',
+    TOKEN_ID_PERCENT = '%',
+    TOKEN_ID_PLUS = '+',
+    TOKEN_ID_RIGHT_BRACE = '}',
+    TOKEN_ID_RIGHT_BRACKET = ']',
+    TOKEN_ID_RIGHT_PARENTHESIS = ')',
+    TOKEN_ID_SEMICOLON = ';',
+    TOKEN_ID_SLASH = '/',
+    TOKEN_ID_STAR = '*',
+    TOKEN_ID_TILDE = '~',
+    TOKEN_ID_ARROW = 256,
+    TOKEN_ID_BIT_OR_EQ,
+    TOKEN_ID_BIT_XOR_EQ,
+    TOKEN_ID_BIT_AND_EQ,
+    TOKEN_ID_BIT_SHL,
+    TOKEN_ID_BIT_SHL_EQ,
+    TOKEN_ID_BIT_SHR,
+    TOKEN_ID_BIT_SHR_EQ,
+    TOKEN_ID_CHAR_LIT,
+    TOKEN_ID_CMP_EQ,
+    TOKEN_ID_CMP_GREATER_OR_EQ,
+    TOKEN_ID_CMP_LESS_OR_EQ,
+    TOKEN_ID_CMP_NOT_EQ,
+    TOKEN_ID_DIV_EQ,
+    TOKEN_ID_END_OF_FILE,
+    TOKEN_ID_FAT_ARROW,
+    TOKEN_ID_FLOAT_LIT,
+    TOKEN_ID_INT_LIT,
+    TOKEN_ID_KEYWORD_ALIGN,
+    TOKEN_ID_KEYWORD_ALLOW_ZERO,
+    TOKEN_ID_KEYWORD_AND,
+    TOKEN_ID_KEYWORD_ANY,
+    TOKEN_ID_KEYWORD_ANY_FRAME,
+    TOKEN_ID_KEYWORD_CALL_CONV,
+    TOKEN_ID_KEYWORD_COMPTIME,
+    TOKEN_ID_KEYWORD_CONST,
+    TOKEN_ID_KEYWORD_DEFAULT,
+    TOKEN_ID_KEYWORD_DEFER,
+    TOKEN_ID_KEYWORD_ELSE,
+    TOKEN_ID_KEYWORD_ENUM,
+    TOKEN_ID_KEYWORD_ERROR,
+    TOKEN_ID_KEYWORD_ERROR_DEFER,
+    TOKEN_ID_KEYWORD_EXPORT,
+    TOKEN_ID_KEYWORD_EXTERN,
+    TOKEN_ID_KEYWORD_FALSE,
+    TOKEN_ID_KEYWORD_FN,
+    TOKEN_ID_KEYWORD_FOR,
+    TOKEN_ID_KEYWORD_IF,
+    TOKEN_ID_KEYWORD_INLINE,
+    TOKEN_ID_KEYWORD_NO_ALIAS,
+    TOKEN_ID_KEYWORD_NO_INLINE,
+    TOKEN_ID_KEYWORD_NULL,
+    TOKEN_ID_KEYWORD_OR,
+    TOKEN_ID_KEYWORD_PACKED,
+    TOKEN_ID_KEYWORD_PUB,
+    TOKEN_ID_KEYWORD_RAW_STRING,
+    TOKEN_ID_KEYWORD_RETURN,
+    TOKEN_ID_KEYWORD_SECTION,
+    TOKEN_ID_KEYWORD_STRUCT,
+    TOKEN_ID_KEYWORD_SWITCH,
+    TOKEN_ID_KEYWORD_TEST,
+    TOKEN_ID_KEYWORD_THREAD_LOCAL,
+    TOKEN_ID_KEYWORD_TRUE,
+    TOKEN_ID_KEYWORD_UNDEFINED,
+    TOKEN_ID_KEYWORD_UNION,
+    TOKEN_ID_KEYWORD_UNREACHABLE,
+    TOKEN_ID_KEYWORD_VAR,
+    TOKEN_ID_KEYWORD_VOID,
+    TOKEN_ID_KEYWORD_VOLATILE,
+    TOKEN_ID_KEYWORD_WHILE,
+    // ...
+    TOKEN_ID_MINUS_EQ,
+    TOKEN_ID_MOD_EQ,
+    TOKEN_ID_PLUS_EQ,
+    TOKEN_ID_SYMBOL,
+    TOKEN_ID_TIMES_EQ,
+    TOKEN_ID_STRING_LIT,
+    TOKEN_ID_MULTILINE_STRING_LIT,
+} TokenID;
+
+typedef struct BigInt
+{
+    size_t digit_count;
+    union
+    {
+        u64 digit;
+        u64* digits; // least significant digit first
+    };
+    bool is_negative;
+} BigInt;
+
+typedef struct BigFloat
+{
+    f128 fn_handle;
+} BigFloat;
+typedef struct TokenFloatLit
+{
+    BigFloat big_float;
+    bool overflow;
+} TokenFloatLit;
+typedef struct TokenIntLit
+{
+    BigInt big_int;
+} TokenIntLit;
+typedef struct TokenStrLit
+{
+    struct StringBuffer str;
+} TokenStrLit;
+typedef struct TokenCharLit
+{
+    // TODO: we are only supporting 1-byte characters for now
+    char fn_handle;
+} TokenCharLit;
+
+typedef struct Token
+{
+    TokenID id;
+    size_t start_position;
+    size_t end_position;
+    size_t start_line;
+    size_t start_column;
+
+    union
+    {
+        TokenIntLit int_lit;
+        TokenFloatLit float_lit;
+        TokenStrLit str_lit;
+        TokenCharLit char_lit;
+    };
+} Token;
+
+GEN_BUFFER_STRUCT(Token)
+typedef usize Usize;
+GEN_BUFFER_STRUCT(Usize)
+typedef TokenBuffer TB;
+typedef struct ASTNode ASTNode;
+GEN_BUFFER_STRUCT_PTR(ASTNode, ASTNode*)
+typedef u8 U8;
+GEN_BUFFER_STRUCT(U8)
+GEN_BUFFER_FUNCTIONS(u8, u8b, U8Buffer, u8)
+
+typedef struct ASTModule ASTModule;
+GEN_BUFFER_STRUCT(ASTModule)
+typedef struct ASTModule
+{
+    ASTModuleBuffer modules;
+    ASTNodeBuffer struct_decls;
+    ASTNodeBuffer union_decls;
+    ASTNodeBuffer enum_decls;
+    ASTNodeBuffer global_sym_decls;
+    ASTNodeBuffer fn_definitions;
+    const char* name;
+} ASTModule;
+
+typedef struct UsizeBuffer UsizeBuffer;
+
+typedef struct LexingResult
+{
+    TokenBuffer tokens;
+    UsizeBuffer line_offsets;
+
+    const char* module;
+
+    StringBuffer error;
+    size_t error_line;
+    size_t error_column;
+} LexingResult;
+
+GEN_BUFFER_STRUCT(LexingResult)
+typedef struct LexingContext
+{
+    LexingResultBuffer modules;
+
+    LexingResult main_module;
+} LexingContext;
+
+
+
+typedef enum TypeKind
+{
+    TYPE_KIND_INVALID,
+    TYPE_KIND_VOID,
+    TYPE_KIND_PRIMITIVE,
+    TYPE_KIND_COMPLEX_TO_BE_DETERMINED,
+    TYPE_KIND_STRUCT,
+    TYPE_KIND_UNION,
+    TYPE_KIND_ENUM,
+    TYPE_KIND_ARRAY,
+    TYPE_KIND_POINTER,
+    TYPE_KIND_RAW_STRING,
+    TYPE_KIND_FUNCTION,
+    TYPE_KIND_MODULE_NAMESPACE,
+} TypeKind;
+

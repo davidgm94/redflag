@@ -1,0 +1,2 @@
+C:\Users\David\git\redflag\llvm-wrapper\outdummy\Debug\llvm-wrapper.pdb
+C:\Users\David\git\redflag\llvm-wrapper\outdummy\llvm-wrapper.dir\Debug\llvm-wrapper.pdb
