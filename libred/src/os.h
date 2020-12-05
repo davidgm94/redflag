@@ -34,6 +34,12 @@
 #define RED_OS_SEP_CHAR '/'
 #endif
 
+typedef union OS_SemaphoreInternal
+{
+    volatile void* win32_handle;
+    volatile unsigned char posix_handle;
+} volatile OS_Semaphore;
+
 typedef enum TerminationID
 {
     CLEAN,
@@ -161,7 +167,7 @@ static inline void p_type_prefix##_clear(t_type* buffer_name)\
 {\
     buffer_name->len = 0;\
 }
-void os_init(void(*mem_init)(void));
+void os_init();
 SB* os_get_cwd(void);
 void* os_ask_virtual_memory_block(size_t block_bytes);
 void* os_ask_virtual_memory_block_with_address(void* target_address, size_t block_bytes);

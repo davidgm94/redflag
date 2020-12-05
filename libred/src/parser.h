@@ -1,5 +1,13 @@
 #pragma once
 
+#include "compiler_types.h"
+
+typedef struct ParseContext
+{
+    TokenBuffer* token_buffer;
+    usize current_token;
+} ParseContext;
+
 typedef enum AST_ID
 {
     AST_TYPE_FN_DEF,
@@ -27,14 +35,12 @@ typedef enum AST_ID
     AST_TYPE_ENUM_DECL,
 } AST_ID;
 
-GEN_BUFFER_FUNCTIONS(node, nb, ASTNodeBuffer, struct ASTNode*)
 
 
 typedef enum ASTSymbolSubscriptType
 {
-    AST_SYMBOL_SUBSCRIPT_TYPE_ARRAY_ACCESS,
-    AST_SYMBOL_SUBSCRIPT_TYPE_FIELD_ACCESS,
-    AST_SYMBOL_SUBSCRIPT_TYPE_MODULE_NAMESPACE,
+    AST_SYMBOL_SUBSCRIPT_TYPE_BRACKET_ACCESS,
+    AST_SYMBOL_SUBSCRIPT_TYPE_DOT_ACCESS,
 } ASTSymbolSubscriptType, IRSymbolSubscriptType;
 
 typedef struct ASTSymbol
@@ -158,6 +164,7 @@ typedef struct ASTRetExpr
 typedef struct ASTCompoundStatement
 {
     ASTNodeBuffer statements;
+    bool no_scope;
 } ASTCompoundStatement;
 
 typedef struct ASTBranchExpr
@@ -240,4 +247,8 @@ typedef struct ASTNode
     };
 } ASTNode;
 
-ASTModule parse_translation_unit(StringBuffer* src_buffer, TokenBuffer* tb, const char* module_name);
+bool parse_file_load_or_import(ParseContext* pc, SBBuffer* file_list, const char* include_type);
+ASTModule parse_module(TokenBuffer* tb, SB* module_name);
+ASTModule load_lex_and_parse_user_module(SB* module_filename);
+ASTModule load_lex_and_parse_system_module(SB* module_name);
+GEN_BUFFER_FUNCTIONS(ast, astb, ASTModuleBuffer, ASTModule)

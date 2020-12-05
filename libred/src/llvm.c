@@ -25,19 +25,6 @@
 
 #include <stdio.h>
 
-#ifdef _WIN32
-#define DLLEXPORT __declspec(dllexport)
-#else
-#define DLLEXPORT
-#endif
-
-DLLEXPORT s32 printstring(char* string)
-{
-    return puts(string);
-}
-
-
-//typedef struct TypeDeclarationBufferLLVM TypeDeclarationBufferLLVM;
 typedef struct TypeDeclarationLLVM TypeDeclarationLLVM;
 
 static LLVMTypeRef llvm_primitive_types[IR_TYPE_PRIMITIVE_COUNT];

@@ -4,6 +4,7 @@ set(LLVM_WRAPPER_SOURCE
         src/microsoft_craziness.cpp
 )
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 set (LLD_LIBS
         lldCommon.lib lldDriver.lib lldMachO.lib lldMinGW.lib lldWasm.lib lldCOFF.lib lldCore.lib lldELF.lib lldMachO2.lib lldReaderWriter.lib lldYAML.lib
 )

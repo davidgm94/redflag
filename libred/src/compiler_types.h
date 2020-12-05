@@ -220,7 +220,7 @@ typedef struct TokenIntLit
 } TokenIntLit;
 typedef struct TokenStrLit
 {
-    struct StringBuffer str;
+    SB str;
 } TokenStrLit;
 typedef struct TokenCharLit
 {
@@ -254,18 +254,21 @@ GEN_BUFFER_STRUCT_PTR(ASTNode, ASTNode*)
 typedef u8 U8;
 GEN_BUFFER_STRUCT(U8)
 GEN_BUFFER_FUNCTIONS(u8, u8b, U8Buffer, u8)
+GEN_BUFFER_STRUCT_PTR_NO_STRUCT(StringList, char*)
+GEN_BUFFER_FUNCTIONS(strlist, slb, StringListBuffer, char*)
+GEN_BUFFER_STRUCT_PTR(SB, SB*)
+GEN_BUFFER_FUNCTIONS(sb_buffer, sbb, SBBuffer, SB*)
 
 typedef struct ASTModule ASTModule;
 GEN_BUFFER_STRUCT(ASTModule)
 typedef struct ASTModule
 {
-    ASTModuleBuffer modules;
     ASTNodeBuffer struct_decls;
     ASTNodeBuffer union_decls;
     ASTNodeBuffer enum_decls;
     ASTNodeBuffer global_sym_decls;
     ASTNodeBuffer fn_definitions;
-    const char* name;
+    SB* name;
 } ASTModule;
 
 typedef struct UsizeBuffer UsizeBuffer;

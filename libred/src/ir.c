@@ -1358,6 +1358,7 @@ static void ast_to_ir_fn_prototypes(IRModule* module, ASTNodeBuffer* fn_buffer)
     {
         ASTNode* ast_fn = fn_ptr[i];
         IRFunctionPrototype fn_proto = ast_to_ir_fn_proto(ast_fn->fn_def.proto, module);
+        fn_proto.has_body = ast_fn->fn_def.body;
         ir_fn_proto_append(&module->fn_prototypes, fn_proto);
     }
 }
@@ -1402,11 +1403,6 @@ static void ast_to_ir_fn_definitions(IRModule* ir_module, ASTNodeBuffer* fb)
     }
 }
 
-static inline void print_fn_cfg(IRFunctionConfig* fn_cfg)
-{
-    print("Function linkage: %s\n", fn_cfg->link_type == EXTERN ? "extern" : "intern");
-}
-
 static inline void print_param_decl(IRParamDecl* param)
 {
     redassert(param->type.kind == TYPE_KIND_PRIMITIVE);
@@ -1416,7 +1412,6 @@ static inline void print_param_decl(IRParamDecl* param)
 static inline void print_fn_proto(IRFunctionPrototype* fn_proto)
 {
     print("Function name: %s\n", sb_ptr(fn_proto->name));
-    print_fn_cfg(&fn_proto->fn_cfg);
     u8 param_count = fn_proto->param_count;
     print("(\n");
     if (param_count > 0)

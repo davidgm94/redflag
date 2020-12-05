@@ -159,11 +159,6 @@ typedef enum IRLinkageType
     INTERN,
 } IRLinkageType;
 
-typedef struct IRFunctionConfig
-{
-    IRLinkageType link_type;
-} IRFunctionConfig;
-
 typedef struct IRFunctionPrototype
 {
     IRModule* module;
@@ -171,12 +166,12 @@ typedef struct IRFunctionPrototype
     SB* name;
     // TODO: remove
     IRType ret_type;
-    IRFunctionConfig fn_cfg;
-    u8 param_count;
     struct
     {
         usize line;
     } debug;
+    u8 param_count;
+    bool has_body;
 } IRFunctionPrototype;
 GEN_BUFFER_STRUCT(IRFunctionPrototype)
 

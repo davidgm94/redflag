@@ -24,7 +24,6 @@ typedef float128_t f128;
 #ifndef __cplusplus
 #include <stdbool.h>
 #define nullptr null
-#define static_assert(x, message) _Static_assert(x, message)
 #endif // !__cplusplus
 
 #define ZERO_INIT { 0 }
@@ -43,7 +42,7 @@ typedef float128_t f128;
 #define MEGABYTE(x) (x * (KILOBYTE(1024)))
 #define GIGABYTE(x) (x * (MEGABYTE(1024)))
 
-typedef struct StringBuffer
+typedef struct SB
 {
     char* ptr;
     u32 len; /* length */
@@ -66,3 +65,15 @@ typedef struct StringBuffer
         u32 cap;\
     } type##Buffer;
 
+#define GEN_BUFFER_STRUCT_PTR_NO_STRUCT(name, type) \
+    typedef struct name##Buffer \
+    {                    \
+        type* ptr;                 \
+        u32 len;                  \
+        u32 cap;                  \
+    } name##Buffer;
+#define BIT_FIELD_4(first, second, third, fourth) \
+    u8 first:1;\
+    u8 second:1;\
+    u8 third:1;\
+    u8 fourth:1

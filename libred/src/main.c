@@ -4,7 +4,7 @@
 
 #include "compiler_types.h"
 #include "os.h"
-#include "src_file.h"
+#include "compiler.h"
 
 typedef struct File
 {
@@ -17,7 +17,7 @@ static File handle_main_arguments(s32 argc, char* argv[]);
 
 s32 main(s32 argc, char* argv[])
 {
-    os_init(mem_init);
+    os_init();
     print_header();
     s64 start = os_performance_counter();
 
@@ -25,7 +25,7 @@ s32 main(s32 argc, char* argv[])
     File file = handle_main_arguments(argc, argv);
     os_timer_end(&file_dt);
 
-    add_source_file(file.file_buffer, file.filename);
+    compile_program(file.file_buffer);
 
     s64 end = os_performance_counter();
     f64 total_ms = os_compute_ms(start, end);

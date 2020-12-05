@@ -1,6 +1,0 @@
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/intrinsics_gen.dir
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/omp_gen.dir
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/acc_gen.dir
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/llvm-wrapper.dir
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/ALL_BUILD.dir
-C:/Users/David/git/redflag/llvm-wrapper/outdummy/CMakeFiles/ZERO_CHECK.dir

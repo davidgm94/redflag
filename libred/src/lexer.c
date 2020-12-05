@@ -1230,31 +1230,28 @@ const char* token_name(TokenID id)
         case TOKEN_ID_INT_LIT: return "IntLiteral";
         case TOKEN_ID_KEYWORD_ALIGN:
         case TOKEN_ID_KEYWORD_ALLOW_ZERO:
-        case TOKEN_ID_KEYWORD_AND:
+        case TOKEN_ID_KEYWORD_AND: return "and";
         case TOKEN_ID_KEYWORD_ANY:
         case TOKEN_ID_KEYWORD_ANY_FRAME:
         case TOKEN_ID_KEYWORD_CALL_CONV:
         case TOKEN_ID_KEYWORD_COMPTIME:
-        case TOKEN_ID_KEYWORD_CONST:
+        case TOKEN_ID_KEYWORD_CONST: return "const";
         case TOKEN_ID_KEYWORD_DEFAULT: return "default";
-        case TOKEN_ID_KEYWORD_DEFER:
-        case TOKEN_ID_KEYWORD_ELSE:
-        case TOKEN_ID_KEYWORD_ENUM:
-        case TOKEN_ID_KEYWORD_ERROR:
-        case TOKEN_ID_KEYWORD_ERROR_DEFER:
-        case TOKEN_ID_KEYWORD_EXPORT:
+        case TOKEN_ID_KEYWORD_DEFER: return "defer";
+        case TOKEN_ID_KEYWORD_ELSE: return "else";
+        case TOKEN_ID_KEYWORD_ENUM: return "enum";
+        case TOKEN_ID_KEYWORD_EXPORT: return "export";
         case TOKEN_ID_KEYWORD_EXTERN: return "extern";
-        case TOKEN_ID_KEYWORD_FALSE:
-        case TOKEN_ID_KEYWORD_FN:
-        case TOKEN_ID_KEYWORD_FOR:
-        case TOKEN_ID_KEYWORD_IF:
+        case TOKEN_ID_KEYWORD_FALSE: return "false";
+        case TOKEN_ID_KEYWORD_FOR: return "for";
+        case TOKEN_ID_KEYWORD_IF: return "if";
         case TOKEN_ID_KEYWORD_INLINE:
         case TOKEN_ID_KEYWORD_NO_ALIAS:
         case TOKEN_ID_KEYWORD_NO_INLINE:
-        case TOKEN_ID_KEYWORD_NULL:
-        case TOKEN_ID_KEYWORD_OR:
-        case TOKEN_ID_KEYWORD_PACKED:
-        case TOKEN_ID_KEYWORD_PUB:
+        case TOKEN_ID_KEYWORD_NULL: "null";
+        case TOKEN_ID_KEYWORD_OR: "or";
+        case TOKEN_ID_KEYWORD_PACKED: "packed";
+        case TOKEN_ID_KEYWORD_PUB: return "pub";
         case TOKEN_ID_KEYWORD_RETURN: return "return";
         case TOKEN_ID_KEYWORD_SECTION: return "section";
         case TOKEN_ID_KEYWORD_STRUCT: return "struct";

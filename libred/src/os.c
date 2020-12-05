@@ -20,7 +20,8 @@
 // Static cached structures 
 #ifdef RED_OS_WINDOWS
 static SYSTEM_INFO system_info;
-static size_t page_size;
+static usize page_size;
+static u16 logical_thread_count;
 static LARGE_INTEGER pfreq;
 static HINSTANCE loaded_dlls[1000];
 static u16 dll_count = 0;
@@ -66,17 +67,19 @@ f64 os_timer_end(ExplicitTimer* et)
 #error
 #endif
 }
+static inline void os_mem_init(void);
 
-void os_init(void (*mem_init)(void))
+void os_init(void)
 {
 #ifdef RED_OS_WINDOWS
     GetSystemInfo(&system_info);
     page_size = system_info.dwPageSize > system_info.dwAllocationGranularity ? system_info.dwPageSize : system_info.dwAllocationGranularity;
+    logical_thread_count = system_info.dwNumberOfProcessors;
     QueryPerformanceFrequency(&pfreq);
 #else
 #error
 #endif
-    mem_init();
+    os_mem_init();
 }
 
 SB* os_get_cwd(void)
@@ -372,10 +375,6 @@ typedef enum AllocationResult
     ALLOCATION_RESULT_SUCCESS,
 } AllocationResult;
 
-void mem_init(void)
-{
-    m_page_allocator.page_size = os_get_page_size();
-}
 
 // @NOT_USED
 //static inline usize round_up_to_next_page(usize size, usize page_size)
@@ -453,7 +452,7 @@ static inline void allocate_new_block()
         usize lost_memory = (uptr)aligned_address - (uptr)address;
         redassert(lost_memory == 0);
         usize aligned_size = BLOCK_SIZE - lost_memory;
-        redassert(aligned_size == block_size);
+        redassert(aligned_size == BLOCK_SIZE);
         if (target_address == NULL)
         {
             m_page_allocator.blob = address;
@@ -481,10 +480,10 @@ void* allocate_chunk(usize size)
 #if RED_BUFFER_MEM_CHECK
     buffer_zero_check(m_page_allocator.available_address, (uptr)m_page_allocator.blob +  block_size - (uptr)m_page_allocator.available_address);
 #endif
-    redassert(m_page_allocator.allocated_block_count <= max_allocated_block_count);
+    redassert(m_page_allocator.allocated_block_count <= MAX_ALLOCATED_BLOCK_COUNT);
     // TODO:
     usize max_required_size = size + DEFAULT_ALIGNMENT;
-    redassert(sizeof(Allocation) < default_alignment);
+    redassert(sizeof(Allocation) < DEFAULT_ALIGNMENT);
 
     bool first_allocation = m_page_allocator.allocated_block_count == 0;
     bool can_allocate_in_current_block = !first_allocation;
@@ -591,3 +590,7 @@ void os_print_memory_usage(void)
     print("\nMemory usage: %llu bytes. Available: %llu bytes. Relative usage: %02.02f%%. Total allocations: %llu\n", mem_usage, block_size, ((f64)mem_usage / (f64)block_size) * 100.0f, alloc_count);
 }
 
+static inline void os_mem_init(void)
+{
+m_page_allocator.page_size = os_get_page_size();
+}
